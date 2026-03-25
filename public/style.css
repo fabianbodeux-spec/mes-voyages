@@ -1,0 +1,398 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  color-scheme: light dark;
+  --primary: #3B82F6;
+  --primary-dark: #2563EB;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --bg: #F1F5F9;
+  --card: #FFFFFF;
+  --text: #1E293B;
+  --text-muted: #64748B;
+  --border: #E2E8F0;
+  --radius: 14px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── SCREENS ─── */
+.screen { display: none; min-height: 100vh; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ─── HEADER ─── */
+.app-header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+  padding: env(safe-area-inset-top) 0 0;
+}
+.header-content {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+}
+.app-header h1 { font-size: 1.3rem; font-weight: 700; color: var(--text); flex: 1; }
+.voyage-header { background: var(--card); }
+
+.header-title { flex: 1; min-width: 0; }
+.header-title h1 { font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.header-title .subtitle { font-size: 0.75rem; color: var(--text-muted); }
+
+/* ─── BUTTONS ─── */
+.btn-icon {
+  width: 40px; height: 40px;
+  border: none; background: var(--bg);
+  border-radius: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text); flex-shrink: 0;
+  transition: background 0.15s;
+}
+.btn-icon:hover { background: var(--border); }
+.btn-back { background: transparent; }
+
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--primary); color: white;
+  border: none; border-radius: 10px;
+  padding: 10px 18px; font-size: 0.9rem; font-weight: 600;
+  cursor: pointer; transition: background 0.15s;
+}
+.btn-primary:hover { background: var(--primary-dark); }
+
+.btn-secondary {
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 18px; font-size: 0.9rem; font-weight: 500;
+  cursor: pointer;
+}
+
+/* ─── MAIN CONTENT ─── */
+.main-content { flex: 1; padding: 16px; overflow-y: auto; padding-bottom: 100px; }
+.tabs-content { padding: 0; }
+
+/* ─── VOYAGE CARDS ─── */
+.voyage-grid { display: flex; flex-direction: column; gap: 14px; }
+
+.voyage-card {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+  cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+  border: 1px solid var(--border);
+}
+.voyage-card:active { transform: scale(0.98); }
+.voyage-card-banner { height: 8px; }
+.voyage-card-body { padding: 16px; }
+.voyage-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.voyage-card h2 { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+
+.voyage-badge {
+  font-size: 0.7rem; font-weight: 600; padding: 3px 8px;
+  border-radius: 20px; white-space: nowrap;
+}
+.badge-upcoming { background: #DBEAFE; color: #1D4ED8; }
+.badge-ongoing { background: #D1FAE5; color: #065F46; }
+.badge-past { background: var(--bg); color: var(--text-muted); }
+
+.voyage-destination { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 10px; }
+.voyage-destination::before { content: '📍 '; }
+
+.voyage-dates {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.82rem; color: var(--text-muted);
+}
+.voyage-dates::before { content: '📅'; }
+
+/* ─── TABS ─── */
+.tab-nav {
+  display: flex; background: var(--card);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+}
+.tab-nav::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+  flex: 1; min-width: 70px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 8px;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--text-muted); font-size: 0.72rem; font-weight: 500;
+  border-bottom: 3px solid transparent;
+  transition: all 0.15s; white-space: nowrap;
+}
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-icon { font-size: 1.1rem; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ─── PANEL ACTIONS ─── */
+.panel-actions {
+  padding: 14px 16px;
+  background: var(--card); border-bottom: 1px solid var(--border);
+}
+
+/* ─── FILTER CHIPS ─── */
+.filter-chips {
+  display: flex; gap: 8px; padding: 10px 16px;
+  background: var(--card); border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+}
+.filter-chips::-webkit-scrollbar { display: none; }
+
+.chip {
+  padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500;
+  border: 1.5px solid var(--border); background: var(--bg); cursor: pointer;
+  white-space: nowrap; color: var(--text-muted); transition: all 0.15s;
+}
+.chip.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+/* ─── RESERVATION CARDS ─── */
+.resa-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.resa-card {
+  background: var(--card); border-radius: 12px; padding: 14px;
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.resa-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; flex-shrink: 0;
+}
+.icon-transport { background: #DBEAFE; }
+.icon-hebergement { background: #D1FAE5; }
+.icon-vehicule { background: #FEF3C7; }
+.icon-activite { background: #EDE9FE; }
+.icon-restaurant { background: #FCE7F3; }
+
+.resa-body { flex: 1; min-width: 0; }
+.resa-titre { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; color: var(--text); }
+.resa-meta { font-size: 0.78rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 8px; }
+.resa-confirmation {
+  display: inline-block; margin-top: 6px;
+  font-size: 0.75rem; padding: 2px 8px;
+  background: var(--bg); border-radius: 6px; color: var(--text-muted);
+  font-family: monospace;
+}
+
+.resa-actions { display: flex; gap: 6px; }
+.btn-mini {
+  width: 32px; height: 32px; border-radius: 8px;
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 0.85rem;
+  transition: background 0.15s;
+}
+.btn-mini-edit { background: #DBEAFE; color: #1D4ED8; }
+.btn-mini-del { background: #FEE2E2; color: #DC2626; }
+
+/* ─── AGENDA ─── */
+.agenda-day { margin: 12px 16px 0; }
+.agenda-day-header {
+  font-size: 0.82rem; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 8px 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 8px;
+}
+.agenda-day-header.today { color: var(--primary); }
+
+.agenda-item {
+  display: flex; gap: 12px; padding: 12px;
+  background: var(--card); border-radius: 10px; margin-bottom: 8px;
+  border: 1px solid var(--border); align-items: center;
+}
+.agenda-heure {
+  font-size: 0.82rem; font-weight: 600; color: var(--primary);
+  min-width: 40px; text-align: right; flex-shrink: 0;
+}
+.agenda-line {
+  width: 3px; height: 36px; border-radius: 3px;
+  background: var(--primary); flex-shrink: 0; align-self: center;
+}
+.agenda-content { flex: 1; min-width: 0; }
+.agenda-titre { font-weight: 600; font-size: 0.92rem; color: var(--text); }
+.agenda-lieu { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+.agenda-actions { display: flex; gap: 4px; }
+
+/* ─── CARTE ─── */
+.carte-header { padding: 14px 16px 10px; background: var(--card); border-bottom: 1px solid var(--border); }
+.carte-info { font-size: 0.88rem; color: var(--text-muted); }
+
+.lieux-list { padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; background: var(--card); border-bottom: 1px solid var(--border); }
+
+.lieu-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 8px; background: var(--bg);
+  font-size: 0.85rem; cursor: pointer; transition: background 0.15s; color: var(--text);
+}
+.lieu-item:hover { background: var(--border); }
+.lieu-emoji { font-size: 1rem; }
+
+.carte-frame-container { padding: 0; }
+.carte-frame { width: 100%; height: 420px; border: none; display: block; }
+
+/* ─── DOCUMENTS ─── */
+.docs-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.doc-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--card); border-radius: 10px; padding: 12px;
+  border: 1px solid var(--border);
+}
+.doc-icon { font-size: 1.4rem; flex-shrink: 0; }
+.doc-body { flex: 1; min-width: 0; }
+.doc-nom { font-weight: 600; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.doc-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+.doc-actions { display: flex; gap: 6px; }
+
+/* ─── EMPTY STATE ─── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 60px 24px; text-align: center; gap: 12px;
+}
+.empty-icon { font-size: 3rem; }
+.empty-state h2 { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+.empty-state p { color: var(--text-muted); font-size: 0.9rem; }
+.hidden { display: none !important; }
+
+.empty-tab {
+  padding: 40px 24px; text-align: center; color: var(--text-muted);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.empty-tab-icon { font-size: 2.5rem; }
+.empty-tab p { font-size: 0.88rem; }
+
+/* ─── MODALS ─── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: flex-end; z-index: 1000;
+  animation: fadeIn 0.2s;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: var(--card); border-radius: 20px 20px 0 0;
+  width: 100%; max-height: 92vh; overflow-y: auto;
+  padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  animation: slideUp 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-header h2 { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+/* ─── FORMS ─── */
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.form-row { display: flex; gap: 12px; }
+.form-row .form-group { flex: 1; }
+
+input[type="text"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
+  width: 100%; padding: 11px 13px;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  font-size: 0.92rem; font-family: inherit;
+  background: var(--bg); color: var(--text);
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none; border-color: var(--primary);
+}
+textarea { resize: vertical; }
+
+/* ─── COLOR PICKER ─── */
+.color-picker { display: flex; gap: 10px; }
+.color-opt {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 3px solid transparent; cursor: pointer;
+  transition: transform 0.15s;
+}
+.color-opt.active { border-color: white; outline: 3px solid var(--text); transform: scale(1.15); }
+
+/* ─── TYPE SELECTOR ─── */
+.type-selector { display: flex; flex-wrap: wrap; gap: 8px; }
+.type-opt {
+  padding: 7px 13px; border-radius: 20px; font-size: 0.82rem; font-weight: 500;
+  border: 1.5px solid var(--border); background: var(--bg); cursor: pointer;
+  color: var(--text); transition: all 0.15s;
+}
+.type-opt.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+/* ─── BOTTOM SHEET ─── */
+.bottom-sheet {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--card); border-radius: 20px 20px 0 0;
+  padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 1001; animation: slideUp 0.2s ease;
+}
+.bottom-sheet-handle {
+  width: 40px; height: 4px; background: var(--border);
+  border-radius: 2px; margin: 0 auto 16px;
+}
+.sheet-btn {
+  display: block; width: 100%; padding: 14px;
+  border: none; background: transparent; cursor: pointer;
+  font-size: 1rem; font-weight: 500; border-radius: 10px;
+  text-align: left; transition: background 0.15s; margin-bottom: 4px;
+  color: var(--text);
+}
+.sheet-btn:hover { background: var(--bg); }
+.sheet-btn.danger { color: var(--danger); }
+.overlay-sheet {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  z-index: 1000;
+}
+
+/* ─── TOAST ─── */
+.toast {
+  position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+  background: #1E293B; color: white;
+  padding: 10px 20px; border-radius: 20px; font-size: 0.88rem; font-weight: 500;
+  z-index: 2000; white-space: nowrap; box-shadow: var(--shadow-lg);
+  animation: toastIn 0.2s ease;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } }
+
+/* ─── RESPONSIVE ─── */
+@media (min-width: 640px) {
+  .voyage-grid { display: grid; grid-template-columns: repeat(2, 1fr); }
+  .modal-overlay { align-items: center; }
+  .modal { border-radius: 20px; max-width: 520px; margin: auto; }
+  .bottom-sheet { max-width: 480px; left: 50%; transform: translateX(-50%); border-radius: 20px 20px 0 0; }
+  .carte-frame { height: 500px; }
+}
+
+/* ─── MODE SOMBRE — doit être EN FIN de fichier ─── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0F172A;
+    --card: #1E293B;
+    --text: #F1F5F9;
+    --text-muted: #94A3B8;
+    --border: #334155;
+    --shadow: 0 2px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .badge-upcoming { background: #1E3A5F; color: #93C5FD; }
+  .badge-ongoing  { background: #064E3B; color: #6EE7B7; }
+  .icon-transport  { background: #1E3A5F; }
+  .icon-hebergement { background: #064E3B; }
+  .icon-vehicule   { background: #451A03; }
+  .icon-activite   { background: #2E1065; }
+  .icon-restaurant { background: #500724; }
+  .btn-mini-edit { background: #1E3A5F; color: #93C5FD; }
+  .btn-mini-del  { background: #450A0A; color: #FCA5A5; }
+  .toast { background: #F1F5F9; color: #1E293B; }
+}

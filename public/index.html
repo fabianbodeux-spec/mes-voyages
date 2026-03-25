@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Mes Voyages">
+  <title>Mes Voyages</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══ ÉCRAN PRINCIPAL : LISTE DES VOYAGES ═══ -->
+<div id="screen-home" class="screen active">
+  <header class="app-header">
+    <div class="header-content">
+      <h1>✈️ Mes Voyages</h1>
+      <button class="btn-icon" onclick="ouvrirModalVoyage()" title="Nouveau voyage">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      </button>
+    </div>
+  </header>
+  <main class="main-content">
+    <div id="liste-voyages" class="voyage-grid"></div>
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-icon">🗺️</div>
+      <h2>Aucun voyage pour l'instant</h2>
+      <p>Commencez par créer votre premier voyage</p>
+      <button class="btn-primary" onclick="ouvrirModalVoyage()">Créer un voyage</button>
+    </div>
+  </main>
+</div>
+
+<!-- ═══ ÉCRAN DÉTAIL VOYAGE ═══ -->
+<div id="screen-voyage" class="screen">
+  <header class="app-header voyage-header" id="voyage-header">
+    <div class="header-content">
+      <button class="btn-icon btn-back" onclick="afficherAccueil()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="header-title">
+        <h1 id="voyage-nom"></h1>
+        <span id="voyage-dates" class="subtitle"></span>
+      </div>
+      <button class="btn-icon" onclick="menuVoyageActuel()" title="Options">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Onglets navigation -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="reservations" onclick="changerOnglet('reservations', this)">
+      <span class="tab-icon">🎫</span><span>Réservations</span>
+    </button>
+    <button class="tab-btn" data-tab="agenda" onclick="changerOnglet('agenda', this)">
+      <span class="tab-icon">📅</span><span>Agenda</span>
+    </button>
+    <button class="tab-btn" data-tab="carte" onclick="changerOnglet('carte', this)">
+      <span class="tab-icon">🗺️</span><span>Carte</span>
+    </button>
+    <button class="tab-btn" data-tab="documents" onclick="changerOnglet('documents', this)">
+      <span class="tab-icon">📁</span><span>Documents</span>
+    </button>
+  </nav>
+
+  <main class="main-content tabs-content">
+
+    <!-- ONGLET RÉSERVATIONS -->
+    <div id="tab-reservations" class="tab-panel active">
+      <div class="panel-actions">
+        <button class="btn-primary" onclick="ouvrirModalReservation()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Ajouter une réservation
+        </button>
+      </div>
+      <div class="filter-chips">
+        <button class="chip active" onclick="filtrerReservations('tous', this)">Tous</button>
+        <button class="chip" onclick="filtrerReservations('transport', this)">✈️ Transport</button>
+        <button class="chip" onclick="filtrerReservations('hebergement', this)">🏠 Hébergement</button>
+        <button class="chip" onclick="filtrerReservations('vehicule', this)">🚗 Véhicule</button>
+        <button class="chip" onclick="filtrerReservations('activite', this)">🎯 Activité</button>
+      </div>
+      <div id="liste-reservations"></div>
+    </div>
+
+    <!-- ONGLET AGENDA -->
+    <div id="tab-agenda" class="tab-panel">
+      <div class="panel-actions">
+        <button class="btn-primary" onclick="ouvrirModalAgenda()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Ajouter un événement
+        </button>
+      </div>
+      <div id="liste-agenda"></div>
+    </div>
+
+    <!-- ONGLET CARTE -->
+    <div id="tab-carte" class="tab-panel">
+      <div id="carte-container">
+        <div class="carte-header">
+          <p class="carte-info">📍 Tous les lieux de votre voyage</p>
+        </div>
+        <div id="carte-lieux" class="lieux-list"></div>
+        <div id="carte-frame-container">
+          <iframe id="carte-frame" class="carte-frame" src="" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- ONGLET DOCUMENTS -->
+    <div id="tab-documents" class="tab-panel">
+      <div class="panel-actions">
+        <button class="btn-primary" onclick="ouvrirModalDocument()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Ajouter un document
+        </button>
+      </div>
+      <div id="liste-documents"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══ MODAL NOUVEAU/ÉDITER VOYAGE ═══ -->
+<div id="modal-voyage" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-voyage-titre">Nouveau voyage</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-voyage')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="form-voyage" onsubmit="sauvegarderVoyage(event)">
+      <div class="form-group">
+        <label>Nom du voyage *</label>
+        <input type="text" id="v-nom" placeholder="Ex: Corse Été 2026" required>
+      </div>
+      <div class="form-group">
+        <label>Destination *</label>
+        <input type="text" id="v-destination" placeholder="Ex: Corse, France" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Départ</label>
+          <input type="date" id="v-date-debut">
+        </div>
+        <div class="form-group">
+          <label>Retour</label>
+          <input type="date" id="v-date-fin">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="v-description" placeholder="Notes sur ce voyage..." rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Couleur</label>
+        <div class="color-picker">
+          <button type="button" class="color-opt active" data-color="#3B82F6" style="background:#3B82F6" onclick="choisirCouleur(this)"></button>
+          <button type="button" class="color-opt" data-color="#10B981" style="background:#10B981" onclick="choisirCouleur(this)"></button>
+          <button type="button" class="color-opt" data-color="#F59E0B" style="background:#F59E0B" onclick="choisirCouleur(this)"></button>
+          <button type="button" class="color-opt" data-color="#EF4444" style="background:#EF4444" onclick="choisirCouleur(this)"></button>
+          <button type="button" class="color-opt" data-color="#8B5CF6" style="background:#8B5CF6" onclick="choisirCouleur(this)"></button>
+          <button type="button" class="color-opt" data-color="#EC4899" style="background:#EC4899" onclick="choisirCouleur(this)"></button>
+        </div>
+      </div>
+      <input type="hidden" id="v-couleur" value="#3B82F6">
+      <input type="hidden" id="v-id">
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="fermerModal('modal-voyage')">Annuler</button>
+        <button type="submit" class="btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ MODAL RÉSERVATION ═══ -->
+<div id="modal-reservation" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-resa-titre">Nouvelle réservation</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-reservation')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="form-reservation" onsubmit="sauvegarderReservation(event)">
+      <div class="form-group">
+        <label>Type de réservation *</label>
+        <div class="type-selector">
+          <button type="button" class="type-opt active" data-type="transport" onclick="choisirType(this)">✈️ Transport</button>
+          <button type="button" class="type-opt" data-type="hebergement" onclick="choisirType(this)">🏠 Hébergement</button>
+          <button type="button" class="type-opt" data-type="vehicule" onclick="choisirType(this)">🚗 Véhicule</button>
+          <button type="button" class="type-opt" data-type="activite" onclick="choisirType(this)">🎯 Activité</button>
+          <button type="button" class="type-opt" data-type="restaurant" onclick="choisirType(this)">🍽️ Restaurant</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Titre *</label>
+        <input type="text" id="r-titre" placeholder="Ex: Vol Bruxelles - Ajaccio" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date début</label>
+          <input type="date" id="r-date-debut">
+        </div>
+        <div class="form-group">
+          <label>Date fin</label>
+          <input type="date" id="r-date-fin">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Heure début</label>
+          <input type="time" id="r-heure-debut">
+        </div>
+        <div class="form-group">
+          <label>Heure fin</label>
+          <input type="time" id="r-heure-fin">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Lieu</label>
+        <input type="text" id="r-lieu" placeholder="Ex: Aéroport de Charleroi">
+      </div>
+      <div class="form-group">
+        <label>Adresse</label>
+        <input type="text" id="r-adresse" placeholder="Ex: Rue des Aéroports 1, Bruxelles">
+      </div>
+      <div class="form-group">
+        <label>N° de confirmation</label>
+        <input type="text" id="r-confirmation" placeholder="Ex: BK-123456789">
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="r-notes" rows="2" placeholder="Informations complémentaires..."></textarea>
+      </div>
+      <input type="hidden" id="r-type" value="transport">
+      <input type="hidden" id="r-id">
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="fermerModal('modal-reservation')">Annuler</button>
+        <button type="submit" class="btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ MODAL AGENDA ═══ -->
+<div id="modal-agenda" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-agenda-titre">Nouvel événement</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-agenda')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="form-agenda" onsubmit="sauvegarderAgenda(event)">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date *</label>
+          <input type="date" id="a-date" required>
+        </div>
+        <div class="form-group">
+          <label>Heure</label>
+          <input type="time" id="a-heure">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Titre *</label>
+        <input type="text" id="a-titre" placeholder="Ex: Visite du vieux port" required>
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="a-type">
+          <option value="transport">✈️ Transport</option>
+          <option value="hebergement">🏠 Hébergement</option>
+          <option value="activite" selected>🎯 Activité</option>
+          <option value="restaurant">🍽️ Restaurant</option>
+          <option value="sport">🏄 Sport</option>
+          <option value="libre">☀️ Temps libre</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Lieu</label>
+        <input type="text" id="a-lieu" placeholder="Ex: Ajaccio">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="a-description" rows="2" placeholder="Détails..."></textarea>
+      </div>
+      <input type="hidden" id="a-id">
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="fermerModal('modal-agenda')">Annuler</button>
+        <button type="submit" class="btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ MODAL DOCUMENT ═══ -->
+<div id="modal-document" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Ajouter un document</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-document')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <div class="type-selector">
+        <button type="button" class="type-opt active" data-doctype="transport" onclick="choisirDocType(this)">✈️ Transport</button>
+        <button type="button" class="type-opt" data-doctype="hebergement" onclick="choisirDocType(this)">🏠 Hébergement</button>
+        <button type="button" class="type-opt" data-doctype="vehicule" onclick="choisirDocType(this)">🚗 Véhicule</button>
+        <button type="button" class="type-opt" data-doctype="activite" onclick="choisirDocType(this)">🎯 Activité</button>
+        <button type="button" class="type-opt" data-doctype="autre" onclick="choisirDocType(this)">📄 Autre</button>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:16px">
+      <label class="btn-primary" for="upload-doc-input" style="display:inline-flex;cursor:pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Choisir un fichier
+      </label>
+      <input type="file" id="upload-doc-input" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none" onchange="uploaderDocument(this)">
+      <p id="doc-filename" style="font-size:.82rem;color:var(--text-muted);margin-top:8px"></p>
+    </div>
+    <input type="hidden" id="doc-type" value="transport">
+  </div>
+</div>
+
+<!-- ═══ MENU OPTIONS VOYAGE ═══ -->
+<div id="menu-voyage" class="bottom-sheet hidden">
+  <div class="bottom-sheet-handle"></div>
+  <button class="sheet-btn" onclick="modifierVoyageActuel()">✏️ Modifier le voyage</button>
+  <button class="sheet-btn danger" onclick="supprimerVoyageActuel()">🗑️ Supprimer le voyage</button>
+  <button class="sheet-btn" onclick="fermerBottomSheet()">Annuler</button>
+</div>
+<div id="overlay-sheet" class="overlay-sheet hidden" onclick="fermerBottomSheet()"></div>
+
+<!-- ═══ TOAST NOTIFICATIONS ═══ -->
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
