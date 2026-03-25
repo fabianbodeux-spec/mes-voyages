@@ -440,7 +440,7 @@ async function chargerDocuments() {
                 <div class="doc-meta">${formatTaille(d.taille)} · ${formatDate(d.created_at?.split('T')[0])}</div>
               </div>
               <div class="doc-actions">
-                <a href="${API}/api/documents/${d.id}/download" target="_blank" class="btn-mini btn-mini-edit" title="Ouvrir">👁️</a>
+                <a href="${API}/api/documents/${d.id}/download" class="btn-mini btn-mini-edit" title="Ouvrir">👁️</a>
                 <button class="btn-mini btn-mini-del" onclick="supprimerDocument(${d.id})" title="Supprimer">🗑️</button>
               </div>
             </div>
