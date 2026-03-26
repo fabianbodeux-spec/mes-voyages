@@ -76,19 +76,22 @@ if (USE_POSTGRES) {
     CREATE TABLE IF NOT EXISTS reservations (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, type TEXT, titre TEXT,
       date_debut TEXT, date_fin TEXT, heure_debut TEXT, heure_fin TEXT,
-      lieu TEXT, adresse TEXT, numero_confirmation TEXT, notes TEXT,
+      lieu TEXT, adresse TEXT, numero_confirmation TEXT, notes TEXT, lien TEXT,
       created_at TEXT DEFAULT now()::text
     );
     CREATE TABLE IF NOT EXISTS agenda (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, date TEXT, heure TEXT,
       titre TEXT, description TEXT, lieu TEXT, type TEXT DEFAULT 'activite',
-      created_at TEXT DEFAULT now()::text
+      lien TEXT, created_at TEXT DEFAULT now()::text
     );
     CREATE TABLE IF NOT EXISTS documents (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, nom TEXT,
       type_fichier TEXT, taille INTEGER, categorie TEXT DEFAULT 'autre',
-      contenu TEXT, created_at TEXT DEFAULT now()::text
+      event_id INTEGER, contenu TEXT, created_at TEXT DEFAULT now()::text
     );
+    ALTER TABLE agenda ADD COLUMN IF NOT EXISTS lien TEXT;
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS lien TEXT;
+    ALTER TABLE documents ADD COLUMN IF NOT EXISTS event_id INTEGER;
   `).catch(console.error);
 }
 
@@ -103,20 +106,20 @@ const pgDB = pgPool ? {
   reservations: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM reservations WHERE voyage_id=$1 ORDER BY date_debut ASC NULLS LAST', [vid])).rows,
     getById: async (id) => (await pgPool.query('SELECT * FROM reservations WHERE id=$1', [id])).rows[0],
-    create: async (vid, data) => (await pgPool.query('INSERT INTO reservations(voyage_id,type,titre,date_debut,date_fin,heure_debut,heure_fin,lieu,adresse,numero_confirmation,notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *', [vid,data.type,data.titre,data.date_debut,data.date_fin,data.heure_debut,data.heure_fin,data.lieu,data.adresse,data.numero_confirmation,data.notes])).rows[0],
-    update: async (id, data) => { await pgPool.query('UPDATE reservations SET type=$1,titre=$2,date_debut=$3,date_fin=$4,heure_debut=$5,heure_fin=$6,lieu=$7,adresse=$8,numero_confirmation=$9,notes=$10 WHERE id=$11', [data.type,data.titre,data.date_debut,data.date_fin,data.heure_debut,data.heure_fin,data.lieu,data.adresse,data.numero_confirmation,data.notes,id]); return true; },
+    create: async (vid, data) => (await pgPool.query('INSERT INTO reservations(voyage_id,type,titre,date_debut,date_fin,heure_debut,heure_fin,lieu,adresse,numero_confirmation,notes,lien) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *', [vid,data.type,data.titre,data.date_debut,data.date_fin,data.heure_debut,data.heure_fin,data.lieu,data.adresse,data.numero_confirmation,data.notes,data.lien||null])).rows[0],
+    update: async (id, data) => { await pgPool.query('UPDATE reservations SET type=$1,titre=$2,date_debut=$3,date_fin=$4,heure_debut=$5,heure_fin=$6,lieu=$7,adresse=$8,numero_confirmation=$9,notes=$10,lien=$11 WHERE id=$12', [data.type,data.titre,data.date_debut,data.date_fin,data.heure_debut,data.heure_fin,data.lieu,data.adresse,data.numero_confirmation,data.notes,data.lien||null,id]); return true; },
     delete: async (id) => pgPool.query('DELETE FROM reservations WHERE id=$1', [id])
   },
   agenda: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM agenda WHERE voyage_id=$1 ORDER BY date ASC, heure ASC NULLS LAST', [vid])).rows,
-    create: async (vid, data) => (await pgPool.query('INSERT INTO agenda(voyage_id,date,heure,titre,description,lieu,type) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *', [vid,data.date,data.heure,data.titre,data.description,data.lieu,data.type||'activite'])).rows[0],
-    update: async (id, data) => { await pgPool.query('UPDATE agenda SET date=$1,heure=$2,titre=$3,description=$4,lieu=$5,type=$6 WHERE id=$7', [data.date,data.heure,data.titre,data.description,data.lieu,data.type,id]); return true; },
+    create: async (vid, data) => (await pgPool.query('INSERT INTO agenda(voyage_id,date,heure,titre,description,lieu,type,lien) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *', [vid,data.date,data.heure,data.titre,data.description,data.lieu,data.type||'activite',data.lien||null])).rows[0],
+    update: async (id, data) => { await pgPool.query('UPDATE agenda SET date=$1,heure=$2,titre=$3,description=$4,lieu=$5,type=$6,lien=$7 WHERE id=$8', [data.date,data.heure,data.titre,data.description,data.lieu,data.type,data.lien||null,id]); return true; },
     delete: async (id) => pgPool.query('DELETE FROM agenda WHERE id=$1', [id])
   },
   documents: {
-    getByVoyage: async (vid) => (await pgPool.query('SELECT id,voyage_id,nom,type_fichier,taille,categorie,created_at FROM documents WHERE voyage_id=$1 ORDER BY created_at DESC', [vid])).rows,
+    getByVoyage: async (vid) => (await pgPool.query('SELECT id,voyage_id,nom,type_fichier,taille,categorie,event_id,created_at FROM documents WHERE voyage_id=$1 ORDER BY created_at DESC', [vid])).rows,
     getById: async (id) => (await pgPool.query('SELECT * FROM documents WHERE id=$1', [id])).rows[0],
-    create: async (vid, data) => (await pgPool.query('INSERT INTO documents(voyage_id,nom,type_fichier,taille,categorie,contenu) VALUES($1,$2,$3,$4,$5,$6) RETURNING id', [vid,data.nom,data.type_fichier,data.taille,data.categorie||'autre',data.contenu])).rows[0],
+    create: async (vid, data) => (await pgPool.query('INSERT INTO documents(voyage_id,nom,type_fichier,taille,categorie,event_id,contenu) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id', [vid,data.nom,data.type_fichier,data.taille,data.categorie||'autre',data.event_id||null,data.contenu])).rows[0],
     delete: async (id) => pgPool.query('DELETE FROM documents WHERE id=$1', [id])
   }
 } : null;

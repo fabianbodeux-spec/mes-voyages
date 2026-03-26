@@ -236,6 +236,10 @@
         <label>Notes</label>
         <textarea id="r-notes" rows="2" placeholder="Informations complémentaires..."></textarea>
       </div>
+      <div class="form-group">
+        <label>🔗 Lien (site de réservation...)</label>
+        <input type="url" id="r-lien" placeholder="https://...">
+      </div>
       <input type="hidden" id="r-type" value="transport">
       <input type="hidden" id="r-id">
       <div class="modal-footer">
@@ -289,6 +293,10 @@
         <label>Description</label>
         <textarea id="a-description" rows="2" placeholder="Détails..."></textarea>
       </div>
+      <div class="form-group">
+        <label>🔗 Lien (réservation, site...)</label>
+        <input type="url" id="a-lien" placeholder="https://...">
+      </div>
       <input type="hidden" id="a-id">
       <div class="modal-footer">
         <button type="button" class="btn-secondary" onclick="fermerModal('modal-agenda')">Annuler</button>
@@ -316,6 +324,12 @@
         <button type="button" class="type-opt" data-doctype="activite" onclick="choisirDocType(this)">🎯 Activité</button>
         <button type="button" class="type-opt" data-doctype="autre" onclick="choisirDocType(this)">📄 Autre</button>
       </div>
+    </div>
+    <div class="form-group">
+      <label>📅 Lier à un événement (optionnel)</label>
+      <select id="doc-event">
+        <option value="">— Aucun événement —</option>
+      </select>
     </div>
     <div class="form-group" style="margin-top:16px">
       <label class="btn-primary" for="upload-doc-input" style="display:inline-flex;cursor:pointer">

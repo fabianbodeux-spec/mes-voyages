@@ -82,6 +82,13 @@ app.post('/api/voyages/:id/agenda', async (req, res) => {
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
+app.get('/api/agenda/:id/documents', async (req, res) => {
+  try {
+    const docs = await run(() => db.documents.getByEvent ? db.documents.getByEvent(req.params.id) : []);
+    res.json(docs);
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
+
 app.put('/api/agenda/:id', async (req, res) => {
   try { await run(() => db.agenda.update(req.params.id, req.body)); res.json({ ok: true }); }
   catch(e) { res.status(500).json({error: e.message}); }
@@ -107,6 +114,7 @@ app.post('/api/voyages/:id/documents', upload.single('fichier'), async (req, res
       type_fichier: req.file.mimetype,
       taille: req.file.size,
       categorie: req.body.categorie || 'autre',
+      event_id: req.body.event_id ? parseInt(req.body.event_id) : null,
       contenu: req.file.buffer.toString('base64')
     }));
     res.json({ id: item.id });

@@ -195,6 +195,7 @@ function renderResa(r) {
       </div>
       ${r.numero_confirmation ? `<span class="resa-confirmation">📋 ${r.numero_confirmation}</span>` : ''}
       ${r.notes ? `<p style="font-size:.78rem;color:var(--text-muted);margin-top:6px">${r.notes}</p>` : ''}
+      ${r.lien ? `<a href="${r.lien}" target="_blank" rel="noopener" class="agenda-lien" style="display:inline-block;margin-top:4px">🔗 Ouvrir la réservation</a>` : ''}
     </div>
     <div class="resa-actions">
       <button class="btn-mini btn-mini-edit" onclick="modifierReservation(${r.id})" title="Modifier">✏️</button>
@@ -229,6 +230,7 @@ function ouvrirModalReservation(id = null) {
         document.getElementById('r-adresse').value = r.adresse || '';
         document.getElementById('r-confirmation').value = r.numero_confirmation || '';
         document.getElementById('r-notes').value = r.notes || '';
+        document.getElementById('r-lien').value = r.lien || '';
         document.getElementById('r-type').value = r.type;
         document.querySelectorAll('.type-opt').forEach(el => el.classList.toggle('active', el.dataset.type === r.type));
       });
@@ -257,7 +259,8 @@ async function sauvegarderReservation(e) {
     lieu: document.getElementById('r-lieu').value,
     adresse: document.getElementById('r-adresse').value,
     numero_confirmation: document.getElementById('r-confirmation').value,
-    notes: document.getElementById('r-notes').value
+    notes: document.getElementById('r-notes').value,
+    lien: document.getElementById('r-lien').value || null
   };
 
   const url = id ? `${API}/api/reservations/${id}` : `${API}/api/voyages/${voyageActuel}/reservations`;
@@ -308,6 +311,7 @@ async function chargerAgenda() {
             <div class="agenda-titre">${getAgendaIcon(ev.type)} ${ev.titre}</div>
             ${ev.lieu ? `<div class="agenda-lieu">📍 ${ev.lieu}</div>` : ''}
             ${ev.description ? `<div class="agenda-lieu">${ev.description}</div>` : ''}
+            ${ev.lien ? `<a href="${ev.lien}" target="_blank" rel="noopener" class="agenda-lien">🔗 Ouvrir le lien</a>` : ''}
           </div>
           <div class="agenda-actions">
             <button class="btn-mini btn-mini-edit" onclick="modifierAgenda(${ev.id})">✏️</button>
@@ -322,7 +326,10 @@ async function chargerAgenda() {
 function ouvrirModalAgenda(id = null) {
   document.getElementById('modal-agenda-titre').textContent = id ? 'Modifier l\'événement' : 'Nouvel événement';
   document.getElementById('a-id').value = id || '';
-  if (!id) document.getElementById('form-agenda').reset();
+  if (!id) {
+    document.getElementById('form-agenda').reset();
+    document.getElementById('a-lien').value = '';
+  }
   document.getElementById('modal-agenda').classList.remove('hidden');
 }
 
@@ -337,6 +344,7 @@ async function modifierAgenda(id) {
   document.getElementById('a-description').value = item.description || '';
   document.getElementById('a-lieu').value = item.lieu || '';
   document.getElementById('a-type').value = item.type;
+  document.getElementById('a-lien').value = item.lien || '';
   document.getElementById('modal-agenda-titre').textContent = 'Modifier l\'événement';
   document.getElementById('modal-agenda').classList.remove('hidden');
 }
@@ -350,7 +358,8 @@ async function sauvegarderAgenda(e) {
     titre: document.getElementById('a-titre').value,
     description: document.getElementById('a-description').value,
     lieu: document.getElementById('a-lieu').value,
-    type: document.getElementById('a-type').value
+    type: document.getElementById('a-type').value,
+    lien: document.getElementById('a-lien').value || null
   };
 
   const url = id ? `${API}/api/agenda/${id}` : `${API}/api/voyages/${voyageActuel}/agenda`;
@@ -412,13 +421,20 @@ function ouvrirLieu(lieu) {
 // ─── DOCUMENTS ───────────────────────────────────────
 
 async function chargerDocuments() {
-  const docs = await fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json());
+  const [docs, events] = await Promise.all([
+    fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json())
+  ]);
   const container = document.getElementById('liste-documents');
 
   if (docs.length === 0) {
     container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon">📁</div><p>Aucun document ajouté</p></div>`;
     return;
   }
+
+  // Index des événements par id
+  const eventsById = {};
+  events.forEach(ev => { eventsById[ev.id] = ev; });
 
   // Grouper par catégorie
   const categories = { transport: [], hebergement: [], vehicule: [], activite: [], autre: [] };
@@ -432,29 +448,46 @@ async function chargerDocuments() {
       <div style="margin-bottom:4px">
         <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);padding:10px 16px 6px;text-transform:uppercase;letter-spacing:.05em">${labels[cat]}</div>
         <div class="docs-list" style="padding-top:0">
-          ${items.map(d => `
+          ${items.map(d => {
+            const ev = d.event_id ? eventsById[d.event_id] : null;
+            return `
             <div class="doc-card">
               <span class="doc-icon">${getDocIcon(d.type_fichier)}</span>
               <div class="doc-body">
                 <div class="doc-nom">${d.nom}</div>
                 <div class="doc-meta">${formatTaille(d.taille)} · ${formatDate(d.created_at?.split('T')[0])}</div>
+                ${ev ? `<div class="doc-event-link">📅 ${ev.titre}</div>` : ''}
               </div>
               <div class="doc-actions">
-                <a href="${API}/api/documents/${d.id}/download" class="btn-mini btn-mini-edit" title="Ouvrir">👁️</a>
+                <a href="${API}/api/documents/${d.id}/download" target="_blank" rel="noopener" class="btn-mini btn-mini-edit" title="Ouvrir">👁️</a>
                 <button class="btn-mini btn-mini-del" onclick="supprimerDocument(${d.id})" title="Supprimer">🗑️</button>
               </div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       </div>
     `).join('');
 }
 
-function ouvrirModalDocument() {
+async function ouvrirModalDocument() {
   document.getElementById('doc-filename').textContent = '';
   document.getElementById('upload-doc-input').value = '';
   document.getElementById('doc-type').value = 'transport';
   document.querySelectorAll('[data-doctype]').forEach((el, i) => el.classList.toggle('active', i === 0));
+
+  // Charger les événements de l'agenda pour le sélecteur
+  const select = document.getElementById('doc-event');
+  select.innerHTML = '<option value="">— Aucun événement —</option>';
+  try {
+    const events = await fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json());
+    events.forEach(ev => {
+      const opt = document.createElement('option');
+      opt.value = ev.id;
+      opt.textContent = `${ev.date ? formatDate(ev.date) : ''} — ${ev.titre}`;
+      select.appendChild(opt);
+    });
+  } catch(e) {}
+
   document.getElementById('modal-document').classList.remove('hidden');
 }
 
@@ -473,6 +506,8 @@ async function uploaderDocument(input) {
   const formData = new FormData();
   formData.append('fichier', file);
   formData.append('categorie', document.getElementById('doc-type').value);
+  const eventId = document.getElementById('doc-event').value;
+  if (eventId) formData.append('event_id', eventId);
 
   const resp = await fetch(`${API}/api/voyages/${voyageActuel}/documents`, { method: 'POST', body: formData });
   if (resp.ok) {

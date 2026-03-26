@@ -220,6 +220,12 @@ body {
 .agenda-content { flex: 1; min-width: 0; }
 .agenda-titre { font-weight: 600; font-size: 0.92rem; color: var(--text); }
 .agenda-lieu { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+.agenda-lien {
+  display: inline-block; margin-top: 5px;
+  font-size: 0.78rem; color: var(--primary);
+  text-decoration: none; font-weight: 600;
+}
+.agenda-lien:hover { text-decoration: underline; }
 .agenda-actions { display: flex; gap: 4px; }
 
 /* ─── CARTE ─── */
@@ -250,6 +256,7 @@ body {
 .doc-body { flex: 1; min-width: 0; }
 .doc-nom { font-weight: 600; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
 .doc-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+.doc-event-link { font-size: 0.75rem; color: var(--primary); margin-top: 3px; font-weight: 500; }
 .doc-actions { display: flex; gap: 6px; }
 
 /* ─── EMPTY STATE ─── */
