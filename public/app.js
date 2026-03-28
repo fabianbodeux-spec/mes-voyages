@@ -459,7 +459,7 @@ async function chargerDocuments() {
                 ${ev ? `<div class="doc-event-link">📅 ${ev.titre}</div>` : ''}
               </div>
               <div class="doc-actions">
-                <a href="${API}/api/documents/${d.id}/download" target="_blank" rel="noopener" class="btn-mini btn-mini-edit" title="Ouvrir">👁️</a>
+                <button class="btn-mini btn-mini-edit" onclick="ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g, '')}\`)" title="Ouvrir">👁️</button>
                 <button class="btn-mini btn-mini-del" onclick="supprimerDocument(${d.id})" title="Supprimer">🗑️</button>
               </div>
             </div>`;
@@ -525,6 +525,23 @@ async function supprimerDocument(id) {
   await fetch(`${API}/api/documents/${id}`, { method: 'DELETE' });
   toast('🗑️ Document supprimé');
   chargerDocuments();
+}
+
+// ─── VISUALISEUR DOCUMENT ───────────────────────────
+
+function ouvrirDocViewer(docId, nom) {
+  const url = `${API}/api/documents/${docId}/download`;
+  document.getElementById('doc-viewer-nom').textContent = nom;
+  document.getElementById('doc-viewer-frame').src = url;
+  document.getElementById('modal-doc-viewer').classList.remove('hidden');
+  // Bloquer le scroll derrière
+  document.body.style.overflow = 'hidden';
+}
+
+function fermerDocViewer() {
+  document.getElementById('modal-doc-viewer').classList.add('hidden');
+  document.getElementById('doc-viewer-frame').src = '';
+  document.body.style.overflow = '';
 }
 
 // ─── MODALS & BOTTOM SHEET ───────────────────────────
