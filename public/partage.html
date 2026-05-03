@@ -4,149 +4,474 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Voyage partagé</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      --primary: #3B82F6; --bg: #F1F5F9; --card: #FFFFFF;
-      --text: #1E293B; --text-muted: #64748B; --border: #E2E8F0;
+      --accent:        #C9622F;
+      --accent-light:  #FDF0EA;
+      --accent-dark:   #A84D22;
+      --success:       #16A34A;
+      --danger:        #DC2626;
+      --bg:            #FAF7F2;
+      --card:          #FFFFFF;
+      --text:          #1A1A2E;
+      --text-muted:    #6B7280;
+      --border:        rgba(0,0,0,0.07);
+      --border-solid:  #E8E4DD;
+      --shadow-sm:     0 1px 4px rgba(26,26,46,0.04);
+      --shadow:        0 4px 24px rgba(26,26,46,0.07);
+      --font-display:  'DM Serif Display', Georgia, serif;
+      --font-body:     'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
 
-    .header { background: var(--card); border-bottom: 1px solid var(--border); padding: 16px; position: sticky; top: 0; z-index: 10; }
-    .header-inner { max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
-    .header h1 { font-size: 1.1rem; font-weight: 700; }
-    .header .subtitle { font-size: 0.8rem; color: var(--text-muted); }
-    .badge-partage { background: #EFF6FF; color: #3B82F6; font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
 
-    .content { max-width: 640px; margin: 0 auto; padding: 16px; }
+    /* ── Header ── */
+    .app-header {
+      background: rgba(255,255,255,0.96);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      padding: env(safe-area-inset-top) 0 0;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 1px 0 var(--border), var(--shadow-sm);
+    }
+    .header-inner {
+      max-width: 720px; margin: 0 auto;
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px;
+    }
+    .header-voyage { flex: 1; min-width: 0; }
+    .header-voyage h1 {
+      font-family: var(--font-display);
+      font-size: 1.1rem; font-weight: 400;
+      color: var(--text); letter-spacing: -0.01em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .header-dates { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
 
-    .tabs { display: flex; gap: 4px; margin-bottom: 16px; background: var(--card); border-radius: 12px; padding: 4px; border: 1px solid var(--border); }
-    .tab { flex: 1; padding: 8px; text-align: center; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text-muted); }
-    .tab.active { background: var(--primary); color: white; }
+    .badge-read {
+      background: var(--accent-light);
+      color: var(--accent);
+      font-size: 0.68rem; font-weight: 800;
+      padding: 4px 10px; border-radius: 20px;
+      white-space: nowrap; letter-spacing: 0.04em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
 
+    /* ── Tabs ── */
+    .tab-nav {
+      max-width: 720px; margin: 0 auto;
+      display: flex;
+      background: rgba(255,255,255,0.96);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto; scrollbar-width: none;
+      padding: 0 6px;
+      position: sticky; top: 58px; z-index: 99;
+      backdrop-filter: blur(16px);
+    }
+    .tab-nav::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+      flex: 1; min-width: 72px;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 9px 8px 8px;
+      border: none; background: transparent; cursor: pointer;
+      color: var(--text-muted);
+      font-size: 0.65rem; font-weight: 700;
+      font-family: var(--font-body);
+      border-bottom: 2.5px solid transparent;
+      transition: all 0.2s; white-space: nowrap;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-icon { font-size: 1.1rem; }
+
+    /* ── Content ── */
+    .content {
+      max-width: 720px; margin: 0 auto;
+      padding: 16px 16px 80px;
+    }
     .panel { display: none; }
     .panel.active { display: block; }
 
-    /* Réservations */
-    .date-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; padding: 10px 0 6px; }
-    .resa-card { background: var(--card); border-radius: 12px; padding: 12px; margin-bottom: 8px; border: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-start; }
-    .resa-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
-    .icon-transport { background: #EFF6FF; } .icon-hebergement { background: #ECFDF5; } .icon-vehicule { background: #FFF7ED; } .icon-activite { background: #F5F3FF; } .icon-restaurant { background: #FDF2F8; }
-    .resa-titre { font-weight: 600; font-size: 0.9rem; }
-    .resa-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 6px; }
-    .resa-confirmation { display: inline-block; margin-top: 5px; font-size: 0.75rem; background: var(--bg); padding: 2px 8px; border-radius: 6px; color: var(--text-muted); }
-    .resa-notes { font-size: 0.78rem; color: var(--text-muted); margin-top: 5px; }
-    .lien-btn { display: inline-block; margin-top: 5px; font-size: 0.78rem; color: var(--primary); font-weight: 600; text-decoration: none; }
+    /* ── Loading / Error ── */
+    .loading {
+      text-align: center; padding: 60px 20px;
+      color: var(--text-muted); font-size: 0.9rem;
+    }
+    .empty {
+      text-align: center; padding: 44px 20px;
+      color: var(--text-muted);
+    }
+    .empty-icon { font-size: 2.6rem; margin-bottom: 10px; }
+    .empty p { font-size: 0.88rem; line-height: 1.6; }
 
-    /* Agenda */
-    .agenda-day { margin-bottom: 16px; }
-    .agenda-day-header { font-size: 0.85rem; font-weight: 700; color: var(--text); background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; }
-    .agenda-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; background: var(--card); border-radius: 10px; border: 1px solid var(--border); margin-bottom: 6px; }
-    .agenda-heure { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); width: 42px; flex-shrink: 0; padding-top: 2px; }
-    .agenda-line { width: 3px; border-radius: 2px; align-self: stretch; flex-shrink: 0; min-height: 20px; }
-    .agenda-content { flex: 1; }
-    .agenda-titre { font-weight: 600; font-size: 0.9rem; }
-    .agenda-lieu { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+    /* ── Section divider ── */
+    .section-label {
+      font-size: 0.68rem; font-weight: 800;
+      color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 0.1em; padding: 12px 0 8px;
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--font-body);
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-    /* Carte */
-    .carte-lieux { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-    .lieu-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--card); border-radius: 10px; border: 1px solid var(--border); cursor: pointer; }
-    .lieu-item:active { background: var(--bg); }
-    .carte-frame { width: 100%; height: 380px; border: none; border-radius: 12px; display: block; }
+    /* ── Reservation cards ── */
+    .resa-card {
+      background: var(--card); border-radius: 14px;
+      padding: 13px; margin-bottom: 8px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .resa-icon {
+      width: 42px; height: 42px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .icon-transport   { background: linear-gradient(135deg,#EFF6FF,#DBEAFE); }
+    .icon-hebergement { background: linear-gradient(135deg,#F0FDF4,#DCFCE7); }
+    .icon-vehicule    { background: linear-gradient(135deg,#FEFCE8,#FEF9C3); }
+    .icon-activite    { background: linear-gradient(135deg,var(--accent-light),#FBE0D0); }
+    .icon-restaurant  { background: linear-gradient(135deg,#FDF4FF,#FAE8FF); }
+    .resa-body { flex: 1; min-width: 0; }
+    .resa-titre { font-weight: 700; font-size: 0.9rem; color: var(--text); letter-spacing: -0.01em; }
+    .resa-meta {
+      font-size: 0.74rem; color: var(--text-muted);
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;
+    }
+    .resa-code {
+      display: inline-block; margin-top: 6px;
+      font-size: 0.7rem; background: var(--bg);
+      padding: 2px 9px; border-radius: 6px;
+      color: var(--text-muted); font-family: monospace;
+      border: 1px solid var(--border-solid);
+    }
+    .resa-notes { font-size: 0.76rem; color: var(--text-muted); margin-top: 5px; line-height: 1.5; }
+    .lien-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 6px; font-size: 0.76rem;
+      color: var(--accent); font-weight: 700;
+      text-decoration: none;
+      background: var(--accent-light); padding: 3px 10px; border-radius: 6px;
+    }
 
-    .empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.9rem; }
-    .empty-icon { font-size: 2.5rem; margin-bottom: 8px; }
+    /* ── Agenda ── */
+    .agenda-day { margin-bottom: 14px; }
+    .agenda-day-header {
+      font-size: 0.7rem; font-weight: 800;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;
+      padding: 10px 0 7px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .agenda-day-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .agenda-item {
+      display: flex; gap: 11px; align-items: flex-start;
+      padding: 12px 13px; background: var(--card);
+      border-radius: 13px; border: 1px solid var(--border);
+      margin-bottom: 7px; box-shadow: var(--shadow-sm);
+    }
+    .agenda-heure {
+      font-size: 0.75rem; font-weight: 800; color: var(--accent);
+      min-width: 42px; text-align: right; flex-shrink: 0; padding-top: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+    .agenda-line {
+      width: 3px; border-radius: 3px; align-self: stretch;
+      flex-shrink: 0; min-height: 22px;
+    }
+    .agenda-content { flex: 1; min-width: 0; }
+    .agenda-titre { font-weight: 700; font-size: 0.88rem; color: var(--text); letter-spacing: -0.01em; }
+    .agenda-lieu { font-size: 0.74rem; color: var(--text-muted); margin-top: 3px; }
 
-    .loading { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    /* ── Carte ── */
+    .lieux-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .lieu-item {
+      display: flex; align-items: center; gap: 11px;
+      padding: 10px 12px; background: var(--card);
+      border-radius: 12px; border: 1px solid var(--border);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .lieu-item:hover { background: var(--accent-light); border-color: var(--accent); }
+    .carte-frame {
+      width: 100%; height: 380px; border: none;
+      border-radius: 14px; display: block;
+      box-shadow: var(--shadow);
+    }
 
+    /* ── Budget ── */
+    .budget-hero {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      border-radius: 16px; padding: 18px 20px;
+      margin-bottom: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .budget-hero-label {
+      font-size: 0.78rem; font-weight: 600; color: rgba(255,255,255,0.82); letter-spacing: 0.02em;
+    }
+    .budget-hero-amount {
+      font-family: var(--font-display);
+      font-size: 1.6rem; font-weight: 400; color: white; letter-spacing: -0.01em;
+    }
+    .budget-hero-nb {
+      font-size: 0.76rem; font-weight: 700; color: rgba(255,255,255,0.72); margin-top: 2px;
+    }
+
+    .participants-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+    .participant-chip {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 7px 12px 7px 8px;
+      box-shadow: var(--shadow-sm);
+    }
+    .avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 800; color: white; flex-shrink: 0;
+    }
+    .chip-nom { font-size: 0.82rem; font-weight: 700; color: var(--text); }
+    .chip-total { font-size: 0.78rem; font-weight: 700; color: var(--accent); margin-left: 4px; }
+
+    .depense-card {
+      display: flex; align-items: center; gap: 11px;
+      background: var(--card); border-radius: 13px;
+      padding: 12px 14px; margin-bottom: 7px;
+      border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+    }
+    .dep-cat { font-size: 1.3rem; flex-shrink: 0; }
+    .dep-body { flex: 1; min-width: 0; }
+    .dep-titre { font-weight: 700; font-size: 0.88rem; color: var(--text); letter-spacing: -0.01em; }
+    .dep-meta { font-size: 0.72rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; align-items: center; }
+    .dep-montant {
+      font-family: var(--font-display);
+      font-size: 1.05rem; font-weight: 400;
+      color: var(--text); white-space: nowrap;
+    }
+
+    .bilan-card {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 13px; padding: 13px 14px; gap: 6px;
+      margin-bottom: 7px; box-shadow: var(--shadow-sm);
+    }
+    .bilan-side { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.86rem; }
+    .bilan-mid { display: flex; flex-direction: column; align-items: center; flex: 1; }
+    .bilan-arrow-line { font-size: 1.1rem; color: var(--accent); }
+    .bilan-sum { font-size: 0.78rem; font-weight: 800; color: var(--accent); }
+    .bilan-ok {
+      text-align: center; padding: 18px;
+      font-size: 0.92rem; font-weight: 700; color: var(--success);
+    }
+    .avatar-xs {
+      width: 18px; height: 18px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.56rem; font-weight: 800; color: white; flex-shrink: 0;
+    }
+
+    /* ── Bagages ── */
+    .participant-tabs {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .ptab {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px 6px 7px;
+      border-radius: 20px; border: 1.5px solid var(--border-solid);
+      background: var(--card); cursor: pointer;
+      font-size: 0.82rem; font-weight: 600;
+      transition: all 0.18s; color: var(--text);
+    }
+    .ptab.active {
+      border-color: var(--accent);
+      background: var(--accent-light);
+      color: var(--accent-dark);
+    }
+
+    .bagage-cat-header {
+      font-size: 0.68rem; font-weight: 800; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      padding: 10px 0 6px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .bagage-count { font-size: 0.7rem; color: var(--accent); font-weight: 800; }
+    .bagage-item {
+      display: flex; align-items: center; gap: 11px;
+      padding: 11px 13px; background: var(--card);
+      border-radius: 12px; margin-bottom: 5px;
+      border: 1.5px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+    .bagage-item.checked { background: var(--bg); opacity: 0.55; }
+    .bagage-check {
+      width: 21px; height: 21px; border-radius: 6px; flex-shrink: 0;
+      border: 2px solid var(--border-solid);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem;
+    }
+    .bagage-check.checked { background: var(--accent); border-color: var(--accent); color: white; }
+    .bagage-nom {
+      flex: 1; font-size: 0.88rem; font-weight: 500; color: var(--text);
+    }
+    .bagage-item.checked .bagage-nom { text-decoration: line-through; color: var(--text-muted); }
+
+    .progress-bar {
+      background: var(--border-solid); border-radius: 4px; height: 5px;
+      overflow: hidden; margin-bottom: 14px;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--success));
+      transition: width 0.4s ease;
+    }
+    .progress-label {
+      font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
+      display: flex; justify-content: space-between; margin-bottom: 6px;
+    }
+
+    /* ── Dark mode ── */
     @media (prefers-color-scheme: dark) {
-      :root { --bg: #0F172A; --card: #1E293B; --text: #F1F5F9; --text-muted: #94A3B8; --border: #334155; }
-      .icon-transport { background: #1E3A5F; } .icon-hebergement { background: #064E3B; } .icon-vehicule { background: #431407; } .icon-activite { background: #2E1065; } .icon-restaurant { background: #500724; }
-      .resa-confirmation { background: #0F172A; }
+      :root {
+        --bg: #1C1712; --card: #261F18; --text: #F5F0E6;
+        --text-muted: #9B8B7A; --border: rgba(255,200,150,0.09);
+        --border-solid: #3A3028; --accent-light: #3A2010;
+      }
+      .icon-transport   { background: linear-gradient(135deg,#1A2540,#1E2E50); }
+      .icon-hebergement { background: linear-gradient(135deg,#0D2B1A,#0A3520); }
+      .icon-vehicule    { background: linear-gradient(135deg,#3A2500,#4A3000); }
+      .icon-activite    { background: linear-gradient(135deg,#3A2010,#4A2510); }
+      .icon-restaurant  { background: linear-gradient(135deg,#3A1030,#4A1540); }
+      .resa-code { background: var(--bg); }
+      input:focus, textarea:focus, select:focus { background: var(--card); }
     }
   </style>
 </head>
 <body>
 
-<div class="header">
+<div class="app-header">
   <div class="header-inner">
-    <div style="flex:1">
-      <h1 id="voyage-nom">Chargement...</h1>
-      <div class="subtitle" id="voyage-dates"></div>
+    <div class="header-voyage">
+      <h1 id="voyage-nom">Chargement…</h1>
+      <p id="voyage-dates" class="header-dates"></p>
     </div>
-    <span class="badge-partage">✈️ Voyage partagé</span>
+    <span class="badge-read">👁 Lecture seule</span>
   </div>
 </div>
 
+<div class="tab-nav" id="tab-nav" style="display:none">
+  <button class="tab-btn active" onclick="afficherOnglet('reservations',this)">
+    <span class="tab-icon">🎫</span>Réservations
+  </button>
+  <button class="tab-btn" onclick="afficherOnglet('agenda',this)">
+    <span class="tab-icon">📅</span>Agenda
+  </button>
+  <button class="tab-btn" onclick="afficherOnglet('carte',this)">
+    <span class="tab-icon">🗺️</span>Carte
+  </button>
+  <button class="tab-btn" onclick="afficherOnglet('budget',this)">
+    <span class="tab-icon">💰</span>Budget
+  </button>
+  <button class="tab-btn" onclick="afficherOnglet('bagages',this)">
+    <span class="tab-icon">🧳</span>Bagages
+  </button>
+</div>
+
 <div class="content" id="content">
-  <div class="loading">⏳ Chargement du voyage...</div>
+  <div class="loading">⏳ Chargement du voyage…</div>
 </div>
 
 <script>
 const token = location.pathname.split('/partage/')[1];
 let data = null;
+let participantBagageActif = null;
+
+// ─── CHARGEMENT ─────────────────────────────────────────────
 
 async function charger() {
-  const resp = await fetch(`/api/partage/${token}`);
+  const resp = await fetch('/api/partage/' + token);
   if (!resp.ok) {
-    document.getElementById('content').innerHTML = '<div class="empty"><div class="empty-icon">🔒</div><p>Lien invalide ou expiré</p></div>';
+    document.getElementById('content').innerHTML =
+      '<div class="empty"><div class="empty-icon">🔒</div><p>Lien invalide ou expiré</p></div>';
     return;
   }
   data = await resp.json();
   const v = data.voyage;
+
   document.getElementById('voyage-nom').textContent = v.nom;
   document.title = v.nom + ' — Voyage partagé';
 
-  const debut = v.date_debut ? new Date(v.date_debut + 'T00:00:00').toLocaleDateString('fr-BE', { day:'numeric', month:'short', year:'numeric' }) : '';
-  const fin = v.date_fin ? new Date(v.date_fin + 'T00:00:00').toLocaleDateString('fr-BE', { day:'numeric', month:'short', year:'numeric' }) : '';
-  document.getElementById('voyage-dates').textContent = debut && fin ? `${debut} → ${fin}` : debut;
+  const fmt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-BE', { day:'numeric', month:'short', year:'numeric' }) : '';
+  const d1 = fmt(v.date_debut), d2 = fmt(v.date_fin);
+  document.getElementById('voyage-dates').textContent = d1 && d2 ? d1 + ' → ' + d2 : d1;
 
+  // Build panels
   document.getElementById('content').innerHTML = `
-    <div class="tabs">
-      <button class="tab active" onclick="afficherOnglet('reservations', this)">🎫 Réservations</button>
-      <button class="tab" onclick="afficherOnglet('agenda', this)">📅 Agenda</button>
-      <button class="tab" onclick="afficherOnglet('carte', this)">🗺️ Carte</button>
-    </div>
     <div id="panel-reservations" class="panel active"></div>
-    <div id="panel-agenda" class="panel"></div>
-    <div id="panel-carte" class="panel"></div>
+    <div id="panel-agenda"       class="panel"></div>
+    <div id="panel-carte"        class="panel"></div>
+    <div id="panel-budget"       class="panel"></div>
+    <div id="panel-bagages"      class="panel"></div>
   `;
+
+  document.getElementById('tab-nav').style.display = '';
 
   afficherReservations();
   afficherAgenda();
   afficherCarte();
+  afficherBudget();
+  afficherBagages();
 }
 
+// ─── NAVIGATION ─────────────────────────────────────────────
+
 function afficherOnglet(nom, btn) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('panel-' + nom).classList.add('active');
 }
 
-function afficherReservations() {
-  const container = document.getElementById('panel-reservations');
-  const resas = data.reservations;
-  if (!resas.length) { container.innerHTML = '<div class="empty"><div class="empty-icon">🎫</div><p>Aucune réservation</p></div>'; return; }
+// ─── RÉSERVATIONS ────────────────────────────────────────────
 
+function afficherReservations() {
+  const c = document.getElementById('panel-reservations');
+  const resas = data.reservations || [];
+  if (!resas.length) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">🎫</div><p>Aucune réservation</p></div>';
+    return;
+  }
   const icones = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
   const grouped = {};
-  resas.forEach(r => { const k = r.date_debut || 'Sans date'; if (!grouped[k]) grouped[k] = []; grouped[k].push(r); });
+  resas.forEach(r => { const k = r.date_debut || ''; if (!grouped[k]) grouped[k] = []; grouped[k].push(r); });
+  const sorted = Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b));
 
-  container.innerHTML = Object.entries(grouped).map(([date, items]) => `
-    ${date !== 'Sans date' ? `<div class="date-label">${new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'})}</div>` : ''}
+  c.innerHTML = sorted.map(([date, items]) => `
+    ${date ? `<div class="section-label">${new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'})}</div>` : '<div class="section-label">Sans date</div>'}
     ${items.map(r => `
       <div class="resa-card">
         <div class="resa-icon icon-${r.type}">${icones[r.type]||'📌'}</div>
-        <div style="flex:1">
+        <div class="resa-body">
           <div class="resa-titre">${r.titre}</div>
           <div class="resa-meta">
             ${r.heure_debut ? `<span>🕐 ${r.heure_debut}${r.heure_fin?' → '+r.heure_fin:''}</span>` : ''}
             ${r.lieu ? `<span>📍 ${r.lieu}</span>` : ''}
-            ${r.date_fin && r.date_fin !== r.date_debut ? `<span>📅 jusqu'au ${new Date(r.date_fin+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short'})}</span>` : ''}
+            ${r.date_fin && r.date_fin !== r.date_debut ? `<span>↩ jusqu'au ${new Date(r.date_fin+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short'})}</span>` : ''}
           </div>
-          ${r.numero_confirmation ? `<div class="resa-confirmation">📋 ${r.numero_confirmation}</div>` : ''}
+          ${r.numero_confirmation ? `<div class="resa-code">📋 ${r.numero_confirmation}</div>` : ''}
           ${r.notes ? `<div class="resa-notes">${r.notes}</div>` : ''}
           ${r.lien ? `<a href="${r.lien}" target="_blank" class="lien-btn">🔗 Ouvrir la réservation</a>` : ''}
         </div>
@@ -155,23 +480,30 @@ function afficherReservations() {
   `).join('');
 }
 
-function afficherAgenda() {
-  const container = document.getElementById('panel-agenda');
-  const items = data.agenda;
-  if (!items.length) { container.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p>Aucun événement planifié</p></div>'; return; }
+// ─── AGENDA ──────────────────────────────────────────────────
 
-  const colors = { transport:'#3B82F6', hebergement:'#10B981', activite:'#8B5CF6', restaurant:'#EC4899', sport:'#F59E0B', libre:'#64748B' };
-  const icons = { transport:'✈️', hebergement:'🏠', activite:'🎯', restaurant:'🍽️', sport:'🏄', libre:'☀️' };
+function afficherAgenda() {
+  const c = document.getElementById('panel-agenda');
+  const items = data.agenda || [];
+  if (!items.length) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p>Aucun événement planifié</p></div>';
+    return;
+  }
+  const colors = { transport:'#3B82F6', hebergement:'#10B981', activite:'#C9622F', restaurant:'#EC4899', sport:'#F59E0B', libre:'#9CA3AF' };
+  const icons  = { transport:'✈️', hebergement:'🏠', activite:'🎯', restaurant:'🍽️', sport:'🏄', libre:'☀️' };
   const grouped = {};
   items.forEach(i => { if (!grouped[i.date]) grouped[i.date] = []; grouped[i.date].push(i); });
+  const sorted = Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b));
 
-  container.innerHTML = Object.entries(grouped).map(([date, evs]) => `
+  c.innerHTML = sorted.map(([date, evs]) => `
     <div class="agenda-day">
-      <div class="agenda-day-header">${new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'})}</div>
+      <div class="agenda-day-header">
+        ${new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'})}
+      </div>
       ${evs.map(ev => `
         <div class="agenda-item">
           <span class="agenda-heure">${ev.heure||'--:--'}</span>
-          <div class="agenda-line" style="background:${colors[ev.type]||'#3B82F6'}"></div>
+          <div class="agenda-line" style="background:${colors[ev.type]||'#C9622F'}"></div>
           <div class="agenda-content">
             <div class="agenda-titre">${icons[ev.type]||'📌'} ${ev.titre}</div>
             ${ev.lieu ? `<div class="agenda-lieu">📍 ${ev.lieu}</div>` : ''}
@@ -184,27 +516,262 @@ function afficherAgenda() {
   `).join('');
 }
 
-function afficherCarte() {
-  const container = document.getElementById('panel-carte');
-  const lieux = data.reservations.filter(r => r.adresse || r.lieu);
-  const icones = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
-  const query = lieux.length ? (lieux[0].adresse || lieux[0].lieu) : data.voyage.destination;
+// ─── CARTE ───────────────────────────────────────────────────
 
-  container.innerHTML = `
-    <div class="carte-lieux">
-      ${lieux.map(l => `
-        <div class="lieu-item" onclick="document.getElementById('carte-frame').src='https://maps.google.com/maps?q=${encodeURIComponent(l.adresse||l.lieu)}&output=embed&z=14'">
-          <span style="font-size:1.1rem">${icones[l.type]||'📌'}</span>
-          <div>
-            <div style="font-weight:600;font-size:.85rem">${l.titre}</div>
-            <div style="font-size:.75rem;color:var(--text-muted)">${l.adresse||l.lieu}</div>
+function afficherCarte() {
+  const c = document.getElementById('panel-carte');
+  const resas  = data.reservations || [];
+  const agenda = data.agenda || [];
+  const icones = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
+
+  const lieux = [
+    ...resas.filter(r => r.adresse || r.lieu).map(r => ({ label: r.titre, adresse: r.adresse || r.lieu, icon: icones[r.type]||'📌' })),
+    ...agenda.filter(a => a.lieu).map(a => ({ label: a.titre, adresse: a.lieu, icon: '📅' }))
+  ];
+  const query = lieux.length ? lieux[0].adresse : (data.voyage.destination || '');
+
+  c.innerHTML = `
+    ${lieux.length ? `
+      <div class="lieux-list">
+        ${lieux.map(l => `
+          <div class="lieu-item" onclick="document.getElementById('carte-frame').src='https://maps.google.com/maps?q=${encodeURIComponent(l.adresse)}&output=embed&z=14'">
+            <span style="font-size:1.1rem">${l.icon}</span>
+            <div>
+              <div style="font-weight:700;font-size:.85rem">${l.label}</div>
+              <div style="font-size:.74rem;color:var(--text-muted)">${l.adresse}</div>
+            </div>
           </div>
+        `).join('')}
+      </div>
+    ` : ''}
+    <iframe id="carte-frame" class="carte-frame"
+      src="https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed&z=10"
+      loading="lazy" allowfullscreen></iframe>
+  `;
+}
+
+// ─── BUDGET ──────────────────────────────────────────────────
+
+function afficherBudget() {
+  const c = document.getElementById('panel-budget');
+  const participants = data.participants || [];
+  const depenses = data.depenses || [];
+
+  if (!participants.length && !depenses.length) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">💰</div><p>Aucune donnée de budget</p></div>';
+    return;
+  }
+
+  const catIcons = { hebergement:'🏠', transport:'✈️', restauration:'🍽️', activite:'🎯', courses:'🛒', autre:'📦' };
+  const total = depenses.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
+
+  // Total payé par participant
+  const totalByP = {};
+  participants.forEach(p => totalByP[p.id] = 0);
+  depenses.forEach(d => {
+    if (d.payeur_id) totalByP[d.payeur_id] = (totalByP[d.payeur_id] || 0) + parseFloat(d.montant || 0);
+  });
+
+  // Bilan
+  const bilan = calculerBilan(participants, depenses);
+
+  c.innerHTML = `
+    ${total > 0 ? `
+      <div class="budget-hero">
+        <div>
+          <div class="budget-hero-label">Total des dépenses</div>
+          <div class="budget-hero-amount">${total.toFixed(2)} €</div>
+          <div class="budget-hero-nb">${depenses.length} dépense${depenses.length>1?'s':''}</div>
+        </div>
+        <div style="font-size:2.5rem">💶</div>
+      </div>
+    ` : ''}
+
+    ${participants.length ? `
+      <div class="section-label">Participants</div>
+      <div class="participants-row">
+        ${participants.map(p => `
+          <div class="participant-chip">
+            <div class="avatar" style="background:${p.couleur||'#C9622F'}">${p.nom.charAt(0).toUpperCase()}</div>
+            <span class="chip-nom">${p.nom}</span>
+            ${totalByP[p.id] > 0 ? `<span class="chip-total">${totalByP[p.id].toFixed(2)}€ payé</span>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+
+    ${depenses.length ? `
+      <div class="section-label">Dépenses</div>
+      ${depenses.map(d => {
+        const payeur = participants.find(p => p.id === d.payeur_id);
+        return `
+          <div class="depense-card">
+            <span class="dep-cat">${catIcons[d.categorie]||'📦'}</span>
+            <div class="dep-body">
+              <div class="dep-titre">${d.titre}</div>
+              <div class="dep-meta">
+                ${payeur ? `<span><span class="avatar-xs" style="background:${payeur.couleur}">${payeur.nom.charAt(0)}</span> ${payeur.nom}</span>` : ''}
+                ${d.date ? `<span>📅 ${new Date(d.date+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short'})}</span>` : ''}
+              </div>
+            </div>
+            <div class="dep-montant">${parseFloat(d.montant).toFixed(2)} €</div>
+          </div>
+        `;
+      }).join('')}
+    ` : ''}
+
+    ${participants.length > 1 ? `
+      <div class="section-label">Bilan — qui doit quoi</div>
+      ${bilan.length === 0
+        ? '<div class="bilan-ok">✅ Tout le monde est quitte !</div>'
+        : bilan.map(t => {
+            const from = participants.find(p => p.id === t.from);
+            const to   = participants.find(p => p.id === t.to);
+            if (!from || !to) return '';
+            return `
+              <div class="bilan-card">
+                <div class="bilan-side">
+                  <div class="avatar" style="background:${from.couleur||'#999'}">${from.nom.charAt(0)}</div>
+                  <span>${from.nom}</span>
+                </div>
+                <div class="bilan-mid">
+                  <span class="bilan-sum">${t.amount.toFixed(2)} €</span>
+                  <span class="bilan-arrow-line">→</span>
+                </div>
+                <div class="bilan-side">
+                  <div class="avatar" style="background:${to.couleur||'#999'}">${to.nom.charAt(0)}</div>
+                  <span>${to.nom}</span>
+                </div>
+              </div>
+            `;
+          }).join('')
+      }
+    ` : ''}
+  `;
+}
+
+function calculerBilan(participants, depenses) {
+  const balance = {};
+  participants.forEach(p => balance[p.id] = 0);
+
+  depenses.forEach(d => {
+    if (!d.payeur_id) return;
+    let pids;
+    try { pids = d.participants_ids ? JSON.parse(d.participants_ids) : participants.map(p => p.id); }
+    catch(e) { pids = participants.map(p => p.id); }
+    if (!pids || !pids.length) pids = participants.map(p => p.id);
+
+    const montant = parseFloat(d.montant || 0);
+    const part = montant / pids.length;
+    balance[d.payeur_id] = (balance[d.payeur_id] || 0) + montant;
+    pids.forEach(pid => { balance[pid] = (balance[pid] || 0) - part; });
+  });
+
+  const debiteurs  = Object.entries(balance).filter(([,b]) => b < -0.01).sort(([,a],[,b]) => a - b);
+  const creanciers = Object.entries(balance).filter(([,b]) => b >  0.01).sort(([,a],[,b]) => b - a);
+  const transactions = [];
+  let i = 0, j = 0;
+  while (i < debiteurs.length && j < creanciers.length) {
+    const [did, dbal] = debiteurs[i];
+    const [cid, cbal] = creanciers[j];
+    const amount = Math.min(-dbal, cbal);
+    transactions.push({ from: parseInt(did), to: parseInt(cid), amount });
+    debiteurs[i][1]  += amount;
+    creanciers[j][1] -= amount;
+    if (Math.abs(debiteurs[i][1])  < 0.01) i++;
+    if (Math.abs(creanciers[j][1]) < 0.01) j++;
+  }
+  return transactions;
+}
+
+// ─── BAGAGES ─────────────────────────────────────────────────
+
+function afficherBagages() {
+  const c = document.getElementById('panel-bagages');
+  const participants = data.participants || [];
+  const bagages = data.bagages || [];
+
+  if (!participants.length && !bagages.length) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">🧳</div><p>Aucune liste de bagages</p></div>';
+    return;
+  }
+  if (!participants.length) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">🧳</div><p>Aucun participant enregistré</p></div>';
+    return;
+  }
+
+  // Default: first participant
+  participantBagageActif = participants[0].id;
+
+  c.innerHTML = `
+    <div class="participant-tabs" id="ptabs">
+      ${participants.map((p, idx) => `
+        <div class="ptab ${idx===0?'active':''}" onclick="selectionnerParticipantBagages(${p.id}, this)">
+          <div class="avatar" style="background:${p.couleur||'#C9622F'};width:22px;height:22px;font-size:.6rem">${p.nom.charAt(0).toUpperCase()}</div>
+          ${p.nom}
         </div>
       `).join('')}
     </div>
-    <iframe id="carte-frame" class="carte-frame" src="https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed&z=10" loading="lazy" allowfullscreen></iframe>
+    <div id="bagages-list"></div>
+  `;
+
+  renderBagagesParticipant(participantBagageActif);
+}
+
+function selectionnerParticipantBagages(pid, el) {
+  participantBagageActif = pid;
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderBagagesParticipant(pid);
+}
+
+function renderBagagesParticipant(pid) {
+  const c = document.getElementById('bagages-list');
+  if (!c) return;
+  const all = (data.bagages || []).filter(b => b.participant_id === pid);
+
+  if (!all.length) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">📦</div><p>Aucun article pour ce participant</p></div>';
+    return;
+  }
+
+  const checked = all.filter(b => b.checked).length;
+  const pct = Math.round((checked / all.length) * 100);
+
+  const catLabels = { documents:'📄 Documents', vetements:'👕 Vêtements', toilette:'🧴 Toilette', sante:'💊 Santé', electronique:'📱 Électronique', plage:'🏖️ Plage / Sport', divers:'📦 Divers' };
+  const grouped = {};
+  all.forEach(b => { if (!grouped[b.categorie]) grouped[b.categorie] = []; grouped[b.categorie].push(b); });
+  const catOrder = ['documents','vetements','toilette','sante','electronique','plage','divers'];
+  const cats = catOrder.filter(k => grouped[k]);
+
+  c.innerHTML = `
+    <div class="progress-label">
+      <span>Progression</span>
+      <span>${checked} / ${all.length} articles</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" style="width:${pct}%"></div>
+    </div>
+    ${cats.map(cat => `
+      <div>
+        <div class="bagage-cat-header">
+          <span>${catLabels[cat]||cat}</span>
+          <span class="bagage-count">${grouped[cat].filter(b=>b.checked).length}/${grouped[cat].length}</span>
+        </div>
+        ${grouped[cat].map(b => `
+          <div class="bagage-item ${b.checked?'checked':''}">
+            <div class="bagage-check ${b.checked?'checked':''}">
+              ${b.checked ? '✓' : ''}
+            </div>
+            <span class="bagage-nom">${b.nom}</span>
+          </div>
+        `).join('')}
+      </div>
+    `).join('')}
   `;
 }
+
+// ─── INIT ────────────────────────────────────────────────────
 
 charger();
 </script>

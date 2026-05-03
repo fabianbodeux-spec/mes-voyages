@@ -235,13 +235,14 @@ app.get('/api/partage/:token', async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
-    const [reservations, agenda, participants, depenses] = await Promise.all([
+    const [reservations, agenda, participants, depenses, bagages] = await Promise.all([
       run(() => db.reservations.getByVoyage(voyage.id)),
       run(() => db.agenda.getByVoyage(voyage.id)),
       run(() => db.participants.getByVoyage(voyage.id)),
-      run(() => db.depenses.getByVoyage(voyage.id))
+      run(() => db.depenses.getByVoyage(voyage.id)),
+      run(() => db.bagages.getByVoyage(voyage.id))
     ]);
-    res.json({ voyage, reservations, agenda, participants, depenses });
+    res.json({ voyage, reservations, agenda, participants, depenses, bagages });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
