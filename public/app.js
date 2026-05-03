@@ -13,6 +13,33 @@ let voyageInfoActuel = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   chargerVoyages();
+
+  // ── Animated search placeholder ────────────────────
+  const destinations = ['Paris, France…', 'Tokyo, Japon…', 'Marrakech, Maroc…', 'Corse, France…', 'Bali, Indonésie…', 'Rome, Italie…', 'Barcelone, Espagne…', 'Lisbonne, Portugal…', 'New York, USA…', 'Maldives…'];
+  let dIdx = 0;
+  const ph = document.getElementById('home-search-anim');
+  if (ph) {
+    setInterval(() => {
+      ph.style.transition = 'opacity 0.28s ease';
+      ph.style.opacity = '0';
+      setTimeout(() => {
+        dIdx = (dIdx + 1) % destinations.length;
+        ph.textContent = destinations[dIdx];
+        ph.style.opacity = '1';
+      }, 280);
+    }, 2800);
+  }
+
+  // ── Scroll shadow on detail header ─────────────────
+  const mainContent = document.querySelector('#screen-voyage .main-content');
+  const detailHeader = document.getElementById('voyage-header');
+  if (mainContent && detailHeader) {
+    mainContent.addEventListener('scroll', () => {
+      detailHeader.style.boxShadow = mainContent.scrollTop > 4
+        ? '0 2px 20px rgba(0,0,0,0.09)'
+        : '';
+    });
+  }
 });
 
 // ─── NAVIGATION ─────────────────────────────────────

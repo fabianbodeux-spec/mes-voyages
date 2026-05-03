@@ -7,6 +7,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Mes Voyages">
   <title>Mes Voyages</title>
+  <!-- Premium fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,17 +18,44 @@
 <!-- ═══ ÉCRAN PRINCIPAL : LISTE DES VOYAGES ═══ -->
 <div id="screen-home" class="screen active">
   <header class="app-header">
+
+    <!-- ── Decorative hero background (visual only) ── -->
+    <div class="home-hero-bg" aria-hidden="true"></div>
+    <div class="home-hero-grad" aria-hidden="true"></div>
+
+    <!-- ── Top nav bar — IDs & onclick preserved ── -->
     <div class="header-content">
       <h1>✈️ Mes Voyages</h1>
       <button class="btn-icon" onclick="ouvrirModalVoyage()" title="Nouveau voyage">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
       </button>
     </div>
+
+    <!-- ── Hero tagline (DM Serif Display) ── -->
+    <div class="home-tagline" aria-hidden="true">
+      <p class="home-tagline-eyebrow">Votre carnet de voyage</p>
+      <h2 class="home-tagline-main">Planifiez votre<br><em>prochain voyage</em></h2>
+    </div>
+
+    <!-- ── Floating search bar (visual decoration, animated placeholder) ── -->
+    <div class="home-search-visual">
+      <span class="home-search-icon">📍</span>
+      <span class="home-search-anim-text" id="home-search-anim">Paris, France…</span>
+      <span class="home-search-cta">Explorer</span>
+    </div>
+
+    <!-- ── Stats pills — id="home-stats" preserved for JS ── -->
     <div class="home-banner">
       <div id="home-stats" class="home-stats"></div>
     </div>
+
   </header>
+
   <main class="main-content">
+    <!-- Section label -->
+    <div class="section-header">
+      <h2 class="section-title">Vos voyages</h2>
+    </div>
     <div id="liste-voyages" class="voyage-grid"></div>
     <div id="empty-state" class="empty-state hidden">
       <div class="empty-icon">🗺️</div>
@@ -150,10 +181,10 @@
       <div id="bagages-progress-bar" style="display:none;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;margin-bottom:6px">
           <span style="font-size:.78rem;font-weight:700;color:var(--text-muted)">PROGRESSION</span>
-          <span id="bagages-progress-text" style="font-size:.78rem;font-weight:700;color:var(--primary)"></span>
+          <span id="bagages-progress-text" style="font-size:.78rem;font-weight:700;color:var(--accent)"></span>
         </div>
-        <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
-          <div id="bagages-progress-fill" style="height:100%;border-radius:4px;background:linear-gradient(90deg,#6366F1,#10B981);transition:width .4s"></div>
+        <div style="background:var(--border-solid);border-radius:4px;height:6px;overflow:hidden">
+          <div id="bagages-progress-fill" style="height:100%;border-radius:4px;background:linear-gradient(90deg,#C9622F,#E8943A);transition:width .4s"></div>
         </div>
       </div>
       <div id="liste-bagages" style="padding:12px 16px;display:flex;flex-direction:column;gap:6px"></div>
@@ -553,19 +584,85 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:16px">Partage ce lien avec tes compagnons de voyage. Ils pourront voir les réservations et l'agenda en lecture seule.</p>
-    <div style="background:var(--bg);border-radius:10px;padding:12px;word-break:break-all;font-size:.82rem;color:var(--text);border:1px solid var(--border)" id="partage-url"></div>
+    <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:16px;line-height:1.6">Partage ce lien avec tes compagnons de voyage. Ils pourront voir les réservations et l'agenda en lecture seule.</p>
+    <div style="background:var(--bg);border-radius:12px;padding:14px;word-break:break-all;font-size:.82rem;color:var(--text);border:1px solid var(--border-solid)" id="partage-url"></div>
     <div class="modal-footer" style="margin-top:16px">
       <button class="btn-secondary" onclick="fermerModal('modal-partage')">Fermer</button>
       <button class="btn-primary" onclick="copierLienPartage()">📋 Copier le lien</button>
     </div>
   </div>
 </div>
+
 <div id="overlay-sheet" class="overlay-sheet hidden" onclick="fermerBottomSheet()"></div>
 
 <!-- ═══ TOAST NOTIFICATIONS ═══ -->
 <div id="toast" class="toast hidden"></div>
 
 <script src="app.js"></script>
+
+<!-- ═══ UI ANIMATIONS (visual only — no logic changes) ═══ -->
+<script>
+(function () {
+  /* ── Animated search placeholder ── */
+  var DESTS = [
+    'Paris, France…', 'Tokyo, Japon…', 'Corse, France…',
+    'Marrakech, Maroc…', 'Bali, Indonésie…', 'Santorin, Grèce…',
+    'Lisbonne, Portugal…', 'New York, USA…', 'Barcelone, Espagne…'
+  ];
+  var idx = 0;
+  function cycleDest() {
+    var el = document.getElementById('home-search-anim');
+    if (!el) return;
+    el.style.opacity = '0';
+    setTimeout(function () {
+      idx = (idx + 1) % DESTS.length;
+      el.textContent = DESTS[idx];
+      el.style.opacity = '1';
+    }, 300);
+  }
+  setInterval(cycleDest, 2800);
+
+  /* ── Parallax hero on scroll ── */
+  var hero = null;
+  function initParallax() {
+    var screen = document.getElementById('screen-home');
+    var main   = screen ? screen.querySelector('.main-content') : null;
+    hero = screen ? screen.querySelector('.home-hero-bg') : null;
+    if (!main || !hero) return;
+    main.addEventListener('scroll', function () {
+      var y = main.scrollTop;
+      hero.style.transform = 'translateY(' + (y * 0.35) + 'px) scale(1)';
+    }, { passive: true });
+  }
+
+  /* ── Staggered card entrance on navigation back ── */
+  var observer = new MutationObserver(function (mutations) {
+    mutations.forEach(function (m) {
+      m.addedNodes.forEach(function (node) {
+        if (node.classList && node.classList.contains('voyage-card')) {
+          node.style.animationPlayState = 'running';
+        }
+      });
+    });
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    initParallax();
+    var grid = document.getElementById('liste-voyages');
+    if (grid) observer.observe(grid, { childList: true });
+
+    /* Header shadow on scroll */
+    document.querySelectorAll('.main-content').forEach(function (el) {
+      el.addEventListener('scroll', function () {
+        var header = el.closest('.screen').querySelector('.app-header');
+        if (header && !el.closest('#screen-home')) {
+          header.style.boxShadow = el.scrollTop > 4
+            ? '0 4px 24px rgba(26,26,46,0.10)' : '';
+        }
+      }, { passive: true });
+    });
+  });
+})();
+</script>
 </body>
 </html>
