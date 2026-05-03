@@ -175,6 +175,39 @@ app.delete('/api/depenses/:id', async (req, res) => {
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
+// ─── BAGAGES ───────────────────────────────────────────────────────────────
+
+app.get('/api/voyages/:id/bagages', async (req, res) => {
+  try { res.json(await run(() => db.bagages.getByVoyage(req.params.id))); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.post('/api/voyages/:id/bagages', async (req, res) => {
+  try { const item = await run(() => db.bagages.create(req.params.id, req.body)); res.json({ id: item.id }); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.post('/api/voyages/:vid/bagages/bulk', async (req, res) => {
+  try {
+    const { participant_id, items } = req.body;
+    await run(() => db.bagages.deleteByVoyageParticipant(req.params.vid, participant_id));
+    for (const item of items) {
+      await run(() => db.bagages.create(req.params.vid, { ...item, participant_id }));
+    }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.put('/api/bagages/:id', async (req, res) => {
+  try { await run(() => db.bagages.update(req.params.id, req.body)); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.delete('/api/bagages/:id', async (req, res) => {
+  try { await run(() => db.bagages.delete(req.params.id)); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
 // ─── PARTAGE ────────────────────────────────────────────────────────────────
 
 function genererToken() {

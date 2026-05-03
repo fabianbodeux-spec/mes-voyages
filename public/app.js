@@ -6,6 +6,8 @@ const API = '';  // même origin
 let voyageActuel = null;
 let filtreActuel = 'tous';
 let participantsActuels = [];
+let participantBagageActuel = null;
+let voyageInfoActuel = null;
 
 // ─── INIT ────────────────────────────────────────────
 
@@ -51,6 +53,7 @@ function changerOnglet(tab, btn) {
   if (tab === 'carte') chargerCarte();
   if (tab === 'documents') chargerDocuments();
   if (tab === 'budget') chargerBudget();
+  if (tab === 'bagages') chargerBagages();
 }
 
 // ─── VOYAGES ─────────────────────────────────────────
@@ -569,6 +572,249 @@ function fermerDocViewer() {
   document.getElementById('modal-doc-viewer').classList.add('hidden');
   document.getElementById('doc-viewer-frame').src = '';
   document.body.style.overflow = '';
+}
+
+// ─── BAGAGES ─────────────────────────────────────────
+
+const CAT_LABELS = { documents:'📄 Documents', vetements:'👕 Vêtements', toilette:'🧴 Toilette', sante:'💊 Santé', electronique:'📱 Électronique', plage:'🏖️ Plage / Sport', divers:'📦 Divers' };
+const CAT_ORDER = ['documents','vetements','toilette','sante','electronique','plage','divers'];
+
+// Base de suggestions par catégorie
+const SUGGESTIONS_BASE = {
+  documents: ['Passeport','Carte d\'identité','Permis de conduire','Carte bancaire','Assurance voyage','Billet avion','Réservation hôtel','Carnet de vaccination'],
+  vetements: ['T-shirts','Pantalons','Sous-vêtements','Chaussettes','Pull / Sweat','Veste','Pyjama','Chaussures de ville','Baskets','Tongs','Ceinture'],
+  toilette: ['Brosse à dents','Dentifrice','Shampooing','Gel douche','Déodorant','Rasoir','Crème visage','Maquillage','Coton-tiges','Serviette'],
+  sante: ['Ordonnances','Médicaments habituels','Antidouleur','Anti-diarrhéique','Pansements','Thermomètre','Répulsif moustiques'],
+  electronique: ['Téléphone','Chargeur téléphone','Batterie externe','Adaptateur voyage','Appareil photo','Écouteurs','Câble USB'],
+  plage: [],
+  divers: ['Sac à dos','Cadenas','Parapluie','Livre / Liseuse','Snacks voyage','Sac réutilisable']
+};
+
+// Suggestions selon destination/météo/activités
+function getSuggestionsContextuelles(voyage, agenda) {
+  const suggestions = JSON.parse(JSON.stringify(SUGGESTIONS_BASE));
+  const dest = (voyage.destination + ' ' + voyage.nom).toLowerCase();
+  const nuits = voyage.date_debut && voyage.date_fin
+    ? Math.round((new Date(voyage.date_fin) - new Date(voyage.date_debut)) / 86400000)
+    : 7;
+  const activites = agenda.map(a => (a.titre + ' ' + (a.description||'')).toLowerCase()).join(' ');
+
+  // Vêtements selon durée
+  const nbTshirts = Math.min(nuits + 1, 10);
+  suggestions.vetements = suggestions.vetements.filter(i => i !== 'T-shirts');
+  suggestions.vetements.unshift(`T-shirts (×${nbTshirts})`);
+
+  // Destination plage / mer / corse / méditerranée
+  if (/corse|mer|plage|méditerranée|caraïbes|maldives|bali|thaïlande|égypte|maroc|tunisie|espagne|portugal|grèce|italie/.test(dest)) {
+    suggestions.plage.push('Maillot de bain','Crème solaire SPF50','Après-soleil','Lunettes de soleil','Chapeau / Bob','Serviette de plage','Sac de plage','Tapis de plage');
+    suggestions.vetements.push('Shorts','Robe légère / Chemise légère');
+    suggestions.sante.push('Médicaments contre mal de mer');
+  }
+
+  // Plongée / snorkeling
+  if (/plongée|snorkeling|diving|plonge/.test(dest + activites)) {
+    suggestions.plage.push('Masque et tuba','Palmes','Combinaison néoprène','Lampe torche étanche','Carnet waterproof');
+    suggestions.documents.push('Brevet de plongée (PADI/CMAS)');
+  }
+
+  // Montagne / randonnée
+  if (/vosges|alpes|montagne|ski|randonnée|trek/.test(dest + activites)) {
+    suggestions.vetements.push('Veste imperméable','Polaire','Bonnet','Gants','Chaussettes de randonnée','Chaussures de randonnée');
+    suggestions.divers.push('Bâtons de randonnée','Carte IGN','Gourde','Lampe frontale');
+    suggestions.sante.push('Crème solaire montagne','Protection lèvres');
+  }
+
+  // Froid / hiver
+  if (/hiver|neige|ski/.test(dest + activites)) {
+    suggestions.vetements.push('Sous-vêtements thermiques','Écharpe','Chaussures imperméables');
+  }
+
+  // Camping / chalet
+  if (/chalet|camping|glamping/.test(dest + activites)) {
+    suggestions.divers.push('Lampe de poche','Allume-feu','Couteau suisse','Gants de cuisine');
+  }
+
+  // Professionnel / salon
+  if (/interschutz|salon|conférence|professionnel|business/.test(dest + activites)) {
+    suggestions.vetements.push('Costume / Tenue professionnelle','Chemises','Chaussures habillées','Cravate');
+    suggestions.divers.push('Cartes de visite','Bloc-notes','Stylo','Sac à dos professionnel');
+    suggestions.electronique.push('Ordinateur portable','Souris sans fil','Chargeur laptop');
+  }
+
+  // Sport / activités
+  if (/sport|vélo|bike|tennis|golf/.test(activites)) {
+    suggestions.plage.push('Tenue de sport','Chaussures de sport');
+  }
+
+  return suggestions;
+}
+
+async function chargerBagages() {
+  const [participants, bagages, voyage, agenda] = await Promise.all([
+    fetch(`${API}/api/voyages/${voyageActuel}/participants`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/bagages`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json())
+  ]);
+  participantsActuels = participants;
+  voyageInfoActuel = { voyage, agenda };
+
+  // Sélecteur de participants
+  const selector = document.getElementById('bagages-participant-selector');
+  if (participants.length === 0) {
+    selector.innerHTML = `<p style="font-size:.82rem;color:var(--text-muted)">Ajoute d'abord les participants dans l'onglet 💰 Budget</p>`;
+    document.getElementById('liste-bagages').innerHTML = '';
+    return;
+  }
+  if (!participantBagageActuel || !participants.find(p => p.id === participantBagageActuel)) {
+    participantBagageActuel = participants[0].id;
+  }
+  selector.innerHTML = participants.map(p => `
+    <div class="avatar-chip ${p.id === participantBagageActuel ? 'active' : ''}" onclick="selectionnerParticipantBagage(${p.id})" style="${p.id === participantBagageActuel ? 'border-color:'+p.couleur+';background:'+p.couleur+'22' : ''}">
+      <div class="avatar" style="background:${p.couleur}">${p.nom[0].toUpperCase()}</div>
+      <span class="avatar-nom">${p.nom}</span>
+    </div>
+  `).join('');
+
+  afficherBagages(bagages.filter(b => +b.participant_id === +participantBagageActuel));
+}
+
+function selectionnerParticipantBagage(id) {
+  participantBagageActuel = id;
+  chargerBagages();
+}
+
+function afficherBagages(items) {
+  const container = document.getElementById('liste-bagages');
+  const progress = document.getElementById('bagages-progress-bar');
+
+  if (items.length === 0) {
+    progress.style.display = 'none';
+    container.innerHTML = `
+      <div class="empty-tab">
+        <div class="empty-tab-icon">🧳</div>
+        <p>Clique sur <strong>✨ Suggestions intelligentes</strong> pour générer ta liste automatiquement, ou ajoute des articles manuellement</p>
+      </div>`;
+    return;
+  }
+
+  // Progression
+  const total = items.length, coches = items.filter(i => i.checked).length;
+  progress.style.display = 'block';
+  document.getElementById('bagages-progress-text').textContent = `${coches} / ${total} articles`;
+  document.getElementById('bagages-progress-fill').style.width = `${Math.round(coches/total*100)}%`;
+
+  // Grouper par catégorie
+  const grouped = {};
+  CAT_ORDER.forEach(c => { grouped[c] = []; });
+  items.forEach(i => { const c = i.categorie || 'divers'; (grouped[c] || grouped['divers']).push(i); });
+
+  container.innerHTML = CAT_ORDER.filter(c => grouped[c].length > 0).map(cat => `
+    <div class="bagage-section">
+      <div class="bagage-cat-header">${CAT_LABELS[cat]} <span class="bagage-count">${grouped[cat].filter(i=>i.checked).length}/${grouped[cat].length}</span></div>
+      ${grouped[cat].map(item => `
+        <div class="bagage-item ${item.checked ? 'checked' : ''}" onclick="toggleBagage(${item.id}, ${!item.checked})">
+          <div class="bagage-check ${item.checked ? 'checked' : ''}">
+            ${item.checked ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : ''}
+          </div>
+          <span class="bagage-nom">${item.nom}</span>
+          <button class="bagage-del" onclick="event.stopPropagation();supprimerArticle(${item.id})">×</button>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+async function toggleBagage(id, checked) {
+  await fetch(`${API}/api/bagages/${id}`, {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ checked })
+  });
+  chargerBagages();
+}
+
+async function supprimerArticle(id) {
+  await fetch(`${API}/api/bagages/${id}`, { method: 'DELETE' });
+  chargerBagages();
+}
+
+function ouvrirModalAjoutArticle() {
+  document.getElementById('art-nom').value = '';
+  document.getElementById('art-categorie').value = 'divers';
+  document.getElementById('modal-article').classList.remove('hidden');
+  setTimeout(() => document.getElementById('art-nom').focus(), 300);
+}
+
+async function ajouterArticle() {
+  const nom = document.getElementById('art-nom').value.trim();
+  if (!nom) { toast('⚠️ Entre un article'); return; }
+  await fetch(`${API}/api/voyages/${voyageActuel}/bagages`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ participant_id: participantBagageActuel, nom, categorie: document.getElementById('art-categorie').value })
+  });
+  fermerModal('modal-article');
+  toast('✅ Article ajouté');
+  chargerBagages();
+}
+
+async function genererSuggestions() {
+  if (!participantBagageActuel) { toast('⚠️ Sélectionne un participant'); return; }
+  if (!voyageInfoActuel) return;
+
+  const { voyage, agenda } = voyageInfoActuel;
+  const suggestions = getSuggestionsContextuelles(voyage, agenda);
+
+  // Récupérer météo via API open-meteo (gratuite, sans clé)
+  let meteoInfo = '';
+  try {
+    const geoResp = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(voyage.destination)}&count=1&language=fr`);
+    const geoData = await geoResp.json();
+    if (geoData.results && geoData.results[0]) {
+      const { latitude, longitude } = geoData.results[0];
+      const dateDebut = voyage.date_debut || new Date().toISOString().split('T')[0];
+      const meteoResp = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto&start_date=${dateDebut}&end_date=${dateDebut}`);
+      const meteoData = await meteoResp.json();
+      if (meteoData.daily) {
+        const tmax = Math.round(meteoData.daily.temperature_2m_max[0]);
+        const tmin = Math.round(meteoData.daily.temperature_2m_min[0]);
+        const pluie = meteoData.daily.precipitation_sum[0];
+        meteoInfo = `${tmin}°→${tmax}°C, ${pluie > 2 ? '🌧️ pluie prévue' : '☀️ beau temps'}`;
+
+        // Ajustements selon météo
+        if (tmax < 10) {
+          suggestions.vetements.push('Doudoune','Bonnet','Gants','Chaussures imperméables');
+          suggestions.vetements = suggestions.vetements.filter(i => !i.includes('Short') && !i.includes('Tongs') && !i.includes('Maillot'));
+        } else if (tmax > 28) {
+          suggestions.sante.push('Spray anti-chaleur','Eau thermale');
+          if (!suggestions.plage.includes('Crème solaire SPF50')) suggestions.plage.push('Crème solaire SPF50','Chapeau');
+        }
+        if (pluie > 2) {
+          suggestions.divers.push('Imperméable / K-Way','Parapluie compact');
+          suggestions.vetements.push('Chaussures imperméables');
+        }
+      }
+    }
+  } catch(e) { /* météo non disponible, on continue sans */ }
+
+  // Construire tous les articles
+  const items = [];
+  for (const [cat, noms] of Object.entries(suggestions)) {
+    for (const nom of noms) { items.push({ nom, categorie: cat }); }
+  }
+
+  if (items.length === 0) return;
+
+  toast(`⏳ Génération de ${items.length} suggestions...`);
+  await fetch(`${API}/api/voyages/${voyageActuel}/bagages/bulk`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ participant_id: participantBagageActuel, items })
+  });
+
+  const msg = meteoInfo
+    ? `✅ ${items.length} articles suggérés · Météo : ${meteoInfo}`
+    : `✅ ${items.length} articles suggérés selon ta destination`;
+  toast(msg, 4000);
+  chargerBagages();
 }
 
 // ─── BUDGET ──────────────────────────────────────────

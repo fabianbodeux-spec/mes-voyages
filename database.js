@@ -15,6 +15,7 @@ const FICHIERS = {
   documents:    path.join(DATA_DIR, 'documents.json'),
   participants: path.join(DATA_DIR, 'participants.json'),
   depenses:     path.join(DATA_DIR, 'depenses.json'),
+  bagages:      path.join(DATA_DIR, 'bagages.json'),
 };
 
 function charger(cle) {
@@ -70,6 +71,14 @@ const localDB = {
     create: (vid, data) => { const list = charger('depenses'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('depenses', list); return item; },
     update: (id, data) => { const list = charger('depenses'); const idx = list.findIndex(d => d.id === +id); if (idx===-1) return false; list[idx] = { ...list[idx], ...data }; sauvegarder('depenses', list); return true; },
     delete: (id) => sauvegarder('depenses', charger('depenses').filter(d => d.id !== +id))
+  },
+  bagages: {
+    getByVoyage: (vid) => charger('bagages').filter(b => b.voyage_id === +vid),
+    getByParticipant: (vid, pid) => charger('bagages').filter(b => b.voyage_id === +vid && b.participant_id === +pid),
+    create: (vid, data) => { const list = charger('bagages'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('bagages', list); return item; },
+    update: (id, data) => { const list = charger('bagages'); const idx = list.findIndex(b => b.id === +id); if (idx===-1) return false; list[idx] = { ...list[idx], ...data }; sauvegarder('bagages', list); return true; },
+    delete: (id) => sauvegarder('bagages', charger('bagages').filter(b => b.id !== +id)),
+    deleteByVoyageParticipant: (vid, pid) => sauvegarder('bagages', charger('bagages').filter(b => !(b.voyage_id === +vid && b.participant_id === +pid)))
   }
 };
 
@@ -117,6 +126,11 @@ if (USE_POSTGRES) {
       participants_ids TEXT, date TEXT, categorie TEXT DEFAULT 'autre',
       created_at TEXT DEFAULT now()::text
     );
+    CREATE TABLE IF NOT EXISTS bagages (
+      id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
+      participant_id INTEGER NOT NULL, nom TEXT, categorie TEXT DEFAULT 'divers',
+      checked BOOLEAN DEFAULT FALSE, created_at TEXT DEFAULT now()::text
+    );
   `).catch(console.error);
 }
 
@@ -159,6 +173,14 @@ const pgDB = pgPool ? {
     create: async (vid, data) => (await pgPool.query('INSERT INTO depenses(voyage_id,titre,montant,payeur_id,participants_ids,date,categorie) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *', [vid,data.titre,data.montant,data.payeur_id,data.participants_ids,data.date,data.categorie||'autre'])).rows[0],
     update: async (id, data) => { await pgPool.query('UPDATE depenses SET titre=$1,montant=$2,payeur_id=$3,participants_ids=$4,date=$5,categorie=$6 WHERE id=$7', [data.titre,data.montant,data.payeur_id,data.participants_ids,data.date,data.categorie,id]); return true; },
     delete: async (id) => pgPool.query('DELETE FROM depenses WHERE id=$1', [id])
+  },
+  bagages: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM bagages WHERE voyage_id=$1 ORDER BY participant_id, categorie, created_at ASC', [vid])).rows,
+    getByParticipant: async (vid, pid) => (await pgPool.query('SELECT * FROM bagages WHERE voyage_id=$1 AND participant_id=$2 ORDER BY categorie, created_at ASC', [vid, pid])).rows,
+    create: async (vid, data) => (await pgPool.query('INSERT INTO bagages(voyage_id,participant_id,nom,categorie,checked) VALUES($1,$2,$3,$4,$5) RETURNING *', [vid,data.participant_id,data.nom,data.categorie||'divers',false])).rows[0],
+    update: async (id, data) => { await pgPool.query('UPDATE bagages SET nom=$1,categorie=$2,checked=$3 WHERE id=$4', [data.nom,data.categorie,data.checked,id]); return true; },
+    delete: async (id) => pgPool.query('DELETE FROM bagages WHERE id=$1', [id]),
+    deleteByVoyageParticipant: async (vid, pid) => pgPool.query('DELETE FROM bagages WHERE voyage_id=$1 AND participant_id=$2', [vid, pid])
   }
 } : null;
 

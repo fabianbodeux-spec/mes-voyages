@@ -69,6 +69,9 @@
     <button class="tab-btn" data-tab="budget" onclick="changerOnglet('budget', this)">
       <span class="tab-icon">💰</span><span>Budget</span>
     </button>
+    <button class="tab-btn" data-tab="bagages" onclick="changerOnglet('bagages', this)">
+      <span class="tab-icon">🧳</span><span>Bagages</span>
+    </button>
   </nav>
 
   <main class="main-content tabs-content">
@@ -124,6 +127,36 @@
         </button>
       </div>
       <div id="liste-documents"></div>
+    </div>
+
+    <!-- ONGLET BAGAGES -->
+    <div id="tab-bagages" class="tab-panel">
+      <div class="budget-section">
+        <div class="budget-section-header">
+          <span class="budget-section-title">🧳 Ma liste de bagages</span>
+        </div>
+        <div style="padding:0 16px 14px">
+          <div id="bagages-participant-selector" class="avatars-row" style="margin-bottom:12px"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary" onclick="genererSuggestions()" style="flex:1;justify-content:center">
+              ✨ Suggestions intelligentes
+            </button>
+            <button class="btn-secondary" onclick="ouvrirModalAjoutArticle()" style="flex:1">
+              + Article
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="bagages-progress-bar" style="display:none;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:.78rem;font-weight:700;color:var(--text-muted)">PROGRESSION</span>
+          <span id="bagages-progress-text" style="font-size:.78rem;font-weight:700;color:var(--primary)"></span>
+        </div>
+        <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+          <div id="bagages-progress-fill" style="height:100%;border-radius:4px;background:linear-gradient(90deg,#6366F1,#10B981);transition:width .4s"></div>
+        </div>
+      </div>
+      <div id="liste-bagages" style="padding:12px 16px;display:flex;flex-direction:column;gap:6px"></div>
     </div>
 
     <!-- ONGLET BUDGET -->
@@ -384,6 +417,38 @@
     <button class="doc-viewer-close" onclick="fermerDocViewer()">✕ Fermer</button>
   </div>
   <iframe id="doc-viewer-frame" class="doc-viewer-frame" src=""></iframe>
+</div>
+
+<!-- ═══ MODAL AJOUT ARTICLE BAGAGE ═══ -->
+<div id="modal-article" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Ajouter un article</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-article')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>Article *</label>
+      <input type="text" id="art-nom" placeholder="Ex: Crème solaire, Passeport...">
+    </div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <select id="art-categorie">
+        <option value="documents">📄 Documents</option>
+        <option value="vetements">👕 Vêtements</option>
+        <option value="toilette">🧴 Toilette</option>
+        <option value="sante">💊 Santé</option>
+        <option value="electronique">📱 Électronique</option>
+        <option value="plage">🏖️ Plage / Sport</option>
+        <option value="divers">📦 Divers</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fermerModal('modal-article')">Annuler</button>
+      <button class="btn-primary" onclick="ajouterArticle()">Ajouter</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ MODAL PARTICIPANT ═══ -->
