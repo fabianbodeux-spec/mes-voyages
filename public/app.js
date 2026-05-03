@@ -65,19 +65,35 @@ async function chargerVoyages() {
   }
   empty.classList.add('hidden');
 
+  // Stats pour le banner
+  const aVenir = voyages.filter(v => getStatut(v.date_debut, v.date_fin).classe === 'upcoming').length;
+  const enCours = voyages.filter(v => getStatut(v.date_debut, v.date_fin).classe === 'ongoing').length;
+  const statsEl = document.getElementById('home-stats');
+  if (statsEl) {
+    const pills = [];
+    if (enCours > 0) pills.push(`<span class="stat-pill">🟢 ${enCours} en cours</span>`);
+    if (aVenir > 0) pills.push(`<span class="stat-pill">📅 ${aVenir} à venir</span>`);
+    pills.push(`<span class="stat-pill">✈️ ${voyages.length} voyage${voyages.length > 1 ? 's' : ''}</span>`);
+    statsEl.innerHTML = pills.join('');
+  }
+
   liste.innerHTML = voyages.map(v => {
     const statut = getStatut(v.date_debut, v.date_fin);
     const duree = getDuree(v.date_debut, v.date_fin);
     return `
     <div class="voyage-card" onclick="afficherVoyage(${v.id})">
-      <div class="voyage-card-banner" style="background:${v.couleur}"></div>
+      <div class="voyage-card-banner" style="background:linear-gradient(135deg, ${v.couleur}, ${v.couleur}cc)">
+        <div class="voyage-card-destination">📍 ${v.destination}</div>
+      </div>
       <div class="voyage-card-body">
         <div class="voyage-card-header">
           <h2>${v.nom}</h2>
           <span class="voyage-badge badge-${statut.classe}">${statut.label}</span>
         </div>
-        <p class="voyage-destination">${v.destination}</p>
-        ${v.date_debut ? `<p class="voyage-dates">${formatDates(v.date_debut, v.date_fin)}${duree ? ` · ${duree}` : ''}</p>` : ''}
+        <div class="voyage-card-footer">
+          <span class="voyage-dates">📅 ${v.date_debut ? formatDates(v.date_debut, v.date_fin) : 'Dates à définir'}</span>
+          ${duree ? `<span class="voyage-duree">${duree}</span>` : '<span class="voyage-arrow">›</span>'}
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -185,21 +201,23 @@ function renderResa(r) {
   const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
   return `
   <div class="resa-card">
-    <div class="resa-icon icon-${r.type}">${icones[r.type] || '📌'}</div>
-    <div class="resa-body">
-      <div class="resa-titre">${r.titre}</div>
-      <div class="resa-meta">
-        ${r.heure_debut ? `<span>🕐 ${r.heure_debut}${r.heure_fin ? ' → ' + r.heure_fin : ''}</span>` : ''}
-        ${r.lieu ? `<span>📍 ${r.lieu}</span>` : ''}
-        ${r.date_fin && r.date_fin !== r.date_debut ? `<span>📅 jusqu'au ${formatDate(r.date_fin)}</span>` : ''}
+    <div class="resa-card-inner">
+      <div class="resa-icon icon-${r.type}">${icones[r.type] || '📌'}</div>
+      <div class="resa-body">
+        <div class="resa-titre">${r.titre}</div>
+        <div class="resa-meta">
+          ${r.heure_debut ? `<span>🕐 ${r.heure_debut}${r.heure_fin ? ' → ' + r.heure_fin : ''}</span>` : ''}
+          ${r.lieu ? `<span>📍 ${r.lieu}</span>` : ''}
+          ${r.date_fin && r.date_fin !== r.date_debut ? `<span>📅 jusqu'au ${formatDate(r.date_fin)}</span>` : ''}
+        </div>
+        ${r.numero_confirmation ? `<div class="resa-confirmation">📋 ${r.numero_confirmation}</div>` : ''}
+        ${r.notes ? `<p style="font-size:.75rem;color:var(--text-muted);margin-top:6px;line-height:1.5">${r.notes}</p>` : ''}
+        ${r.lien ? `<a href="${r.lien}" target="_blank" rel="noopener" class="agenda-lien" style="margin-top:7px">🔗 Ouvrir la réservation</a>` : ''}
       </div>
-      ${r.numero_confirmation ? `<span class="resa-confirmation">📋 ${r.numero_confirmation}</span>` : ''}
-      ${r.notes ? `<p style="font-size:.78rem;color:var(--text-muted);margin-top:6px">${r.notes}</p>` : ''}
-      ${r.lien ? `<a href="${r.lien}" target="_blank" rel="noopener" class="agenda-lien" style="display:inline-block;margin-top:4px">🔗 Ouvrir la réservation</a>` : ''}
-    </div>
-    <div class="resa-actions">
-      <button class="btn-mini btn-mini-edit" onclick="modifierReservation(${r.id})" title="Modifier">✏️</button>
-      <button class="btn-mini btn-mini-del" onclick="supprimerReservation(${r.id})" title="Supprimer">🗑️</button>
+      <div class="resa-actions">
+        <button class="btn-mini btn-mini-edit" onclick="modifierReservation(${r.id})" title="Modifier">✏️</button>
+        <button class="btn-mini btn-mini-del" onclick="supprimerReservation(${r.id})" title="Supprimer">🗑️</button>
+      </div>
     </div>
   </div>`;
 }

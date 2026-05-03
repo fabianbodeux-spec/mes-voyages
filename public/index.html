@@ -17,8 +17,11 @@
     <div class="header-content">
       <h1>✈️ Mes Voyages</h1>
       <button class="btn-icon" onclick="ouvrirModalVoyage()" title="Nouveau voyage">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
       </button>
+    </div>
+    <div class="home-banner">
+      <div id="home-stats" class="home-stats"></div>
     </div>
   </header>
   <main class="main-content">
@@ -26,7 +29,7 @@
     <div id="empty-state" class="empty-state hidden">
       <div class="empty-icon">🗺️</div>
       <h2>Aucun voyage pour l'instant</h2>
-      <p>Commencez par créer votre premier voyage</p>
+      <p>Commence par créer ton premier voyage</p>
       <button class="btn-primary" onclick="ouvrirModalVoyage()">Créer un voyage</button>
     </div>
   </main>
