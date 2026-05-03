@@ -11,352 +11,170 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --accent:        #C9622F;
-      --accent-light:  #FDF0EA;
-      --accent-dark:   #A84D22;
-      --success:       #16A34A;
-      --danger:        #DC2626;
-      --bg:            #FAF7F2;
-      --card:          #FFFFFF;
-      --text:          #1A1A2E;
-      --text-muted:    #6B7280;
-      --border:        rgba(0,0,0,0.07);
-      --border-solid:  #E8E4DD;
-      --shadow-sm:     0 1px 4px rgba(26,26,46,0.04);
-      --shadow:        0 4px 24px rgba(26,26,46,0.07);
-      --font-display:  'DM Serif Display', Georgia, serif;
-      --font-body:     'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --accent:       #C9622F;
+      --accent-light: #FDF0EA;
+      --accent-dark:  #A84D22;
+      --success:      #16A34A;
+      --danger:       #DC2626;
+      --bg:           #FAF7F2;
+      --card:         #FFFFFF;
+      --text:         #1A1A2E;
+      --text-muted:   #6B7280;
+      --border:       rgba(0,0,0,0.07);
+      --border-solid: #E8E4DD;
+      --shadow-sm:    0 1px 4px rgba(26,26,46,0.04);
+      --shadow:       0 4px 24px rgba(26,26,46,0.07);
+      --font-display: 'DM Serif Display', Georgia, serif;
+      --font-body:    'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
-
     html { scroll-behavior: smooth; }
-    body {
-      font-family: var(--font-body);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-    }
+    body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
 
     /* ── Header ── */
     .app-header {
-      background: rgba(255,255,255,0.96);
-      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.96); border-bottom: 1px solid var(--border);
       position: sticky; top: 0; z-index: 100;
       padding: env(safe-area-inset-top) 0 0;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      box-shadow: 0 1px 0 var(--border), var(--shadow-sm);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-sm);
     }
-    .header-inner {
-      max-width: 720px; margin: 0 auto;
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 18px;
-    }
+    .header-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 12px; padding: 13px 18px; }
     .header-voyage { flex: 1; min-width: 0; }
-    .header-voyage h1 {
-      font-family: var(--font-display);
-      font-size: 1.1rem; font-weight: 400;
-      color: var(--text); letter-spacing: -0.01em;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .header-dates { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
-
-    .badge-read {
-      background: var(--accent-light);
-      color: var(--accent);
-      font-size: 0.68rem; font-weight: 800;
-      padding: 4px 10px; border-radius: 20px;
-      white-space: nowrap; letter-spacing: 0.04em;
-      text-transform: uppercase;
-      flex-shrink: 0;
-    }
+    .header-voyage h1 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 400; color: var(--text); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-dates { font-size: .71rem; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
+    .badge-read { background: var(--accent-light); color: var(--accent); font-size: .65rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; white-space: nowrap; letter-spacing: .05em; text-transform: uppercase; flex-shrink: 0; }
 
     /* ── Tabs ── */
     .tab-nav {
-      max-width: 720px; margin: 0 auto;
-      display: flex;
-      background: rgba(255,255,255,0.96);
-      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.96); border-bottom: 1px solid var(--border);
+      position: sticky; top: 52px; z-index: 99;
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       overflow-x: auto; scrollbar-width: none;
-      padding: 0 6px;
-      position: sticky; top: 58px; z-index: 99;
-      backdrop-filter: blur(16px);
     }
     .tab-nav::-webkit-scrollbar { display: none; }
-
-    .tab-btn {
-      flex: 1; min-width: 72px;
-      display: flex; flex-direction: column; align-items: center; gap: 2px;
-      padding: 9px 8px 8px;
-      border: none; background: transparent; cursor: pointer;
-      color: var(--text-muted);
-      font-size: 0.65rem; font-weight: 700;
-      font-family: var(--font-body);
-      border-bottom: 2.5px solid transparent;
-      transition: all 0.2s; white-space: nowrap;
-      letter-spacing: 0.04em; text-transform: uppercase;
-    }
+    .tab-nav-inner { max-width: 720px; margin: 0 auto; display: flex; padding: 0 4px; }
+    .tab-btn { flex: 1; min-width: 68px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 6px 8px; border: none; background: transparent; cursor: pointer; color: var(--text-muted); font-size: .64rem; font-weight: 700; font-family: var(--font-body); border-bottom: 2.5px solid transparent; transition: all .2s; white-space: nowrap; letter-spacing: .04em; text-transform: uppercase; }
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
     .tab-icon { font-size: 1.1rem; }
 
-    /* ── Content ── */
-    .content {
-      max-width: 720px; margin: 0 auto;
-      padding: 16px 16px 80px;
-    }
+    /* ── Panels ── */
+    .content { max-width: 720px; margin: 0 auto; padding: 14px 14px 80px; }
     .panel { display: none; }
     .panel.active { display: block; }
 
-    /* ── Loading / Error ── */
-    .loading {
-      text-align: center; padding: 60px 20px;
-      color: var(--text-muted); font-size: 0.9rem;
-    }
-    .empty {
-      text-align: center; padding: 44px 20px;
-      color: var(--text-muted);
-    }
-    .empty-icon { font-size: 2.6rem; margin-bottom: 10px; }
-    .empty p { font-size: 0.88rem; line-height: 1.6; }
-
-    /* ── Section divider ── */
-    .section-label {
-      font-size: 0.68rem; font-weight: 800;
-      color: var(--text-muted); text-transform: uppercase;
-      letter-spacing: 0.1em; padding: 12px 0 8px;
-      display: flex; align-items: center; gap: 10px;
-      font-family: var(--font-body);
-    }
-    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    /* ── Utilities ── */
+    .loading { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: .9rem; }
+    .empty { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .empty p { font-size: .87rem; line-height: 1.6; }
+    .sep { font-size: .67rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .1em; padding: 12px 0 7px; display: flex; align-items: center; gap: 10px; }
+    .sep::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .toast-msg { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--text); color: white; padding: 10px 20px; border-radius: 24px; font-size: .84rem; font-weight: 700; z-index: 9999; white-space: nowrap; box-shadow: var(--shadow); animation: toastIn .25s ease; }
+    @keyframes toastIn { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
 
     /* ── Reservation cards ── */
-    .resa-card {
-      background: var(--card); border-radius: 14px;
-      padding: 13px; margin-bottom: 8px;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-sm);
-      display: flex; gap: 12px; align-items: flex-start;
-    }
-    .resa-icon {
-      width: 42px; height: 42px; border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem; flex-shrink: 0;
-    }
+    .resa-card { background: var(--card); border-radius: 13px; padding: 13px; margin-bottom: 8px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; gap: 12px; align-items: flex-start; }
+    .resa-icon { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
     .icon-transport   { background: linear-gradient(135deg,#EFF6FF,#DBEAFE); }
     .icon-hebergement { background: linear-gradient(135deg,#F0FDF4,#DCFCE7); }
     .icon-vehicule    { background: linear-gradient(135deg,#FEFCE8,#FEF9C3); }
     .icon-activite    { background: linear-gradient(135deg,var(--accent-light),#FBE0D0); }
     .icon-restaurant  { background: linear-gradient(135deg,#FDF4FF,#FAE8FF); }
     .resa-body { flex: 1; min-width: 0; }
-    .resa-titre { font-weight: 700; font-size: 0.9rem; color: var(--text); letter-spacing: -0.01em; }
-    .resa-meta {
-      font-size: 0.74rem; color: var(--text-muted);
-      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;
-    }
-    .resa-code {
-      display: inline-block; margin-top: 6px;
-      font-size: 0.7rem; background: var(--bg);
-      padding: 2px 9px; border-radius: 6px;
-      color: var(--text-muted); font-family: monospace;
-      border: 1px solid var(--border-solid);
-    }
-    .resa-notes { font-size: 0.76rem; color: var(--text-muted); margin-top: 5px; line-height: 1.5; }
-    .lien-btn {
-      display: inline-flex; align-items: center; gap: 4px;
-      margin-top: 6px; font-size: 0.76rem;
-      color: var(--accent); font-weight: 700;
-      text-decoration: none;
-      background: var(--accent-light); padding: 3px 10px; border-radius: 6px;
-    }
+    .resa-titre { font-weight: 700; font-size: .9rem; color: var(--text); letter-spacing: -.01em; }
+    .resa-meta { font-size: .73rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .resa-code { display: inline-block; margin-top: 6px; font-size: .69rem; background: var(--bg); padding: 2px 9px; border-radius: 6px; color: var(--text-muted); font-family: monospace; border: 1px solid var(--border-solid); }
+    .resa-notes { font-size: .75rem; color: var(--text-muted); margin-top: 5px; line-height: 1.5; }
+    .lien-btn { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: .75rem; color: var(--accent); font-weight: 700; text-decoration: none; background: var(--accent-light); padding: 3px 10px; border-radius: 6px; }
 
     /* ── Agenda ── */
-    .agenda-day { margin-bottom: 14px; }
-    .agenda-day-header {
-      font-size: 0.7rem; font-weight: 800;
-      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em;
-      padding: 10px 0 7px;
-      display: flex; align-items: center; gap: 10px;
-    }
+    .agenda-day-header { font-size: .69rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .1em; padding: 10px 0 7px; display: flex; align-items: center; gap: 10px; }
     .agenda-day-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-    .agenda-item {
-      display: flex; gap: 11px; align-items: flex-start;
-      padding: 12px 13px; background: var(--card);
-      border-radius: 13px; border: 1px solid var(--border);
-      margin-bottom: 7px; box-shadow: var(--shadow-sm);
-    }
-    .agenda-heure {
-      font-size: 0.75rem; font-weight: 800; color: var(--accent);
-      min-width: 42px; text-align: right; flex-shrink: 0; padding-top: 2px;
-      font-variant-numeric: tabular-nums;
-    }
-    .agenda-line {
-      width: 3px; border-radius: 3px; align-self: stretch;
-      flex-shrink: 0; min-height: 22px;
-    }
+    .agenda-item { display: flex; gap: 11px; align-items: flex-start; padding: 12px 13px; background: var(--card); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 7px; box-shadow: var(--shadow-sm); }
+    .agenda-heure { font-size: .74rem; font-weight: 800; color: var(--accent); min-width: 42px; text-align: right; flex-shrink: 0; padding-top: 2px; font-variant-numeric: tabular-nums; }
+    .agenda-line { width: 3px; border-radius: 3px; align-self: stretch; flex-shrink: 0; min-height: 22px; }
     .agenda-content { flex: 1; min-width: 0; }
-    .agenda-titre { font-weight: 700; font-size: 0.88rem; color: var(--text); letter-spacing: -0.01em; }
-    .agenda-lieu { font-size: 0.74rem; color: var(--text-muted); margin-top: 3px; }
+    .agenda-titre { font-weight: 700; font-size: .88rem; color: var(--text); letter-spacing: -.01em; }
+    .agenda-lieu { font-size: .73rem; color: var(--text-muted); margin-top: 3px; }
 
     /* ── Carte ── */
     .lieux-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-    .lieu-item {
-      display: flex; align-items: center; gap: 11px;
-      padding: 10px 12px; background: var(--card);
-      border-radius: 12px; border: 1px solid var(--border);
-      cursor: pointer; transition: all 0.2s;
-    }
+    .lieu-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; background: var(--card); border-radius: 12px; border: 1px solid var(--border); cursor: pointer; transition: all .2s; }
     .lieu-item:hover { background: var(--accent-light); border-color: var(--accent); }
-    .carte-frame {
-      width: 100%; height: 380px; border: none;
-      border-radius: 14px; display: block;
-      box-shadow: var(--shadow);
-    }
+    .carte-frame { width: 100%; height: 360px; border: none; border-radius: 14px; display: block; box-shadow: var(--shadow); }
 
     /* ── Budget ── */
-    .budget-hero {
-      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-      border-radius: 16px; padding: 18px 20px;
-      margin-bottom: 16px;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .budget-hero-label {
-      font-size: 0.78rem; font-weight: 600; color: rgba(255,255,255,0.82); letter-spacing: 0.02em;
-    }
-    .budget-hero-amount {
-      font-family: var(--font-display);
-      font-size: 1.6rem; font-weight: 400; color: white; letter-spacing: -0.01em;
-    }
-    .budget-hero-nb {
-      font-size: 0.76rem; font-weight: 700; color: rgba(255,255,255,0.72); margin-top: 2px;
-    }
-
-    .participants-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
-    .participant-chip {
-      display: flex; align-items: center; gap: 7px;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 7px 12px 7px 8px;
-      box-shadow: var(--shadow-sm);
-    }
-    .avatar {
-      width: 28px; height: 28px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.72rem; font-weight: 800; color: white; flex-shrink: 0;
-    }
-    .chip-nom { font-size: 0.82rem; font-weight: 700; color: var(--text); }
-    .chip-total { font-size: 0.78rem; font-weight: 700; color: var(--accent); margin-left: 4px; }
-
-    .depense-card {
-      display: flex; align-items: center; gap: 11px;
-      background: var(--card); border-radius: 13px;
-      padding: 12px 14px; margin-bottom: 7px;
-      border: 1px solid var(--border); box-shadow: var(--shadow-sm);
-    }
+    .budget-hero { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .budget-hero-label { font-size: .77rem; font-weight: 600; color: rgba(255,255,255,.82); letter-spacing: .02em; }
+    .budget-hero-amount { font-family: var(--font-display); font-size: 1.55rem; font-weight: 400; color: white; }
+    .budget-hero-nb { font-size: .73rem; font-weight: 700; color: rgba(255,255,255,.72); margin-top: 2px; }
+    .p-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+    .p-chip { display: flex; align-items: center; gap: 7px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 7px 12px 7px 8px; box-shadow: var(--shadow-sm); }
+    .avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 800; color: white; flex-shrink: 0; }
+    .chip-nom { font-size: .82rem; font-weight: 700; color: var(--text); }
+    .chip-total { font-size: .77rem; font-weight: 700; color: var(--accent); margin-left: 4px; }
+    .dep-card { display: flex; align-items: center; gap: 11px; background: var(--card); border-radius: 12px; padding: 12px 14px; margin-bottom: 7px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
     .dep-cat { font-size: 1.3rem; flex-shrink: 0; }
     .dep-body { flex: 1; min-width: 0; }
-    .dep-titre { font-weight: 700; font-size: 0.88rem; color: var(--text); letter-spacing: -0.01em; }
-    .dep-meta { font-size: 0.72rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; align-items: center; }
-    .dep-montant {
-      font-family: var(--font-display);
-      font-size: 1.05rem; font-weight: 400;
-      color: var(--text); white-space: nowrap;
-    }
-
-    .bilan-card {
-      display: flex; align-items: center; justify-content: space-between;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 13px; padding: 13px 14px; gap: 6px;
-      margin-bottom: 7px; box-shadow: var(--shadow-sm);
-    }
-    .bilan-side { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.86rem; }
+    .dep-titre { font-weight: 700; font-size: .88rem; color: var(--text); }
+    .dep-meta { font-size: .71rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; align-items: center; }
+    .dep-montant { font-family: var(--font-display); font-size: 1.05rem; font-weight: 400; color: var(--text); white-space: nowrap; }
+    .bilan-card { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; gap: 6px; margin-bottom: 7px; box-shadow: var(--shadow-sm); }
+    .bilan-side { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .85rem; }
     .bilan-mid { display: flex; flex-direction: column; align-items: center; flex: 1; }
-    .bilan-arrow-line { font-size: 1.1rem; color: var(--accent); }
-    .bilan-sum { font-size: 0.78rem; font-weight: 800; color: var(--accent); }
-    .bilan-ok {
-      text-align: center; padding: 18px;
-      font-size: 0.92rem; font-weight: 700; color: var(--success);
-    }
-    .avatar-xs {
-      width: 18px; height: 18px; border-radius: 50%;
-      display: inline-flex; align-items: center; justify-content: center;
-      font-size: 0.56rem; font-weight: 800; color: white; flex-shrink: 0;
-    }
+    .bilan-arrow { font-size: 1rem; color: var(--accent); }
+    .bilan-sum { font-size: .77rem; font-weight: 800; color: var(--accent); }
+    .bilan-ok { text-align: center; padding: 18px; font-size: .92rem; font-weight: 700; color: var(--success); }
+    .avatar-xs { width: 17px; height: 17px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .55rem; font-weight: 800; color: white; flex-shrink: 0; }
 
-    /* ── Bagages ── */
-    .participant-tabs {
-      display: flex; gap: 8px; flex-wrap: wrap;
-      margin-bottom: 14px;
-    }
-    .ptab {
-      display: flex; align-items: center; gap: 6px;
-      padding: 6px 12px 6px 7px;
-      border-radius: 20px; border: 1.5px solid var(--border-solid);
-      background: var(--card); cursor: pointer;
-      font-size: 0.82rem; font-weight: 600;
-      transition: all 0.18s; color: var(--text);
-    }
-    .ptab.active {
-      border-color: var(--accent);
-      background: var(--accent-light);
-      color: var(--accent-dark);
-    }
+    /* ══════════════════════════════════════════
+       BAGAGES — interactive
+       ══════════════════════════════════════════ */
+    .ptabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .ptab { display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 7px; border-radius: 20px; border: 1.5px solid var(--border-solid); background: var(--card); cursor: pointer; font-size: .82rem; font-weight: 600; font-family: var(--font-body); transition: all .18s; color: var(--text); }
+    .ptab.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent-dark); }
 
-    .bagage-cat-header {
-      font-size: 0.68rem; font-weight: 800; color: var(--text-muted);
-      text-transform: uppercase; letter-spacing: 0.1em;
-      padding: 10px 0 6px;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .bagage-count { font-size: 0.7rem; color: var(--accent); font-weight: 800; }
-    .bagage-item {
-      display: flex; align-items: center; gap: 11px;
-      padding: 11px 13px; background: var(--card);
-      border-radius: 12px; margin-bottom: 5px;
-      border: 1.5px solid var(--border);
-      box-shadow: var(--shadow-sm);
-    }
-    .bagage-item.checked { background: var(--bg); opacity: 0.55; }
-    .bagage-check {
-      width: 21px; height: 21px; border-radius: 6px; flex-shrink: 0;
-      border: 2px solid var(--border-solid);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.7rem;
-    }
-    .bagage-check.checked { background: var(--accent); border-color: var(--accent); color: white; }
-    .bagage-nom {
-      flex: 1; font-size: 0.88rem; font-weight: 500; color: var(--text);
-    }
-    .bagage-item.checked .bagage-nom { text-decoration: line-through; color: var(--text-muted); }
+    .bag-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .btn-suggest { display: inline-flex; align-items: center; gap: 7px; background: var(--accent); color: white; border: none; border-radius: 12px; padding: 11px 18px; font-size: .86rem; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: all .22s; box-shadow: 0 4px 14px rgba(201,98,47,.30); flex: 1; justify-content: center; }
+    .btn-suggest:hover { background: var(--accent-dark); transform: translateY(-1px); }
+    .btn-suggest:active { transform: scale(.98); }
+    .btn-add-item { display: inline-flex; align-items: center; gap: 7px; background: var(--card); color: var(--text); border: 1.5px solid var(--border-solid); border-radius: 12px; padding: 11px 18px; font-size: .86rem; font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: all .18s; flex: 1; justify-content: center; }
+    .btn-add-item:hover { background: var(--bg); }
 
-    .progress-bar {
-      background: var(--border-solid); border-radius: 4px; height: 5px;
-      overflow: hidden; margin-bottom: 14px;
-    }
-    .progress-fill {
-      height: 100%; border-radius: 4px;
-      background: linear-gradient(90deg, var(--accent), var(--success));
-      transition: width 0.4s ease;
-    }
-    .progress-label {
-      font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
-      display: flex; justify-content: space-between; margin-bottom: 6px;
-    }
+    .progress-label { font-size: .71rem; font-weight: 700; color: var(--text-muted); display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .progress-bar { background: var(--border-solid); border-radius: 4px; height: 5px; overflow: hidden; margin-bottom: 14px; }
+    .progress-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--success)); transition: width .4s ease; }
+
+    .bag-cat-header { font-size: .67rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .1em; padding: 10px 2px 6px; display: flex; align-items: center; justify-content: space-between; }
+    .bag-count { font-size: .7rem; color: var(--accent); font-weight: 800; }
+
+    .bag-item { display: flex; align-items: center; gap: 11px; padding: 11px 13px; background: var(--card); border-radius: 12px; margin-bottom: 5px; border: 1.5px solid var(--border); box-shadow: var(--shadow-sm); transition: all .18s; cursor: pointer; }
+    .bag-item:hover { border-color: var(--border-solid); }
+    .bag-item.checked { background: var(--bg); border-color: var(--border); opacity: .55; }
+    .bag-check { width: 21px; height: 21px; border-radius: 6px; flex-shrink: 0; border: 2px solid var(--border-solid); display: flex; align-items: center; justify-content: center; font-size: .7rem; transition: all .2s; pointer-events: none; }
+    .bag-check.checked { background: var(--accent); border-color: var(--accent); color: white; }
+    .bag-nom { flex: 1; font-size: .88rem; font-weight: 500; color: var(--text); pointer-events: none; }
+    .bag-item.checked .bag-nom { text-decoration: line-through; color: var(--text-muted); }
+    .bag-del { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.1rem; line-height: 1; padding: 4px; border-radius: 6px; opacity: .4; transition: opacity .15s; }
+    .bag-del:hover { opacity: 1; color: var(--danger); }
+
+    /* Inline add form */
+    .add-form { display: flex; gap: 8px; margin-top: 10px; }
+    .add-input { flex: 1; padding: 11px 14px; border: 1.5px solid var(--border-solid); border-radius: 12px; font-size: .88rem; font-family: var(--font-body); background: var(--card); color: var(--text); outline: none; }
+    .add-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201,98,47,.10); }
+    .add-btn { padding: 11px 18px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: .86rem; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: all .18s; }
+    .add-btn:hover { background: var(--accent-dark); }
 
     /* ── Dark mode ── */
     @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #1C1712; --card: #261F18; --text: #F5F0E6;
-        --text-muted: #9B8B7A; --border: rgba(255,200,150,0.09);
-        --border-solid: #3A3028; --accent-light: #3A2010;
-      }
+      :root { --bg:#1C1712; --card:#261F18; --text:#F5F0E6; --text-muted:#9B8B7A; --border:rgba(255,200,150,.09); --border-solid:#3A3028; --accent-light:#3A2010; }
       .icon-transport   { background: linear-gradient(135deg,#1A2540,#1E2E50); }
       .icon-hebergement { background: linear-gradient(135deg,#0D2B1A,#0A3520); }
       .icon-vehicule    { background: linear-gradient(135deg,#3A2500,#4A3000); }
       .icon-activite    { background: linear-gradient(135deg,#3A2010,#4A2510); }
       .icon-restaurant  { background: linear-gradient(135deg,#3A1030,#4A1540); }
-      .resa-code { background: var(--bg); }
-      input:focus, textarea:focus, select:focus { background: var(--card); }
+      .add-input { background: var(--bg); }
     }
   </style>
 </head>
@@ -368,26 +186,18 @@
       <h1 id="voyage-nom">Chargement…</h1>
       <p id="voyage-dates" class="header-dates"></p>
     </div>
-    <span class="badge-read">👁 Lecture seule</span>
+    <span class="badge-read">👁 Partagé</span>
   </div>
 </div>
 
 <div class="tab-nav" id="tab-nav" style="display:none">
-  <button class="tab-btn active" onclick="afficherOnglet('reservations',this)">
-    <span class="tab-icon">🎫</span>Réservations
-  </button>
-  <button class="tab-btn" onclick="afficherOnglet('agenda',this)">
-    <span class="tab-icon">📅</span>Agenda
-  </button>
-  <button class="tab-btn" onclick="afficherOnglet('carte',this)">
-    <span class="tab-icon">🗺️</span>Carte
-  </button>
-  <button class="tab-btn" onclick="afficherOnglet('budget',this)">
-    <span class="tab-icon">💰</span>Budget
-  </button>
-  <button class="tab-btn" onclick="afficherOnglet('bagages',this)">
-    <span class="tab-icon">🧳</span>Bagages
-  </button>
+  <div class="tab-nav-inner">
+    <button class="tab-btn active" onclick="afficherOnglet('reservations',this)"><span class="tab-icon">🎫</span>Réservations</button>
+    <button class="tab-btn" onclick="afficherOnglet('agenda',this)"><span class="tab-icon">📅</span>Agenda</button>
+    <button class="tab-btn" onclick="afficherOnglet('carte',this)"><span class="tab-icon">🗺️</span>Carte</button>
+    <button class="tab-btn" onclick="afficherOnglet('budget',this)"><span class="tab-icon">💰</span>Budget</button>
+    <button class="tab-btn" onclick="afficherOnglet('bagages',this)"><span class="tab-icon">🧳</span>Bagages</button>
+  </div>
 </div>
 
 <div class="content" id="content">
@@ -395,12 +205,17 @@
 </div>
 
 <script>
+/* ═══════════════════════════════════════════════
+   ÉTAT
+   ═══════════════════════════════════════════════ */
 const token = location.pathname.split('/partage/')[1];
 let data = null;
-let participantBagageActif = null;
+let voyageId = null;
+let participantActif = null;
 
-// ─── CHARGEMENT ─────────────────────────────────────────────
-
+/* ═══════════════════════════════════════════════
+   CHARGEMENT
+   ═══════════════════════════════════════════════ */
 async function charger() {
   const resp = await fetch('/api/partage/' + token);
   if (!resp.ok) {
@@ -409,16 +224,14 @@ async function charger() {
     return;
   }
   data = await resp.json();
-  const v = data.voyage;
+  voyageId = data.voyage.id;
 
-  document.getElementById('voyage-nom').textContent = v.nom;
-  document.title = v.nom + ' — Voyage partagé';
+  document.getElementById('voyage-nom').textContent = data.voyage.nom;
+  document.title = data.voyage.nom + ' — Voyage partagé';
+  const fmt = d => d ? new Date(d+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short',year:'numeric'}) : '';
+  const d1 = fmt(data.voyage.date_debut), d2 = fmt(data.voyage.date_fin);
+  document.getElementById('voyage-dates').textContent = d1 && d2 ? d1+' → '+d2 : d1;
 
-  const fmt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-BE', { day:'numeric', month:'short', year:'numeric' }) : '';
-  const d1 = fmt(v.date_debut), d2 = fmt(v.date_fin);
-  document.getElementById('voyage-dates').textContent = d1 && d2 ? d1 + ' → ' + d2 : d1;
-
-  // Build panels
   document.getElementById('content').innerHTML = `
     <div id="panel-reservations" class="panel active"></div>
     <div id="panel-agenda"       class="panel"></div>
@@ -426,7 +239,6 @@ async function charger() {
     <div id="panel-budget"       class="panel"></div>
     <div id="panel-bagages"      class="panel"></div>
   `;
-
   document.getElementById('tab-nav').style.display = '';
 
   afficherReservations();
@@ -436,79 +248,81 @@ async function charger() {
   afficherBagages();
 }
 
-// ─── NAVIGATION ─────────────────────────────────────────────
-
 function afficherOnglet(nom, btn) {
   document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('panel-' + nom).classList.add('active');
+  document.getElementById('panel-'+nom).classList.add('active');
 }
 
-// ─── RÉSERVATIONS ────────────────────────────────────────────
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast-msg';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2400);
+}
 
+/* ═══════════════════════════════════════════════
+   RÉSERVATIONS
+   ═══════════════════════════════════════════════ */
 function afficherReservations() {
   const c = document.getElementById('panel-reservations');
   const resas = data.reservations || [];
-  if (!resas.length) {
-    c.innerHTML = '<div class="empty"><div class="empty-icon">🎫</div><p>Aucune réservation</p></div>';
-    return;
-  }
-  const icones = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
-  const grouped = {};
-  resas.forEach(r => { const k = r.date_debut || ''; if (!grouped[k]) grouped[k] = []; grouped[k].push(r); });
-  const sorted = Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b));
+  if (!resas.length) { c.innerHTML = '<div class="empty"><div class="empty-icon">🎫</div><p>Aucune réservation</p></div>'; return; }
 
-  c.innerHTML = sorted.map(([date, items]) => `
-    ${date ? `<div class="section-label">${new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'})}</div>` : '<div class="section-label">Sans date</div>'}
-    ${items.map(r => `
+  const ico = {transport:'✈️',hebergement:'🏠',vehicule:'🚗',activite:'🎯',restaurant:'🍽️'};
+  const grouped = {};
+  resas.forEach(r => { const k = r.date_debut||''; if (!grouped[k]) grouped[k]=[]; grouped[k].push(r); });
+  const sorted = Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b));
+
+  c.innerHTML = sorted.map(([date,items]) => `
+    <div class="sep">${date ? new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'}) : 'Sans date'}</div>
+    ${items.map(r=>`
       <div class="resa-card">
-        <div class="resa-icon icon-${r.type}">${icones[r.type]||'📌'}</div>
+        <div class="resa-icon icon-${r.type}">${ico[r.type]||'📌'}</div>
         <div class="resa-body">
           <div class="resa-titre">${r.titre}</div>
           <div class="resa-meta">
-            ${r.heure_debut ? `<span>🕐 ${r.heure_debut}${r.heure_fin?' → '+r.heure_fin:''}</span>` : ''}
-            ${r.lieu ? `<span>📍 ${r.lieu}</span>` : ''}
-            ${r.date_fin && r.date_fin !== r.date_debut ? `<span>↩ jusqu'au ${new Date(r.date_fin+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short'})}</span>` : ''}
+            ${r.heure_debut?`<span>🕐 ${r.heure_debut}${r.heure_fin?' → '+r.heure_fin:''}</span>`:''}
+            ${r.lieu?`<span>📍 ${r.lieu}</span>`:''}
+            ${r.date_fin&&r.date_fin!==r.date_debut?`<span>↩ jusqu'au ${new Date(r.date_fin+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short'})}</span>`:''}
           </div>
-          ${r.numero_confirmation ? `<div class="resa-code">📋 ${r.numero_confirmation}</div>` : ''}
-          ${r.notes ? `<div class="resa-notes">${r.notes}</div>` : ''}
-          ${r.lien ? `<a href="${r.lien}" target="_blank" class="lien-btn">🔗 Ouvrir la réservation</a>` : ''}
+          ${r.numero_confirmation?`<div class="resa-code">📋 ${r.numero_confirmation}</div>`:''}
+          ${r.notes?`<div class="resa-notes">${r.notes}</div>`:''}
+          ${r.lien?`<a href="${r.lien}" target="_blank" class="lien-btn">🔗 Voir la réservation</a>`:''}
         </div>
       </div>
     `).join('')}
   `).join('');
 }
 
-// ─── AGENDA ──────────────────────────────────────────────────
-
+/* ═══════════════════════════════════════════════
+   AGENDA
+   ═══════════════════════════════════════════════ */
 function afficherAgenda() {
   const c = document.getElementById('panel-agenda');
   const items = data.agenda || [];
-  if (!items.length) {
-    c.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p>Aucun événement planifié</p></div>';
-    return;
-  }
-  const colors = { transport:'#3B82F6', hebergement:'#10B981', activite:'#C9622F', restaurant:'#EC4899', sport:'#F59E0B', libre:'#9CA3AF' };
-  const icons  = { transport:'✈️', hebergement:'🏠', activite:'🎯', restaurant:'🍽️', sport:'🏄', libre:'☀️' };
-  const grouped = {};
-  items.forEach(i => { if (!grouped[i.date]) grouped[i.date] = []; grouped[i.date].push(i); });
-  const sorted = Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b));
+  if (!items.length) { c.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p>Aucun événement planifié</p></div>'; return; }
 
-  c.innerHTML = sorted.map(([date, evs]) => `
-    <div class="agenda-day">
-      <div class="agenda-day-header">
-        ${new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'})}
-      </div>
-      ${evs.map(ev => `
+  const colors = {transport:'#3B82F6',hebergement:'#10B981',activite:'#C9622F',restaurant:'#EC4899',sport:'#F59E0B',libre:'#9CA3AF'};
+  const icons  = {transport:'✈️',hebergement:'🏠',activite:'🎯',restaurant:'🍽️',sport:'🏄',libre:'☀️'};
+  const grouped = {};
+  items.forEach(i=>{ if (!grouped[i.date]) grouped[i.date]=[]; grouped[i.date].push(i); });
+  const sorted = Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b));
+
+  c.innerHTML = sorted.map(([date,evs])=>`
+    <div>
+      <div class="agenda-day-header">${new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'})}</div>
+      ${evs.map(ev=>`
         <div class="agenda-item">
           <span class="agenda-heure">${ev.heure||'--:--'}</span>
           <div class="agenda-line" style="background:${colors[ev.type]||'#C9622F'}"></div>
           <div class="agenda-content">
             <div class="agenda-titre">${icons[ev.type]||'📌'} ${ev.titre}</div>
-            ${ev.lieu ? `<div class="agenda-lieu">📍 ${ev.lieu}</div>` : ''}
-            ${ev.description ? `<div class="agenda-lieu">${ev.description}</div>` : ''}
-            ${ev.lien ? `<a href="${ev.lien}" target="_blank" class="lien-btn">🔗 Ouvrir le lien</a>` : ''}
+            ${ev.lieu?`<div class="agenda-lieu">📍 ${ev.lieu}</div>`:''}
+            ${ev.description?`<div class="agenda-lieu">${ev.description}</div>`:''}
+            ${ev.lien?`<a href="${ev.lien}" target="_blank" class="lien-btn">🔗 Ouvrir le lien</a>`:''}
           </div>
         </div>
       `).join('')}
@@ -516,263 +330,327 @@ function afficherAgenda() {
   `).join('');
 }
 
-// ─── CARTE ───────────────────────────────────────────────────
-
+/* ═══════════════════════════════════════════════
+   CARTE
+   ═══════════════════════════════════════════════ */
 function afficherCarte() {
   const c = document.getElementById('panel-carte');
-  const resas  = data.reservations || [];
-  const agenda = data.agenda || [];
-  const icones = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
-
+  const ico = {transport:'✈️',hebergement:'🏠',vehicule:'🚗',activite:'🎯',restaurant:'🍽️'};
   const lieux = [
-    ...resas.filter(r => r.adresse || r.lieu).map(r => ({ label: r.titre, adresse: r.adresse || r.lieu, icon: icones[r.type]||'📌' })),
-    ...agenda.filter(a => a.lieu).map(a => ({ label: a.titre, adresse: a.lieu, icon: '📅' }))
+    ...(data.reservations||[]).filter(r=>r.adresse||r.lieu).map(r=>({label:r.titre,addr:r.adresse||r.lieu,icon:ico[r.type]||'📌'})),
+    ...(data.agenda||[]).filter(a=>a.lieu).map(a=>({label:a.titre,addr:a.lieu,icon:'📅'}))
   ];
-  const query = lieux.length ? lieux[0].adresse : (data.voyage.destination || '');
-
+  const query = lieux.length ? lieux[0].addr : (data.voyage.destination||'');
   c.innerHTML = `
-    ${lieux.length ? `
-      <div class="lieux-list">
-        ${lieux.map(l => `
-          <div class="lieu-item" onclick="document.getElementById('carte-frame').src='https://maps.google.com/maps?q=${encodeURIComponent(l.adresse)}&output=embed&z=14'">
-            <span style="font-size:1.1rem">${l.icon}</span>
-            <div>
-              <div style="font-weight:700;font-size:.85rem">${l.label}</div>
-              <div style="font-size:.74rem;color:var(--text-muted)">${l.adresse}</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    ` : ''}
-    <iframe id="carte-frame" class="carte-frame"
-      src="https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed&z=10"
-      loading="lazy" allowfullscreen></iframe>
+    ${lieux.length ? `<div class="lieux-list">${lieux.map(l=>`
+      <div class="lieu-item" onclick="document.getElementById('carte-frame').src='https://maps.google.com/maps?q=${encodeURIComponent(l.addr)}&output=embed&z=14'">
+        <span style="font-size:1.1rem">${l.icon}</span>
+        <div><div style="font-weight:700;font-size:.85rem">${l.label}</div><div style="font-size:.73rem;color:var(--text-muted)">${l.addr}</div></div>
+      </div>`).join('')}</div>` : ''}
+    <iframe id="carte-frame" class="carte-frame" src="https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed&z=10" loading="lazy" allowfullscreen></iframe>
   `;
 }
 
-// ─── BUDGET ──────────────────────────────────────────────────
-
+/* ═══════════════════════════════════════════════
+   BUDGET — lecture seule
+   ═══════════════════════════════════════════════ */
 function afficherBudget() {
   const c = document.getElementById('panel-budget');
-  const participants = data.participants || [];
-  const depenses = data.depenses || [];
-
+  const participants = data.participants||[], depenses = data.depenses||[];
   if (!participants.length && !depenses.length) {
-    c.innerHTML = '<div class="empty"><div class="empty-icon">💰</div><p>Aucune donnée de budget</p></div>';
-    return;
+    c.innerHTML = '<div class="empty"><div class="empty-icon">💰</div><p>Aucune donnée de budget</p></div>'; return;
   }
-
-  const catIcons = { hebergement:'🏠', transport:'✈️', restauration:'🍽️', activite:'🎯', courses:'🛒', autre:'📦' };
-  const total = depenses.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
-
-  // Total payé par participant
+  const catIco = {hebergement:'🏠',transport:'✈️',restauration:'🍽️',activite:'🎯',courses:'🛒',autre:'📦'};
+  const total = depenses.reduce((s,d)=>s+parseFloat(d.montant||0),0);
   const totalByP = {};
-  participants.forEach(p => totalByP[p.id] = 0);
-  depenses.forEach(d => {
-    if (d.payeur_id) totalByP[d.payeur_id] = (totalByP[d.payeur_id] || 0) + parseFloat(d.montant || 0);
-  });
-
-  // Bilan
+  participants.forEach(p=>totalByP[p.id]=0);
+  depenses.forEach(d=>{ if(d.payeur_id) totalByP[d.payeur_id]=(totalByP[d.payeur_id]||0)+parseFloat(d.montant||0); });
   const bilan = calculerBilan(participants, depenses);
 
   c.innerHTML = `
-    ${total > 0 ? `
-      <div class="budget-hero">
-        <div>
-          <div class="budget-hero-label">Total des dépenses</div>
-          <div class="budget-hero-amount">${total.toFixed(2)} €</div>
-          <div class="budget-hero-nb">${depenses.length} dépense${depenses.length>1?'s':''}</div>
+    ${total>0?`<div class="budget-hero"><div><div class="budget-hero-label">Total des dépenses</div><div class="budget-hero-amount">${total.toFixed(2)} €</div><div class="budget-hero-nb">${depenses.length} dépense${depenses.length>1?'s':''}</div></div><div style="font-size:2.5rem">💶</div></div>`:''}
+    ${participants.length?`<div class="sep">Participants</div><div class="p-chips">${participants.map(p=>`
+      <div class="p-chip">
+        <div class="avatar" style="background:${p.couleur||'#C9622F'}">${p.nom[0].toUpperCase()}</div>
+        <span class="chip-nom">${p.nom}</span>
+        ${(totalByP[p.id]||0)>0?`<span class="chip-total">${(totalByP[p.id]).toFixed(2)}€</span>`:''}
+      </div>`).join('')}</div>`:''}
+    ${depenses.length?`<div class="sep">Dépenses</div>${depenses.map(d=>{
+      const pay=participants.find(p=>p.id==d.payeur_id);
+      return `<div class="dep-card">
+        <span class="dep-cat">${catIco[d.categorie]||'📦'}</span>
+        <div class="dep-body">
+          <div class="dep-titre">${d.titre}</div>
+          <div class="dep-meta">
+            ${pay?`<span><span class="avatar-xs" style="background:${pay.couleur}">${pay.nom[0]}</span> ${pay.nom}</span>`:''}
+            ${d.date?`<span>📅 ${new Date(d.date+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short'})}</span>`:''}
+          </div>
         </div>
-        <div style="font-size:2.5rem">💶</div>
-      </div>
-    ` : ''}
-
-    ${participants.length ? `
-      <div class="section-label">Participants</div>
-      <div class="participants-row">
-        ${participants.map(p => `
-          <div class="participant-chip">
-            <div class="avatar" style="background:${p.couleur||'#C9622F'}">${p.nom.charAt(0).toUpperCase()}</div>
-            <span class="chip-nom">${p.nom}</span>
-            ${totalByP[p.id] > 0 ? `<span class="chip-total">${totalByP[p.id].toFixed(2)}€ payé</span>` : ''}
-          </div>
-        `).join('')}
-      </div>
-    ` : ''}
-
-    ${depenses.length ? `
-      <div class="section-label">Dépenses</div>
-      ${depenses.map(d => {
-        const payeur = participants.find(p => p.id === d.payeur_id);
-        return `
-          <div class="depense-card">
-            <span class="dep-cat">${catIcons[d.categorie]||'📦'}</span>
-            <div class="dep-body">
-              <div class="dep-titre">${d.titre}</div>
-              <div class="dep-meta">
-                ${payeur ? `<span><span class="avatar-xs" style="background:${payeur.couleur}">${payeur.nom.charAt(0)}</span> ${payeur.nom}</span>` : ''}
-                ${d.date ? `<span>📅 ${new Date(d.date+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short'})}</span>` : ''}
-              </div>
-            </div>
-            <div class="dep-montant">${parseFloat(d.montant).toFixed(2)} €</div>
-          </div>
-        `;
-      }).join('')}
-    ` : ''}
-
-    ${participants.length > 1 ? `
-      <div class="section-label">Bilan — qui doit quoi</div>
-      ${bilan.length === 0
-        ? '<div class="bilan-ok">✅ Tout le monde est quitte !</div>'
-        : bilan.map(t => {
-            const from = participants.find(p => p.id === t.from);
-            const to   = participants.find(p => p.id === t.to);
-            if (!from || !to) return '';
-            return `
-              <div class="bilan-card">
-                <div class="bilan-side">
-                  <div class="avatar" style="background:${from.couleur||'#999'}">${from.nom.charAt(0)}</div>
-                  <span>${from.nom}</span>
-                </div>
-                <div class="bilan-mid">
-                  <span class="bilan-sum">${t.amount.toFixed(2)} €</span>
-                  <span class="bilan-arrow-line">→</span>
-                </div>
-                <div class="bilan-side">
-                  <div class="avatar" style="background:${to.couleur||'#999'}">${to.nom.charAt(0)}</div>
-                  <span>${to.nom}</span>
-                </div>
-              </div>
-            `;
-          }).join('')
-      }
-    ` : ''}
+        <div class="dep-montant">${parseFloat(d.montant).toFixed(2)} €</div>
+      </div>`;}).join('')}`:''}
+    ${participants.length>1?`<div class="sep">Bilan</div>${bilan.length===0
+      ?'<div class="bilan-ok">✅ Tout le monde est quitte !</div>'
+      :bilan.map(t=>{
+        const fr=participants.find(p=>p.id==t.from), to=participants.find(p=>p.id==t.to);
+        if(!fr||!to) return '';
+        return `<div class="bilan-card">
+          <div class="bilan-side"><div class="avatar" style="background:${fr.couleur||'#999'}">${fr.nom[0]}</div><span>${fr.nom}</span></div>
+          <div class="bilan-mid"><span class="bilan-sum">${t.amount.toFixed(2)} €</span><span class="bilan-arrow">→</span></div>
+          <div class="bilan-side"><div class="avatar" style="background:${to.couleur||'#999'}">${to.nom[0]}</div><span>${to.nom}</span></div>
+        </div>`;}).join('')}`:''}
   `;
 }
 
 function calculerBilan(participants, depenses) {
-  const balance = {};
-  participants.forEach(p => balance[p.id] = 0);
-
-  depenses.forEach(d => {
+  const bal = {};
+  participants.forEach(p=>bal[p.id]=0);
+  depenses.forEach(d=>{
     if (!d.payeur_id) return;
     let pids;
-    try { pids = d.participants_ids ? JSON.parse(d.participants_ids) : participants.map(p => p.id); }
-    catch(e) { pids = participants.map(p => p.id); }
-    if (!pids || !pids.length) pids = participants.map(p => p.id);
-
-    const montant = parseFloat(d.montant || 0);
-    const part = montant / pids.length;
-    balance[d.payeur_id] = (balance[d.payeur_id] || 0) + montant;
-    pids.forEach(pid => { balance[pid] = (balance[pid] || 0) - part; });
+    try { pids = d.participants_ids ? JSON.parse(d.participants_ids) : participants.map(p=>p.id); }
+    catch(e) { pids = participants.map(p=>p.id); }
+    if (!pids||!pids.length) pids = participants.map(p=>p.id);
+    const m = parseFloat(d.montant||0);
+    const part = m/pids.length;
+    bal[d.payeur_id] = (bal[d.payeur_id]||0)+m;
+    pids.forEach(pid=>{ bal[pid]=(bal[pid]||0)-part; });
   });
-
-  const debiteurs  = Object.entries(balance).filter(([,b]) => b < -0.01).sort(([,a],[,b]) => a - b);
-  const creanciers = Object.entries(balance).filter(([,b]) => b >  0.01).sort(([,a],[,b]) => b - a);
-  const transactions = [];
-  let i = 0, j = 0;
-  while (i < debiteurs.length && j < creanciers.length) {
-    const [did, dbal] = debiteurs[i];
-    const [cid, cbal] = creanciers[j];
-    const amount = Math.min(-dbal, cbal);
-    transactions.push({ from: parseInt(did), to: parseInt(cid), amount });
-    debiteurs[i][1]  += amount;
-    creanciers[j][1] -= amount;
-    if (Math.abs(debiteurs[i][1])  < 0.01) i++;
-    if (Math.abs(creanciers[j][1]) < 0.01) j++;
+  const deb = Object.entries(bal).filter(([,b])=>b<-0.01).sort(([,a],[,b])=>a-b);
+  const cre = Object.entries(bal).filter(([,b])=>b> 0.01).sort(([,a],[,b])=>b-a);
+  const tx=[]; let i=0,j=0;
+  while(i<deb.length&&j<cre.length){
+    const [did,db]=deb[i],[cid,cb]=cre[j];
+    const amt=Math.min(-db,cb);
+    tx.push({from:parseInt(did),to:parseInt(cid),amount:amt});
+    deb[i][1]+=amt; cre[j][1]-=amt;
+    if(Math.abs(deb[i][1])<0.01)i++;
+    if(Math.abs(cre[j][1])<0.01)j++;
   }
-  return transactions;
+  return tx;
 }
 
-// ─── BAGAGES ─────────────────────────────────────────────────
-
+/* ═══════════════════════════════════════════════
+   BAGAGES — INTERACTIF
+   ═══════════════════════════════════════════════ */
 function afficherBagages() {
   const c = document.getElementById('panel-bagages');
-  const participants = data.participants || [];
-  const bagages = data.bagages || [];
-
-  if (!participants.length && !bagages.length) {
-    c.innerHTML = '<div class="empty"><div class="empty-icon">🧳</div><p>Aucune liste de bagages</p></div>';
-    return;
-  }
+  const participants = data.participants||[];
   if (!participants.length) {
-    c.innerHTML = '<div class="empty"><div class="empty-icon">🧳</div><p>Aucun participant enregistré</p></div>';
+    c.innerHTML = '<div class="empty"><div class="empty-icon">🧳</div><p>Aucun participant enregistré.<br>Le créateur du voyage doit d\'abord ajouter les participants dans l\'application.</p></div>';
     return;
   }
 
-  // Default: first participant
-  participantBagageActif = participants[0].id;
+  participantActif = participants[0].id;
 
   c.innerHTML = `
-    <div class="participant-tabs" id="ptabs">
-      ${participants.map((p, idx) => `
-        <div class="ptab ${idx===0?'active':''}" onclick="selectionnerParticipantBagages(${p.id}, this)">
-          <div class="avatar" style="background:${p.couleur||'#C9622F'};width:22px;height:22px;font-size:.6rem">${p.nom.charAt(0).toUpperCase()}</div>
+    <div class="ptabs" id="ptabs">
+      ${participants.map((p,i)=>`
+        <div class="ptab ${i===0?'active':''}" onclick="selectionnerParticipant(${p.id},this)">
+          <div class="avatar" style="background:${p.couleur||'#C9622F'};width:22px;height:22px;font-size:.58rem">${p.nom[0].toUpperCase()}</div>
           ${p.nom}
+        </div>`).join('')}
+    </div>
+    <div id="bag-list"></div>
+  `;
+  renderListeBagages();
+}
+
+function selectionnerParticipant(pid, el) {
+  participantActif = pid;
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderListeBagages();
+}
+
+function renderListeBagages() {
+  const c = document.getElementById('bag-list');
+  if (!c) return;
+  // Utilise == pour éviter problème de type string/number
+  const all = (data.bagages||[]).filter(b => b.participant_id == participantActif);
+  const checked = all.filter(b=>b.checked).length;
+  const pct = all.length ? Math.round((checked/all.length)*100) : 0;
+
+  const catLabels = {documents:'📄 Documents',vetements:'👕 Vêtements',toilette:'🧴 Toilette',sante:'💊 Santé',electronique:'📱 Électronique',plage:'🏖️ Plage / Sport',divers:'📦 Divers'};
+  const catOrder  = ['documents','vetements','toilette','sante','electronique','plage','divers'];
+  const grouped = {};
+  all.forEach(b=>{ if(!grouped[b.categorie]) grouped[b.categorie]=[]; grouped[b.categorie].push(b); });
+  const cats = catOrder.filter(k=>grouped[k]);
+
+  c.innerHTML = `
+    <div class="bag-actions">
+      <button class="btn-suggest" onclick="genererSuggestions()">✨ Suggestions intelligentes</button>
+      <button class="btn-add-item" onclick="afficherFormulaireAjout()">+ Article</button>
+    </div>
+    ${all.length ? `
+      <div class="progress-label"><span>Progression</span><span>${checked} / ${all.length} articles</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      ${cats.map(cat=>`
+        <div>
+          <div class="bag-cat-header">
+            <span>${catLabels[cat]||cat}</span>
+            <span class="bag-count">${grouped[cat].filter(b=>b.checked).length}/${grouped[cat].length}</span>
+          </div>
+          ${grouped[cat].map(b=>`
+            <div class="bag-item ${b.checked?'checked':''}" onclick="toggleBagage(${b.id},${b.checked})">
+              <div class="bag-check ${b.checked?'checked':''}">${b.checked?'✓':''}</div>
+              <span class="bag-nom">${b.nom}</span>
+              <button class="bag-del" onclick="event.stopPropagation();supprimerBagage(${b.id})">✕</button>
+            </div>
+          `).join('')}
         </div>
       `).join('')}
-    </div>
-    <div id="bagages-list"></div>
+    ` : '<div class="empty" style="padding:24px 0"><div class="empty-icon">📦</div><p>Aucun article. Génère des suggestions ou ajoute des articles manuellement.</p></div>'}
+    <div id="add-form-container"></div>
   `;
-
-  renderBagagesParticipant(participantBagageActif);
 }
 
-function selectionnerParticipantBagages(pid, el) {
-  participantBagageActif = pid;
-  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  renderBagagesParticipant(pid);
+/* ── Toggle check ── */
+async function toggleBagage(id, checked) {
+  // Optimistic UI
+  const item = (data.bagages||[]).find(b=>b.id==id);
+  if (item) item.checked = !checked;
+  renderListeBagages();
+  try {
+    await fetch('/api/bagages/'+id, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({checked: !checked})
+    });
+  } catch(e) {
+    // Rollback
+    if (item) item.checked = checked;
+    renderListeBagages();
+    toast('❌ Erreur de connexion');
+  }
 }
 
-function renderBagagesParticipant(pid) {
-  const c = document.getElementById('bagages-list');
+/* ── Supprimer ── */
+async function supprimerBagage(id) {
+  data.bagages = (data.bagages||[]).filter(b=>b.id!=id);
+  renderListeBagages();
+  try {
+    await fetch('/api/bagages/'+id, {method:'DELETE'});
+  } catch(e) { toast('❌ Erreur réseau'); }
+}
+
+/* ── Formulaire ajout inline ── */
+function afficherFormulaireAjout() {
+  const c = document.getElementById('add-form-container');
   if (!c) return;
-  const all = (data.bagages || []).filter(b => b.participant_id === pid);
+  c.innerHTML = `
+    <div class="add-form">
+      <input id="add-input" class="add-input" placeholder="Nom de l'article…" onkeydown="if(event.key==='Enter')ajouterArticle()">
+      <button class="add-btn" onclick="ajouterArticle()">Ajouter</button>
+    </div>
+  `;
+  document.getElementById('add-input').focus();
+}
 
-  if (!all.length) {
-    c.innerHTML = '<div class="empty"><div class="empty-icon">📦</div><p>Aucun article pour ce participant</p></div>';
-    return;
+async function ajouterArticle() {
+  const input = document.getElementById('add-input');
+  if (!input) return;
+  const nom = input.value.trim();
+  if (!nom) return;
+
+  // Detect category from name
+  const cat = detecterCategorie(nom);
+
+  try {
+    const resp = await fetch('/api/voyages/'+voyageId+'/bagages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({nom, categorie: cat, participant_id: participantActif, checked: false})
+    });
+    const {id} = await resp.json();
+    if (!data.bagages) data.bagages = [];
+    data.bagages.push({id, voyage_id: voyageId, participant_id: participantActif, nom, categorie: cat, checked: false});
+    renderListeBagages();
+  } catch(e) { toast('❌ Erreur réseau'); }
+}
+
+/* ── Suggestions intelligentes ── */
+async function genererSuggestions() {
+  const v = data.voyage;
+  const suggestions = getSuggestionsContextuelles(v.nom||'', v.destination||'');
+  const items = [];
+  Object.entries(suggestions).forEach(([cat, noms]) => {
+    noms.forEach(nom => items.push({nom, categorie: cat}));
+  });
+  if (!items.length) { toast('Pas de suggestions pour cette destination'); return; }
+
+  toast('⏳ Génération en cours…');
+  try {
+    await fetch('/api/voyages/'+voyageId+'/bagages/bulk', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({participant_id: participantActif, items})
+    });
+    // Recharger les bagages depuis l'API
+    const resp = await fetch('/api/voyages/'+voyageId+'/bagages');
+    data.bagages = await resp.json();
+    renderListeBagages();
+    toast('✅ Liste générée !');
+  } catch(e) { toast('❌ Erreur réseau'); }
+}
+
+/* ── Détection de catégorie par mots-clés ── */
+function detecterCategorie(nom) {
+  const n = nom.toLowerCase();
+  if (/passeport|carte.id|billet|e-ticket|assurance|brevet|carnet/i.test(n)) return 'documents';
+  if (/t-shirt|short|maillot|pyjama|chaussure|veste|pantalon|robe|jupe|pull|sous.vêtement|chaussette|tong/i.test(n)) return 'vetements';
+  if (/brosse|dentifrice|shampoing|gel|douche|déodorant|rasoir|crème|parfum|coton|serviette.de.bain/i.test(n)) return 'toilette';
+  if (/médica|comprim|sirop|pansement|bandage|thermomètre|doliprane|ibuprofène/i.test(n)) return 'sante';
+  if (/téléphone|chargeur|ordinateur|tablette|appareil|gopro|casque|écouteur|adaptateur/i.test(n)) return 'electronique';
+  if (/masque|palmes|tuba|serviette.plage|lunettes|chapeau|crème.solaire|bouée/i.test(n)) return 'plage';
+  return 'divers';
+}
+
+/* ── Suggestions contextuelles (version locale sans météo) ── */
+function getSuggestionsContextuelles(nom, destination) {
+  const ctx = (nom + ' ' + destination).toLowerCase();
+  const s = {
+    documents: ['Passeport / Carte d\'identité','Billets / E-tickets','Assurance voyage'],
+    vetements:  ['T-shirts','Sous-vêtements','Pyjama','Chaussettes','Chaussures de sport'],
+    toilette:   ['Brosse à dents','Dentifrice','Shampoing','Gel douche','Déodorant'],
+    sante:      ['Médicaments personnels','Antalgiques','Pansements','Crème solaire SPF50'],
+    electronique:['Chargeur téléphone','Adaptateur secteur','Écouteurs / AirPods'],
+    plage:      [],
+    divers:     ['Sac à dos','Cadenas valise','Livre / Liseuse']
+  };
+
+  // Mer / plage / soleil
+  if (/corse|mer|plage|mediterran|caraib|maldiv|bali|thailand|egypt|egypte|maroc|tunisie|espagne|portugal|grece|italie|reunion|antilles|ocean/i.test(ctx)) {
+    s.vetements.push('Maillot de bain','Tongs','Sarong / Paréo');
+    s.toilette.push('Après-soleil');
+    s.plage.push('Crème solaire SPF50+','Lunettes de soleil','Chapeau / Casquette','Serviette de plage','Sac étanche');
   }
 
-  const checked = all.filter(b => b.checked).length;
-  const pct = Math.round((checked / all.length) * 100);
+  // Plongée / snorkeling
+  if (/plong|snorkel|diving|scuba/i.test(ctx)) {
+    s.plage.push('Masque et tuba','Palmes','Combinaison néoprène','Lampe torche étanche','Ordinateur de plongée');
+    s.documents.push('Brevet de plongée (PADI/CMAS)','Carnet de plongée');
+    s.sante.push('Médicaments anti-nausées','Gouttes auriculaires');
+    s.electronique.push('GoPro / Caméra étanche');
+  }
 
-  const catLabels = { documents:'📄 Documents', vetements:'👕 Vêtements', toilette:'🧴 Toilette', sante:'💊 Santé', electronique:'📱 Électronique', plage:'🏖️ Plage / Sport', divers:'📦 Divers' };
-  const grouped = {};
-  all.forEach(b => { if (!grouped[b.categorie]) grouped[b.categorie] = []; grouped[b.categorie].push(b); });
-  const catOrder = ['documents','vetements','toilette','sante','electronique','plage','divers'];
-  const cats = catOrder.filter(k => grouped[k]);
+  // Montagne / ski / randonnée
+  if (/vosges|alpes|montagne|ski|randon|trek|pyren|neige/i.test(ctx)) {
+    s.vetements.push('Veste polaire','Imperméable','Gants','Bonnet','Chaussures de randonnée');
+    s.sante.push('Baume à lèvres');
+    s.plage.push('Bâtons de marche','Gourde','Lampe frontale');
+  }
 
-  c.innerHTML = `
-    <div class="progress-label">
-      <span>Progression</span>
-      <span>${checked} / ${all.length} articles</span>
-    </div>
-    <div class="progress-bar">
-      <div class="progress-fill" style="width:${pct}%"></div>
-    </div>
-    ${cats.map(cat => `
-      <div>
-        <div class="bagage-cat-header">
-          <span>${catLabels[cat]||cat}</span>
-          <span class="bagage-count">${grouped[cat].filter(b=>b.checked).length}/${grouped[cat].length}</span>
-        </div>
-        ${grouped[cat].map(b => `
-          <div class="bagage-item ${b.checked?'checked':''}">
-            <div class="bagage-check ${b.checked?'checked':''}">
-              ${b.checked ? '✓' : ''}
-            </div>
-            <span class="bagage-nom">${b.nom}</span>
-          </div>
-        `).join('')}
-      </div>
-    `).join('')}
-  `;
+  // Professionnel / salon / ville
+  if (/paris|interschutz|salon|conf|professionnel|business|hannov/i.test(ctx)) {
+    s.vetements.push('Tenue habillée','Chaussures de ville');
+    s.documents.push('Cartes de visite');
+  }
+
+  // Supprimer les catégories vides
+  Object.keys(s).forEach(k => { if (!s[k].length) delete s[k]; });
+  return s;
 }
 
-// ─── INIT ────────────────────────────────────────────────────
-
+/* ═══════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════ */
 charger();
 </script>
 </body>
