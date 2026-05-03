@@ -85,11 +85,87 @@ function changerOnglet(tab, btn) {
 
 // ─── VOYAGES ─────────────────────────────────────────
 
-/** Retourne l'URL Unsplash pour la photo de destination (avec fallback couleur via onerror) */
+/** Retourne une photo de destination ensoleillée (Unsplash CDN ou Picsum déterministe) */
 function voyagePhotoUrl(destination) {
-  const dest = (destination || '').split(',')[0].replace(/[()]/g, '').trim();
-  const q = encodeURIComponent(dest + ' travel sunny');
-  return `https://source.unsplash.com/featured/600x300/?${q}`;
+  const dest = (destination || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(',')[0].trim();
+
+  // Photos Unsplash CDN directes (pas de clé API, pas de redirect)
+  const map = {
+    // France
+    paris:        'photo-1502602898657-3e91760cbb34',
+    corse:        'photo-1589308078059-be1415eab4c3',
+    nice:         'photo-1533929736458-ca588d08c8be',
+    lyon:         'photo-1524396309943-e03f5249f002',
+    marseille:    'photo-1564594985574-4c26c72fcb5a',
+    bordeaux:     'photo-1505761671935-60b3a7427bad',
+    normandie:    'photo-1506905925346-21bda4d32df4',
+    bretagne:     'photo-1508739773434-c26b3d09e071',
+    provence:     'photo-1523531294919-4bcd7c65e216',
+    // Méditerranée / Europe du Sud
+    rome:         'photo-1552832230-c0197dd311b5',
+    italie:       'photo-1516483638261-f4dbaf036963',
+    venise:       'photo-1514890547357-a9ee288728e0',
+    florence:     'photo-1541872703-74c5e44368f9',
+    barcelone:    'photo-1539037116277-4db20889f2d4',
+    espagne:      'photo-1543783207-ec64e4d95325',
+    madrid:       'photo-1543783207-ec64e4d95325',
+    lisbonne:     'photo-1555881400-74d7acaacd8b',
+    portugal:     'photo-1555881400-74d7acaacd8b',
+    oporto:       'photo-1555881400-74d7acaacd8b',
+    grece:        'photo-1533105079780-92b9be482077',
+    santorin:     'photo-1533105079780-92b9be482077',
+    mykonos:      'photo-1601581875039-e899893d520c',
+    athenes:      'photo-1555993539-1732b0258235',
+    croatie:      'photo-1555990790-2b5b7c3c1c8b',
+    dubrovnik:    'photo-1555990790-2b5b7c3c1c8b',
+    // Europe du Nord / Est
+    amsterdam:    'photo-1534351590666-13e3e96b5017',
+    london:       'photo-1513635269975-59663e0ac1ad',
+    berlin:       'photo-1560969184-10fe8719e047',
+    prague:       'photo-1541849546-216549ae216d',
+    vienne:       'photo-1516550893923-42d28e5677af',
+    budapest:     'photo-1500031559554-3ba008b8eff4',
+    bruxelles:    'photo-1559113202-c916b8e44373',
+    // Maghreb / Moyen-Orient
+    marrakech:    'photo-1539020140153-e479b8e39285',
+    maroc:        'photo-1548448929-60ef99b8e1d3',
+    egypte:       'photo-1539650116574-75c0c6d73f6e',
+    dubai:        'photo-1512453979798-5ea266f8880c',
+    // Asie
+    tokyo:        'photo-1540959733332-eab4deabeeaf',
+    japon:        'photo-1528360983277-13d401cdc186',
+    bali:         'photo-1537996194471-e657df975ab4',
+    indonesie:    'photo-1537996194471-e657df975ab4',
+    bangkok:      'photo-1563492065599-3520f775eeed',
+    singapour:    'photo-1525625293386-3f8f99389edd',
+    maldives:     'photo-1514282401047-d79a71a590e8',
+    // Amériques
+    'new york':   'photo-1496442226666-8d4d0e62e6e9',
+    miami:        'photo-1535498730771-e735b998cd64',
+    'los angeles':'photo-1534190760961-74e8c1c5c3da',
+    mexique:      'photo-1518105779142-d975f22f1b0a',
+    rio:          'photo-1483729558449-99ef09a8c325',
+    bresil:       'photo-1483729558449-99ef09a8c325',
+    // Nature générique
+    alpes:        'photo-1531366936337-7c912a4589a7',
+    montagne:     'photo-1464822759023-fed622ff2c3b',
+    plage:        'photo-1507525428034-b723cf961d3e',
+    mer:          'photo-1505118380757-91f5f5632de0',
+    ocean:        'photo-1505118380757-91f5f5632de0',
+    ile:          'photo-1499793983690-e29da59ef1c2',
+  };
+
+  for (const [kw, id] of Object.entries(map)) {
+    if (dest.includes(kw)) {
+      return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=600&h=300&q=80`;
+    }
+  }
+
+  // Fallback déterministe : Picsum (belles photos nature/paysage, toujours les mêmes pour la même destination)
+  let h = 0;
+  for (const c of dest) h = (Math.imul(31, h) + c.charCodeAt(0)) | 0;
+  const seed = Math.abs(h) % 800;
+  return `https://picsum.photos/seed/${seed}/600/300`;
 }
 
 async function chargerVoyages() {
