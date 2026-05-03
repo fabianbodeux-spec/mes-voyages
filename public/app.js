@@ -401,16 +401,23 @@ async function supprimerAgenda(id) {
 // ─── CARTE ───────────────────────────────────────────
 
 async function chargerCarte() {
-  const [reservations, voyage] = await Promise.all([
+  const [reservations, agenda, voyage] = await Promise.all([
     fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json()),
     fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.json())
   ]);
 
-  const lieux = reservations
+  const lieuxResa = reservations
     .filter(r => r.adresse || r.lieu)
     .map(r => ({ titre: r.titre, lieu: r.adresse || r.lieu, type: r.type }));
 
-  const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
+  const lieuxAgenda = agenda
+    .filter(a => a.lieu)
+    .map(a => ({ titre: a.titre, lieu: a.lieu, type: a.type }));
+
+  const lieux = [...lieuxResa, ...lieuxAgenda];
+
+  const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️', sport: '🏄', libre: '☀️' };
 
   const lieuxList = document.getElementById('carte-lieux');
   if (lieux.length === 0) {
