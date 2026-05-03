@@ -85,6 +85,13 @@ function changerOnglet(tab, btn) {
 
 // ─── VOYAGES ─────────────────────────────────────────
 
+/** Retourne l'URL Unsplash pour la photo de destination (avec fallback couleur via onerror) */
+function voyagePhotoUrl(destination) {
+  const dest = (destination || '').split(',')[0].replace(/[()]/g, '').trim();
+  const q = encodeURIComponent(dest + ' travel sunny');
+  return `https://source.unsplash.com/featured/600x300/?${q}`;
+}
+
 async function chargerVoyages() {
   const voyages = await fetch(`${API}/api/voyages`).then(r => r.json());
   const liste = document.getElementById('liste-voyages');
@@ -114,7 +121,12 @@ async function chargerVoyages() {
     const duree = getDuree(v.date_debut, v.date_fin);
     return `
     <div class="voyage-card" onclick="afficherVoyage(${v.id})">
-      <div class="voyage-card-banner" style="background:linear-gradient(135deg, ${v.couleur}, ${v.couleur}cc)">
+      <div class="voyage-card-banner">
+        <img class="voyage-card-banner-img"
+          src="${voyagePhotoUrl(v.destination)}"
+          alt="${v.destination}"
+          loading="lazy"
+          onerror="this.style.display='none';this.closest('.voyage-card-banner').style.background='linear-gradient(135deg,${v.couleur},${v.couleur}cc)'">
         <div class="voyage-card-destination">📍 ${v.destination}</div>
       </div>
       <div class="voyage-card-body">
