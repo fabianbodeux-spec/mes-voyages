@@ -92,6 +92,7 @@ if (USE_POSTGRES) {
     ALTER TABLE agenda ADD COLUMN IF NOT EXISTS lien TEXT;
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS lien TEXT;
     ALTER TABLE documents ADD COLUMN IF NOT EXISTS event_id INTEGER;
+    ALTER TABLE voyages ADD COLUMN IF NOT EXISTS share_token TEXT UNIQUE;
   `).catch(console.error);
 }
 
@@ -99,6 +100,8 @@ const pgDB = pgPool ? {
   voyages: {
     getAll: async () => (await pgPool.query('SELECT * FROM voyages ORDER BY date_debut ASC NULLS LAST')).rows,
     getById: async (id) => (await pgPool.query('SELECT * FROM voyages WHERE id=$1', [id])).rows[0],
+    getByToken: async (token) => (await pgPool.query('SELECT * FROM voyages WHERE share_token=$1', [token])).rows[0],
+    setToken: async (id, token) => { await pgPool.query('UPDATE voyages SET share_token=$1 WHERE id=$2', [token, id]); return true; },
     create: async (data) => (await pgPool.query('INSERT INTO voyages(nom,destination,date_debut,date_fin,description,couleur) VALUES($1,$2,$3,$4,$5,$6) RETURNING *', [data.nom,data.destination,data.date_debut,data.date_fin,data.description,data.couleur||'#3B82F6'])).rows[0],
     update: async (id, data) => { await pgPool.query('UPDATE voyages SET nom=$1,destination=$2,date_debut=$3,date_fin=$4,description=$5,couleur=$6 WHERE id=$7', [data.nom,data.destination,data.date_debut,data.date_fin,data.description,data.couleur,id]); return true; },
     delete: async (id) => { await pgPool.query('DELETE FROM reservations WHERE voyage_id=$1', [id]); await pgPool.query('DELETE FROM agenda WHERE voyage_id=$1', [id]); await pgPool.query('DELETE FROM documents WHERE voyage_id=$1', [id]); await pgPool.query('DELETE FROM voyages WHERE id=$1', [id]); }

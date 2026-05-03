@@ -550,6 +550,30 @@ function fermerModal(id) {
   document.getElementById(id).classList.add('hidden');
 }
 
+async function partagerVoyage() {
+  fermerBottomSheet();
+  const resp = await fetch(`${API}/api/voyages/${voyageActuel}/partager`, { method: 'POST' });
+  const data = await resp.json();
+  document.getElementById('partage-url').textContent = data.url;
+  document.getElementById('modal-partage').classList.remove('hidden');
+}
+
+function copierLienPartage() {
+  const url = document.getElementById('partage-url').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    toast('✅ Lien copié ! Envoie-le par WhatsApp ou SMS');
+  }).catch(() => {
+    // Fallback pour les vieux navigateurs
+    const el = document.createElement('textarea');
+    el.value = url;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    toast('✅ Lien copié !');
+  });
+}
+
 function fermerBottomSheet() {
   document.getElementById('menu-voyage').classList.add('hidden');
   document.getElementById('overlay-sheet').classList.add('hidden');

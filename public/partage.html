@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Voyage partagé</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #3B82F6; --bg: #F1F5F9; --card: #FFFFFF;
+      --text: #1E293B; --text-muted: #64748B; --border: #E2E8F0;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+    .header { background: var(--card); border-bottom: 1px solid var(--border); padding: 16px; position: sticky; top: 0; z-index: 10; }
+    .header-inner { max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+    .header h1 { font-size: 1.1rem; font-weight: 700; }
+    .header .subtitle { font-size: 0.8rem; color: var(--text-muted); }
+    .badge-partage { background: #EFF6FF; color: #3B82F6; font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+
+    .content { max-width: 640px; margin: 0 auto; padding: 16px; }
+
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; background: var(--card); border-radius: 12px; padding: 4px; border: 1px solid var(--border); }
+    .tab { flex: 1; padding: 8px; text-align: center; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--text-muted); }
+    .tab.active { background: var(--primary); color: white; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Réservations */
+    .date-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; padding: 10px 0 6px; }
+    .resa-card { background: var(--card); border-radius: 12px; padding: 12px; margin-bottom: 8px; border: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-start; }
+    .resa-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .icon-transport { background: #EFF6FF; } .icon-hebergement { background: #ECFDF5; } .icon-vehicule { background: #FFF7ED; } .icon-activite { background: #F5F3FF; } .icon-restaurant { background: #FDF2F8; }
+    .resa-titre { font-weight: 600; font-size: 0.9rem; }
+    .resa-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .resa-confirmation { display: inline-block; margin-top: 5px; font-size: 0.75rem; background: var(--bg); padding: 2px 8px; border-radius: 6px; color: var(--text-muted); }
+    .resa-notes { font-size: 0.78rem; color: var(--text-muted); margin-top: 5px; }
+    .lien-btn { display: inline-block; margin-top: 5px; font-size: 0.78rem; color: var(--primary); font-weight: 600; text-decoration: none; }
+
+    /* Agenda */
+    .agenda-day { margin-bottom: 16px; }
+    .agenda-day-header { font-size: 0.85rem; font-weight: 700; color: var(--text); background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; }
+    .agenda-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; background: var(--card); border-radius: 10px; border: 1px solid var(--border); margin-bottom: 6px; }
+    .agenda-heure { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); width: 42px; flex-shrink: 0; padding-top: 2px; }
+    .agenda-line { width: 3px; border-radius: 2px; align-self: stretch; flex-shrink: 0; min-height: 20px; }
+    .agenda-content { flex: 1; }
+    .agenda-titre { font-weight: 600; font-size: 0.9rem; }
+    .agenda-lieu { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* Carte */
+    .carte-lieux { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .lieu-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--card); border-radius: 10px; border: 1px solid var(--border); cursor: pointer; }
+    .lieu-item:active { background: var(--bg); }
+    .carte-frame { width: 100%; height: 380px; border: none; border-radius: 12px; display: block; }
+
+    .empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.9rem; }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 8px; }
+
+    .loading { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0F172A; --card: #1E293B; --text: #F1F5F9; --text-muted: #94A3B8; --border: #334155; }
+      .icon-transport { background: #1E3A5F; } .icon-hebergement { background: #064E3B; } .icon-vehicule { background: #431407; } .icon-activite { background: #2E1065; } .icon-restaurant { background: #500724; }
+      .resa-confirmation { background: #0F172A; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div style="flex:1">
+      <h1 id="voyage-nom">Chargement...</h1>
+      <div class="subtitle" id="voyage-dates"></div>
+    </div>
+    <span class="badge-partage">✈️ Voyage partagé</span>
+  </div>
+</div>
+
+<div class="content" id="content">
+  <div class="loading">⏳ Chargement du voyage...</div>
+</div>
+
+<script>
+const token = location.pathname.split('/partage/')[1];
+let data = null;
+
+async function charger() {
+  const resp = await fetch(`/api/partage/${token}`);
+  if (!resp.ok) {
+    document.getElementById('content').innerHTML = '<div class="empty"><div class="empty-icon">🔒</div><p>Lien invalide ou expiré</p></div>';
+    return;
+  }
+  data = await resp.json();
+  const v = data.voyage;
+  document.getElementById('voyage-nom').textContent = v.nom;
+  document.title = v.nom + ' — Voyage partagé';
+
+  const debut = v.date_debut ? new Date(v.date_debut + 'T00:00:00').toLocaleDateString('fr-BE', { day:'numeric', month:'short', year:'numeric' }) : '';
+  const fin = v.date_fin ? new Date(v.date_fin + 'T00:00:00').toLocaleDateString('fr-BE', { day:'numeric', month:'short', year:'numeric' }) : '';
+  document.getElementById('voyage-dates').textContent = debut && fin ? `${debut} → ${fin}` : debut;
+
+  document.getElementById('content').innerHTML = `
+    <div class="tabs">
+      <button class="tab active" onclick="afficherOnglet('reservations', this)">🎫 Réservations</button>
+      <button class="tab" onclick="afficherOnglet('agenda', this)">📅 Agenda</button>
+      <button class="tab" onclick="afficherOnglet('carte', this)">🗺️ Carte</button>
+    </div>
+    <div id="panel-reservations" class="panel active"></div>
+    <div id="panel-agenda" class="panel"></div>
+    <div id="panel-carte" class="panel"></div>
+  `;
+
+  afficherReservations();
+  afficherAgenda();
+  afficherCarte();
+}
+
+function afficherOnglet(nom, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + nom).classList.add('active');
+}
+
+function afficherReservations() {
+  const container = document.getElementById('panel-reservations');
+  const resas = data.reservations;
+  if (!resas.length) { container.innerHTML = '<div class="empty"><div class="empty-icon">🎫</div><p>Aucune réservation</p></div>'; return; }
+
+  const icones = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
+  const grouped = {};
+  resas.forEach(r => { const k = r.date_debut || 'Sans date'; if (!grouped[k]) grouped[k] = []; grouped[k].push(r); });
+
+  container.innerHTML = Object.entries(grouped).map(([date, items]) => `
+    ${date !== 'Sans date' ? `<div class="date-label">${new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'})}</div>` : ''}
+    ${items.map(r => `
+      <div class="resa-card">
+        <div class="resa-icon icon-${r.type}">${icones[r.type]||'📌'}</div>
+        <div style="flex:1">
+          <div class="resa-titre">${r.titre}</div>
+          <div class="resa-meta">
+            ${r.heure_debut ? `<span>🕐 ${r.heure_debut}${r.heure_fin?' → '+r.heure_fin:''}</span>` : ''}
+            ${r.lieu ? `<span>📍 ${r.lieu}</span>` : ''}
+            ${r.date_fin && r.date_fin !== r.date_debut ? `<span>📅 jusqu'au ${new Date(r.date_fin+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short'})}</span>` : ''}
+          </div>
+          ${r.numero_confirmation ? `<div class="resa-confirmation">📋 ${r.numero_confirmation}</div>` : ''}
+          ${r.notes ? `<div class="resa-notes">${r.notes}</div>` : ''}
+          ${r.lien ? `<a href="${r.lien}" target="_blank" class="lien-btn">🔗 Ouvrir la réservation</a>` : ''}
+        </div>
+      </div>
+    `).join('')}
+  `).join('');
+}
+
+function afficherAgenda() {
+  const container = document.getElementById('panel-agenda');
+  const items = data.agenda;
+  if (!items.length) { container.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p>Aucun événement planifié</p></div>'; return; }
+
+  const colors = { transport:'#3B82F6', hebergement:'#10B981', activite:'#8B5CF6', restaurant:'#EC4899', sport:'#F59E0B', libre:'#64748B' };
+  const icons = { transport:'✈️', hebergement:'🏠', activite:'🎯', restaurant:'🍽️', sport:'🏄', libre:'☀️' };
+  const grouped = {};
+  items.forEach(i => { if (!grouped[i.date]) grouped[i.date] = []; grouped[i.date].push(i); });
+
+  container.innerHTML = Object.entries(grouped).map(([date, evs]) => `
+    <div class="agenda-day">
+      <div class="agenda-day-header">${new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'})}</div>
+      ${evs.map(ev => `
+        <div class="agenda-item">
+          <span class="agenda-heure">${ev.heure||'--:--'}</span>
+          <div class="agenda-line" style="background:${colors[ev.type]||'#3B82F6'}"></div>
+          <div class="agenda-content">
+            <div class="agenda-titre">${icons[ev.type]||'📌'} ${ev.titre}</div>
+            ${ev.lieu ? `<div class="agenda-lieu">📍 ${ev.lieu}</div>` : ''}
+            ${ev.description ? `<div class="agenda-lieu">${ev.description}</div>` : ''}
+            ${ev.lien ? `<a href="${ev.lien}" target="_blank" class="lien-btn">🔗 Ouvrir le lien</a>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function afficherCarte() {
+  const container = document.getElementById('panel-carte');
+  const lieux = data.reservations.filter(r => r.adresse || r.lieu);
+  const icones = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
+  const query = lieux.length ? (lieux[0].adresse || lieux[0].lieu) : data.voyage.destination;
+
+  container.innerHTML = `
+    <div class="carte-lieux">
+      ${lieux.map(l => `
+        <div class="lieu-item" onclick="document.getElementById('carte-frame').src='https://maps.google.com/maps?q=${encodeURIComponent(l.adresse||l.lieu)}&output=embed&z=14'">
+          <span style="font-size:1.1rem">${icones[l.type]||'📌'}</span>
+          <div>
+            <div style="font-weight:600;font-size:.85rem">${l.titre}</div>
+            <div style="font-size:.75rem;color:var(--text-muted)">${l.adresse||l.lieu}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <iframe id="carte-frame" class="carte-frame" src="https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed&z=10" loading="lazy" allowfullscreen></iframe>
+  `;
+}
+
+charger();
+</script>
+</body>
+</html>

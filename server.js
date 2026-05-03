@@ -136,6 +136,45 @@ app.delete('/api/documents/:id', async (req, res) => {
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
+// ─── PARTAGE ────────────────────────────────────────────────────────────────
+
+function genererToken() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 12; i++) token += chars[Math.floor(Math.random() * chars.length)];
+  return token;
+}
+
+app.post('/api/voyages/:id/partager', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getById(req.params.id));
+    if (!voyage) return res.status(404).json({ error: 'Voyage non trouvé' });
+    let token = voyage.share_token;
+    if (!token) {
+      token = genererToken();
+      await run(() => db.voyages.setToken(req.params.id, token));
+    }
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    res.json({ token, url: `${baseUrl}/partage/${token}` });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/partage/:token', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const [reservations, agenda] = await Promise.all([
+      run(() => db.reservations.getByVoyage(voyage.id)),
+      run(() => db.agenda.getByVoyage(voyage.id))
+    ]);
+    res.json({ voyage, reservations, agenda });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/partage/:token', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'partage.html'));
+});
+
 // ─── DÉMARRAGE ─────────────────────────────────────────────────────────────
 
 app.listen(PORT, '0.0.0.0', () => {

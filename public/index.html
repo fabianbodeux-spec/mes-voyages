@@ -355,9 +355,28 @@
 <!-- ═══ MENU OPTIONS VOYAGE ═══ -->
 <div id="menu-voyage" class="bottom-sheet hidden">
   <div class="bottom-sheet-handle"></div>
+  <button class="sheet-btn" onclick="partagerVoyage()">🔗 Partager ce voyage</button>
   <button class="sheet-btn" onclick="modifierVoyageActuel()">✏️ Modifier le voyage</button>
   <button class="sheet-btn danger" onclick="supprimerVoyageActuel()">🗑️ Supprimer le voyage</button>
   <button class="sheet-btn" onclick="fermerBottomSheet()">Annuler</button>
+</div>
+
+<!-- ═══ MODAL PARTAGE ═══ -->
+<div id="modal-partage" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🔗 Partager le voyage</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-partage')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:16px">Partage ce lien avec tes compagnons de voyage. Ils pourront voir les réservations et l'agenda en lecture seule.</p>
+    <div style="background:var(--bg);border-radius:10px;padding:12px;word-break:break-all;font-size:.82rem;color:var(--text);border:1px solid var(--border)" id="partage-url"></div>
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn-secondary" onclick="fermerModal('modal-partage')">Fermer</button>
+      <button class="btn-primary" onclick="copierLienPartage()">📋 Copier le lien</button>
+    </div>
+  </div>
 </div>
 <div id="overlay-sheet" class="overlay-sheet hidden" onclick="fermerBottomSheet()"></div>
 
