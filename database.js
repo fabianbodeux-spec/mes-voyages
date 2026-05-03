@@ -178,7 +178,14 @@ const pgDB = pgPool ? {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM bagages WHERE voyage_id=$1 ORDER BY participant_id, categorie, created_at ASC', [vid])).rows,
     getByParticipant: async (vid, pid) => (await pgPool.query('SELECT * FROM bagages WHERE voyage_id=$1 AND participant_id=$2 ORDER BY categorie, created_at ASC', [vid, pid])).rows,
     create: async (vid, data) => (await pgPool.query('INSERT INTO bagages(voyage_id,participant_id,nom,categorie,checked) VALUES($1,$2,$3,$4,$5) RETURNING *', [vid,data.participant_id,data.nom,data.categorie||'divers',false])).rows[0],
-    update: async (id, data) => { await pgPool.query('UPDATE bagages SET nom=$1,categorie=$2,checked=$3 WHERE id=$4', [data.nom,data.categorie,data.checked,id]); return true; },
+    update: async (id, data) => {
+      if ('checked' in data && Object.keys(data).length === 1) {
+        await pgPool.query('UPDATE bagages SET checked=$1 WHERE id=$2', [data.checked, id]);
+      } else {
+        await pgPool.query('UPDATE bagages SET nom=$1,categorie=$2,checked=$3 WHERE id=$4', [data.nom,data.categorie,data.checked,id]);
+      }
+      return true;
+    },
     delete: async (id) => pgPool.query('DELETE FROM bagages WHERE id=$1', [id]),
     deleteByVoyageParticipant: async (vid, pid) => pgPool.query('DELETE FROM bagages WHERE voyage_id=$1 AND participant_id=$2', [vid, pid])
   }

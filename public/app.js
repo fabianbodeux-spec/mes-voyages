@@ -604,45 +604,50 @@ function getSuggestionsContextuelles(voyage, agenda) {
   suggestions.vetements = suggestions.vetements.filter(i => i !== 'T-shirts');
   suggestions.vetements.unshift(`T-shirts (×${nbTshirts})`);
 
-  // Destination plage / mer / corse / méditerranée
-  if (/corse|mer|plage|méditerranée|caraïbes|maldives|bali|thaïlande|égypte|maroc|tunisie|espagne|portugal|grèce|italie/.test(dest)) {
+  const ctx = dest + ' ' + activites;
+
+  // Destination plage / mer / soleil
+  if (/corse|mer|plage|mediterran|caraib|maldiv|bali|thailand|egypt|egypte|maroc|tunisie|espagne|portugal|grece|italie|reunion|antilles|ocean/i.test(ctx)) {
     suggestions.plage.push('Maillot de bain','Crème solaire SPF50','Après-soleil','Lunettes de soleil','Chapeau / Bob','Serviette de plage','Sac de plage','Tapis de plage');
     suggestions.vetements.push('Shorts','Robe légère / Chemise légère');
     suggestions.sante.push('Médicaments contre mal de mer');
   }
 
   // Plongée / snorkeling
-  if (/plongée|snorkeling|diving|plonge/.test(dest + activites)) {
-    suggestions.plage.push('Masque et tuba','Palmes','Combinaison néoprène','Lampe torche étanche','Carnet waterproof');
-    suggestions.documents.push('Brevet de plongée (PADI/CMAS)');
+  if (/plong|snorkel|diving|scuba/i.test(ctx)) {
+    suggestions.plage.push('Masque et tuba','Palmes','Combinaison néoprène','Lampe torche étanche','Carnet waterproof','Ordinateur de plongée','Bouteille de plongée');
+    suggestions.documents.push('Brevet de plongée (PADI/CMAS)','Carnet de plongée');
+    suggestions.sante.push('Médicaments anti-nausées','Gouttes auriculaires');
+    suggestions.electronique.push('GoPro / Caméra étanche');
   }
 
   // Montagne / randonnée
-  if (/vosges|alpes|montagne|ski|randonnée|trek/.test(dest + activites)) {
+  if (/vosges|alpes|montagne|ski|randon|trek|pyren/i.test(ctx)) {
     suggestions.vetements.push('Veste imperméable','Polaire','Bonnet','Gants','Chaussettes de randonnée','Chaussures de randonnée');
     suggestions.divers.push('Bâtons de randonnée','Carte IGN','Gourde','Lampe frontale');
     suggestions.sante.push('Crème solaire montagne','Protection lèvres');
   }
 
-  // Froid / hiver
-  if (/hiver|neige|ski/.test(dest + activites)) {
-    suggestions.vetements.push('Sous-vêtements thermiques','Écharpe','Chaussures imperméables');
+  // Froid / hiver / ski
+  if (/hiver|neige|ski|snowboard/i.test(ctx)) {
+    suggestions.vetements.push('Sous-vêtements thermiques','Écharpe','Chaussures imperméables','Masque de ski','Gants de ski');
+    suggestions.sante.push('Protège-lèvres SPF');
   }
 
   // Camping / chalet
-  if (/chalet|camping|glamping/.test(dest + activites)) {
-    suggestions.divers.push('Lampe de poche','Allume-feu','Couteau suisse','Gants de cuisine');
+  if (/chalet|camping|glamping|bivouac/i.test(ctx)) {
+    suggestions.divers.push('Lampe de poche','Allume-feu','Couteau suisse','Gants de cuisine','Sac de couchage');
   }
 
-  // Professionnel / salon
-  if (/interschutz|salon|conférence|professionnel|business/.test(dest + activites)) {
+  // Professionnel / salon / conférence
+  if (/interschutz|salon|conf.rence|professionnel|business|hannov/i.test(ctx)) {
     suggestions.vetements.push('Costume / Tenue professionnelle','Chemises','Chaussures habillées','Cravate');
     suggestions.divers.push('Cartes de visite','Bloc-notes','Stylo','Sac à dos professionnel');
     suggestions.electronique.push('Ordinateur portable','Souris sans fil','Chargeur laptop');
   }
 
   // Sport / activités
-  if (/sport|vélo|bike|tennis|golf/.test(activites)) {
+  if (/sport|v.lo|bike|tennis|golf|surf|kayak/i.test(ctx)) {
     suggestions.plage.push('Tenue de sport','Chaussures de sport');
   }
 
