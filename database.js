@@ -13,6 +13,8 @@ const FICHIERS = {
   reservations: path.join(DATA_DIR, 'reservations.json'),
   agenda:       path.join(DATA_DIR, 'agenda.json'),
   documents:    path.join(DATA_DIR, 'documents.json'),
+  participants: path.join(DATA_DIR, 'participants.json'),
+  depenses:     path.join(DATA_DIR, 'depenses.json'),
 };
 
 function charger(cle) {
@@ -57,6 +59,17 @@ const localDB = {
     getById: (id) => charger('documents').find(d => d.id === +id),
     create: (vid, data) => { const list = charger('documents'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('documents', list); return item; },
     delete: (id) => sauvegarder('documents', charger('documents').filter(d => d.id !== +id))
+  },
+  participants: {
+    getByVoyage: (vid) => charger('participants').filter(p => p.voyage_id === +vid),
+    create: (vid, data) => { const list = charger('participants'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('participants', list); return item; },
+    delete: (id) => { sauvegarder('participants', charger('participants').filter(p => p.id !== +id)); }
+  },
+  depenses: {
+    getByVoyage: (vid) => charger('depenses').filter(d => d.voyage_id === +vid).sort((a,b) => (b.date||'').localeCompare(a.date||'')),
+    create: (vid, data) => { const list = charger('depenses'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('depenses', list); return item; },
+    update: (id, data) => { const list = charger('depenses'); const idx = list.findIndex(d => d.id === +id); if (idx===-1) return false; list[idx] = { ...list[idx], ...data }; sauvegarder('depenses', list); return true; },
+    delete: (id) => sauvegarder('depenses', charger('depenses').filter(d => d.id !== +id))
   }
 };
 
@@ -93,6 +106,17 @@ if (USE_POSTGRES) {
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS lien TEXT;
     ALTER TABLE documents ADD COLUMN IF NOT EXISTS event_id INTEGER;
     ALTER TABLE voyages ADD COLUMN IF NOT EXISTS share_token TEXT UNIQUE;
+    CREATE TABLE IF NOT EXISTS participants (
+      id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
+      nom TEXT, couleur TEXT DEFAULT '#6366F1',
+      created_at TEXT DEFAULT now()::text
+    );
+    CREATE TABLE IF NOT EXISTS depenses (
+      id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
+      titre TEXT, montant NUMERIC(10,2), payeur_id INTEGER,
+      participants_ids TEXT, date TEXT, categorie TEXT DEFAULT 'autre',
+      created_at TEXT DEFAULT now()::text
+    );
   `).catch(console.error);
 }
 
@@ -124,6 +148,17 @@ const pgDB = pgPool ? {
     getById: async (id) => (await pgPool.query('SELECT * FROM documents WHERE id=$1', [id])).rows[0],
     create: async (vid, data) => (await pgPool.query('INSERT INTO documents(voyage_id,nom,type_fichier,taille,categorie,event_id,contenu) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id', [vid,data.nom,data.type_fichier,data.taille,data.categorie||'autre',data.event_id||null,data.contenu])).rows[0],
     delete: async (id) => pgPool.query('DELETE FROM documents WHERE id=$1', [id])
+  },
+  participants: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM participants WHERE voyage_id=$1 ORDER BY created_at ASC', [vid])).rows,
+    create: async (vid, data) => (await pgPool.query('INSERT INTO participants(voyage_id,nom,couleur) VALUES($1,$2,$3) RETURNING *', [vid,data.nom,data.couleur||'#6366F1'])).rows[0],
+    delete: async (id) => pgPool.query('DELETE FROM participants WHERE id=$1', [id])
+  },
+  depenses: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM depenses WHERE voyage_id=$1 ORDER BY date DESC NULLS LAST, created_at DESC', [vid])).rows,
+    create: async (vid, data) => (await pgPool.query('INSERT INTO depenses(voyage_id,titre,montant,payeur_id,participants_ids,date,categorie) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *', [vid,data.titre,data.montant,data.payeur_id,data.participants_ids,data.date,data.categorie||'autre'])).rows[0],
+    update: async (id, data) => { await pgPool.query('UPDATE depenses SET titre=$1,montant=$2,payeur_id=$3,participants_ids=$4,date=$5,categorie=$6 WHERE id=$7', [data.titre,data.montant,data.payeur_id,data.participants_ids,data.date,data.categorie,id]); return true; },
+    delete: async (id) => pgPool.query('DELETE FROM depenses WHERE id=$1', [id])
   }
 } : null;
 

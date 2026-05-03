@@ -66,6 +66,9 @@
     <button class="tab-btn" data-tab="documents" onclick="changerOnglet('documents', this)">
       <span class="tab-icon">📁</span><span>Documents</span>
     </button>
+    <button class="tab-btn" data-tab="budget" onclick="changerOnglet('budget', this)">
+      <span class="tab-icon">💰</span><span>Budget</span>
+    </button>
   </nav>
 
   <main class="main-content tabs-content">
@@ -121,6 +124,34 @@
         </button>
       </div>
       <div id="liste-documents"></div>
+    </div>
+
+    <!-- ONGLET BUDGET -->
+    <div id="tab-budget" class="tab-panel">
+      <!-- Participants -->
+      <div class="budget-section">
+        <div class="budget-section-header">
+          <span class="budget-section-title">👥 Participants</span>
+          <button class="btn-mini-add" onclick="ouvrirModalParticipant()">+ Ajouter</button>
+        </div>
+        <div id="liste-participants" class="participants-list"></div>
+      </div>
+      <!-- Actions -->
+      <div class="panel-actions" style="border-top:1px solid var(--border)">
+        <button class="btn-primary" onclick="ouvrirModalDepense()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Ajouter une dépense
+        </button>
+      </div>
+      <!-- Dépenses -->
+      <div id="liste-depenses"></div>
+      <!-- Bilan -->
+      <div class="budget-section" id="section-bilan" style="display:none">
+        <div class="budget-section-header">
+          <span class="budget-section-title">⚖️ Bilan — qui doit quoi</span>
+        </div>
+        <div id="bilan-content"></div>
+      </div>
     </div>
 
   </main>
@@ -353,6 +384,90 @@
     <button class="doc-viewer-close" onclick="fermerDocViewer()">✕ Fermer</button>
   </div>
   <iframe id="doc-viewer-frame" class="doc-viewer-frame" src=""></iframe>
+</div>
+
+<!-- ═══ MODAL PARTICIPANT ═══ -->
+<div id="modal-participant" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Ajouter un participant</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-participant')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>Prénom *</label>
+      <input type="text" id="p-nom" placeholder="Ex: Sandra">
+    </div>
+    <div class="form-group">
+      <label>Couleur</label>
+      <div class="color-picker">
+        <button type="button" class="color-opt active" data-color="#6366F1" style="background:#6366F1" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#10B981" style="background:#10B981" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#F59E0B" style="background:#F59E0B" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#EF4444" style="background:#EF4444" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#EC4899" style="background:#EC4899" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#14B8A6" style="background:#14B8A6" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#F97316" style="background:#F97316" onclick="choisirCouleurParticipant(this)"></button>
+      </div>
+      <input type="hidden" id="p-couleur" value="#6366F1">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fermerModal('modal-participant')">Annuler</button>
+      <button class="btn-primary" onclick="sauvegarderParticipant()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL DÉPENSE ═══ -->
+<div id="modal-depense" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-depense-titre">Nouvelle dépense</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-depense')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>Description *</label>
+      <input type="text" id="dep-titre" placeholder="Ex: Restaurant, Essence, Villa...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Montant (€) *</label>
+        <input type="number" id="dep-montant" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="dep-date">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <select id="dep-categorie">
+        <option value="hebergement">🏠 Hébergement</option>
+        <option value="transport">✈️ Transport</option>
+        <option value="restauration">🍽️ Restauration</option>
+        <option value="activite">🎯 Activité</option>
+        <option value="courses">🛒 Courses</option>
+        <option value="autre" selected>📦 Autre</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Payé par *</label>
+      <div id="dep-payeur-list" class="participants-selector"></div>
+    </div>
+    <div class="form-group">
+      <label>Partagé entre</label>
+      <div id="dep-participants-list" class="participants-selector"></div>
+      <p style="font-size:.72rem;color:var(--text-muted);margin-top:6px">Tous cochés = partage égal entre tout le monde</p>
+    </div>
+    <input type="hidden" id="dep-id">
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fermerModal('modal-depense')">Annuler</button>
+      <button class="btn-primary" onclick="sauvegarderDepense()">Enregistrer</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ MENU OPTIONS VOYAGE ═══ -->

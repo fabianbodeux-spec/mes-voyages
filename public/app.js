@@ -5,6 +5,7 @@
 const API = '';  // même origin
 let voyageActuel = null;
 let filtreActuel = 'tous';
+let participantsActuels = [];
 
 // ─── INIT ────────────────────────────────────────────
 
@@ -49,6 +50,7 @@ function changerOnglet(tab, btn) {
   if (tab === 'agenda') chargerAgenda();
   if (tab === 'carte') chargerCarte();
   if (tab === 'documents') chargerDocuments();
+  if (tab === 'budget') chargerBudget();
 }
 
 // ─── VOYAGES ─────────────────────────────────────────
@@ -560,6 +562,264 @@ function fermerDocViewer() {
   document.getElementById('modal-doc-viewer').classList.add('hidden');
   document.getElementById('doc-viewer-frame').src = '';
   document.body.style.overflow = '';
+}
+
+// ─── BUDGET ──────────────────────────────────────────
+
+async function chargerBudget() {
+  const [participants, depenses] = await Promise.all([
+    fetch(`${API}/api/voyages/${voyageActuel}/participants`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/depenses`).then(r => r.json())
+  ]);
+  participantsActuels = participants;
+  afficherParticipants(participants);
+  afficherDepenses(depenses, participants);
+  afficherBilan(depenses, participants);
+}
+
+function afficherParticipants(participants) {
+  const container = document.getElementById('liste-participants');
+  if (participants.length === 0) {
+    container.innerHTML = `<p style="font-size:.82rem;color:var(--text-muted);padding:8px 0">Ajoute les personnes du voyage pour partager les dépenses</p>`;
+    return;
+  }
+  container.innerHTML = `<div class="avatars-row">${participants.map(p => `
+    <div class="avatar-chip">
+      <div class="avatar" style="background:${p.couleur}">${p.nom[0].toUpperCase()}</div>
+      <span class="avatar-nom">${p.nom}</span>
+      <button class="avatar-del" onclick="supprimerParticipant(${p.id})" title="Supprimer">×</button>
+    </div>
+  `).join('')}</div>`;
+}
+
+function afficherDepenses(depenses, participants) {
+  const container = document.getElementById('liste-depenses');
+  const byId = {};
+  participants.forEach(p => { byId[p.id] = p; });
+
+  if (depenses.length === 0) {
+    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon">💸</div><p>Aucune dépense enregistrée</p></div>`;
+    return;
+  }
+
+  const total = depenses.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
+  const icones = { hebergement:'🏠', transport:'✈️', restauration:'🍽️', activite:'🎯', courses:'🛒', autre:'📦' };
+
+  container.innerHTML = `
+    <div class="budget-total-bar">
+      <span class="budget-total-label">Total dépenses</span>
+      <span class="budget-total-amount">${total.toFixed(2)} €</span>
+    </div>
+    <div style="padding:0 16px 12px;display:flex;flex-direction:column;gap:8px">
+      ${depenses.map(d => {
+        const payeur = byId[d.payeur_id];
+        const parts = JSON.parse(d.participants_ids || '[]');
+        const share = parts.length > 0 ? (parseFloat(d.montant) / parts.length).toFixed(2) : '—';
+        return `
+        <div class="depense-card">
+          <div class="depense-cat">${icones[d.categorie] || '📦'}</div>
+          <div class="depense-body">
+            <div class="depense-titre">${d.titre}</div>
+            <div class="depense-meta">
+              ${d.date ? `<span>${formatDate(d.date)}</span>` : ''}
+              ${payeur ? `<span style="display:inline-flex;align-items:center;gap:4px"><span class="avatar-xs" style="background:${payeur.couleur}">${payeur.nom[0]}</span>${payeur.nom} a payé</span>` : ''}
+              <span>${parts.length} pers. · ${share}€/pers.</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span class="depense-montant">${parseFloat(d.montant).toFixed(2)}€</span>
+            <div style="display:flex;gap:4px">
+              <button class="btn-mini btn-mini-edit" onclick="modifierDepense(${d.id})">✏️</button>
+              <button class="btn-mini btn-mini-del" onclick="supprimerDepense(${d.id})">🗑️</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function afficherBilan(depenses, participants) {
+  const section = document.getElementById('section-bilan');
+  const container = document.getElementById('bilan-content');
+  if (participants.length < 2 || depenses.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  const byId = {};
+  participants.forEach(p => { byId[p.id] = p; });
+
+  // Calculer les soldes nets
+  const net = {};
+  participants.forEach(p => { net[p.id] = 0; });
+
+  depenses.forEach(d => {
+    const parts = JSON.parse(d.participants_ids || '[]');
+    if (!parts.length) return;
+    const share = parseFloat(d.montant) / parts.length;
+    parts.forEach(pid => {
+      if (+pid !== +d.payeur_id) {
+        net[d.payeur_id] = (net[d.payeur_id] || 0) + share;
+        net[pid] = (net[pid] || 0) - share;
+      }
+    });
+  });
+
+  // Simplifier les dettes
+  const transactions = [];
+  const debtors = participants.filter(p => net[p.id] < -0.01).map(p => ({ ...p, solde: net[p.id] })).sort((a,b) => a.solde - b.solde);
+  const creditors = participants.filter(p => net[p.id] > 0.01).map(p => ({ ...p, solde: net[p.id] })).sort((a,b) => b.solde - a.solde);
+
+  let i = 0, j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const d = debtors[i], c = creditors[j];
+    const amount = Math.min(-net[d.id], net[c.id]);
+    if (amount > 0.01) transactions.push({ from: d, to: c, amount: Math.round(amount * 100) / 100 });
+    net[d.id] += amount;
+    net[c.id] -= amount;
+    if (Math.abs(net[d.id]) < 0.01) i++;
+    if (Math.abs(net[c.id]) < 0.01) j++;
+  }
+
+  if (transactions.length === 0) {
+    container.innerHTML = `<div class="bilan-ok">✅ Tout est équilibré !</div>`;
+    return;
+  }
+
+  container.innerHTML = `<div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
+    ${transactions.map(t => `
+      <div class="bilan-transaction">
+        <div class="bilan-from">
+          <div class="avatar" style="background:${t.from.couleur}">${t.from.nom[0]}</div>
+          <span>${t.from.nom}</span>
+        </div>
+        <div class="bilan-arrow">
+          <span class="bilan-amount">${t.amount.toFixed(2)} €</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+        </div>
+        <div class="bilan-to">
+          <div class="avatar" style="background:${t.to.couleur}">${t.to.nom[0]}</div>
+          <span>${t.to.nom}</span>
+        </div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+function ouvrirModalParticipant() {
+  document.getElementById('p-nom').value = '';
+  document.getElementById('p-couleur').value = '#6366F1';
+  document.querySelectorAll('#modal-participant .color-opt').forEach((el,i) => el.classList.toggle('active', i === 0));
+  document.getElementById('modal-participant').classList.remove('hidden');
+  setTimeout(() => document.getElementById('p-nom').focus(), 300);
+}
+
+function choisirCouleurParticipant(btn) {
+  document.querySelectorAll('#modal-participant .color-opt').forEach(el => el.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('p-couleur').value = btn.dataset.color;
+}
+
+async function sauvegarderParticipant() {
+  const nom = document.getElementById('p-nom').value.trim();
+  if (!nom) { toast('⚠️ Entre un prénom'); return; }
+  await fetch(`${API}/api/voyages/${voyageActuel}/participants`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nom, couleur: document.getElementById('p-couleur').value })
+  });
+  fermerModal('modal-participant');
+  toast('✅ Participant ajouté');
+  chargerBudget();
+}
+
+async function supprimerParticipant(id) {
+  if (!confirm('Supprimer ce participant ?')) return;
+  await fetch(`${API}/api/participants/${id}`, { method: 'DELETE' });
+  toast('🗑️ Participant supprimé');
+  chargerBudget();
+}
+
+async function ouvrirModalDepense(id = null) {
+  document.getElementById('modal-depense-titre').textContent = id ? 'Modifier la dépense' : 'Nouvelle dépense';
+  document.getElementById('dep-id').value = id || '';
+  document.getElementById('dep-date').value = new Date().toISOString().split('T')[0];
+
+  const participants = participantsActuels;
+  if (participants.length === 0) {
+    toast('⚠️ Ajoute d\'abord les participants');
+    return;
+  }
+
+  // Remplir les sélecteurs
+  document.getElementById('dep-payeur-list').innerHTML = participants.map((p, i) => `
+    <label class="participant-radio">
+      <input type="radio" name="dep-payeur" value="${p.id}" ${i === 0 ? 'checked' : ''}>
+      <div class="avatar" style="background:${p.couleur}">${p.nom[0].toUpperCase()}</div>
+      <span>${p.nom}</span>
+    </label>
+  `).join('');
+
+  document.getElementById('dep-participants-list').innerHTML = participants.map(p => `
+    <label class="participant-check">
+      <input type="checkbox" name="dep-part" value="${p.id}" checked>
+      <div class="avatar" style="background:${p.couleur}">${p.nom[0].toUpperCase()}</div>
+      <span>${p.nom}</span>
+    </label>
+  `).join('');
+
+  if (!id) {
+    document.getElementById('dep-titre').value = '';
+    document.getElementById('dep-montant').value = '';
+    document.getElementById('dep-categorie').value = 'autre';
+  } else {
+    const dep = await fetch(`${API}/api/voyages/${voyageActuel}/depenses`).then(r => r.json()).then(list => list.find(d => d.id === id));
+    if (dep) {
+      document.getElementById('dep-titre').value = dep.titre;
+      document.getElementById('dep-montant').value = dep.montant;
+      document.getElementById('dep-date').value = dep.date || '';
+      document.getElementById('dep-categorie').value = dep.categorie || 'autre';
+      const parts = JSON.parse(dep.participants_ids || '[]').map(Number);
+      document.querySelectorAll('[name="dep-payeur"]').forEach(el => { el.checked = +el.value === +dep.payeur_id; });
+      document.querySelectorAll('[name="dep-part"]').forEach(el => { el.checked = parts.includes(+el.value); });
+    }
+  }
+
+  document.getElementById('modal-depense').classList.remove('hidden');
+}
+
+async function modifierDepense(id) { await ouvrirModalDepense(id); }
+
+async function sauvegarderDepense() {
+  const titre = document.getElementById('dep-titre').value.trim();
+  const montant = parseFloat(document.getElementById('dep-montant').value);
+  const payeurEl = document.querySelector('[name="dep-payeur"]:checked');
+  if (!titre || isNaN(montant) || montant <= 0 || !payeurEl) { toast('⚠️ Remplis tous les champs obligatoires'); return; }
+
+  const participants_ids = JSON.stringify(
+    [...document.querySelectorAll('[name="dep-part"]:checked')].map(el => +el.value)
+  );
+
+  const data = {
+    titre, montant,
+    payeur_id: +payeurEl.value,
+    participants_ids,
+    date: document.getElementById('dep-date').value,
+    categorie: document.getElementById('dep-categorie').value
+  };
+
+  const id = document.getElementById('dep-id').value;
+  const url = id ? `${API}/api/depenses/${id}` : `${API}/api/voyages/${voyageActuel}/depenses`;
+  const method = id ? 'PUT' : 'POST';
+  await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+
+  fermerModal('modal-depense');
+  toast(id ? '✅ Dépense modifiée' : '✅ Dépense ajoutée');
+  chargerBudget();
+}
+
+async function supprimerDepense(id) {
+  if (!confirm('Supprimer cette dépense ?')) return;
+  await fetch(`${API}/api/depenses/${id}`, { method: 'DELETE' });
+  toast('🗑️ Dépense supprimée');
+  chargerBudget();
 }
 
 // ─── MODALS & BOTTOM SHEET ───────────────────────────

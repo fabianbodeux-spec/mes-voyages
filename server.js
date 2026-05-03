@@ -136,6 +136,45 @@ app.delete('/api/documents/:id', async (req, res) => {
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
+// ─── PARTICIPANTS ──────────────────────────────────────────────────────────
+
+app.get('/api/voyages/:id/participants', async (req, res) => {
+  try { res.json(await run(() => db.participants.getByVoyage(req.params.id))); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.post('/api/voyages/:id/participants', async (req, res) => {
+  try { const item = await run(() => db.participants.create(req.params.id, req.body)); res.json({ id: item.id }); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.delete('/api/participants/:id', async (req, res) => {
+  try { await run(() => db.participants.delete(req.params.id)); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
+// ─── DÉPENSES ──────────────────────────────────────────────────────────────
+
+app.get('/api/voyages/:id/depenses', async (req, res) => {
+  try { res.json(await run(() => db.depenses.getByVoyage(req.params.id))); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.post('/api/voyages/:id/depenses', async (req, res) => {
+  try { const item = await run(() => db.depenses.create(req.params.id, req.body)); res.json({ id: item.id }); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.put('/api/depenses/:id', async (req, res) => {
+  try { await run(() => db.depenses.update(req.params.id, req.body)); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.delete('/api/depenses/:id', async (req, res) => {
+  try { await run(() => db.depenses.delete(req.params.id)); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
 // ─── PARTAGE ────────────────────────────────────────────────────────────────
 
 function genererToken() {
@@ -163,11 +202,13 @@ app.get('/api/partage/:token', async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
-    const [reservations, agenda] = await Promise.all([
+    const [reservations, agenda, participants, depenses] = await Promise.all([
       run(() => db.reservations.getByVoyage(voyage.id)),
-      run(() => db.agenda.getByVoyage(voyage.id))
+      run(() => db.agenda.getByVoyage(voyage.id)),
+      run(() => db.participants.getByVoyage(voyage.id)),
+      run(() => db.depenses.getByVoyage(voyage.id))
     ]);
-    res.json({ voyage, reservations, agenda });
+    res.json({ voyage, reservations, agenda, participants, depenses });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
