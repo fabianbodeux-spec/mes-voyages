@@ -115,6 +115,7 @@ app.post('/api/voyages/:id/documents', upload.single('fichier'), async (req, res
       taille: req.file.size,
       categorie: req.body.categorie || 'autre',
       event_id: req.body.event_id ? parseInt(req.body.event_id) : null,
+      reservation_id: req.body.reservation_id ? parseInt(req.body.reservation_id) : null,
       contenu: req.file.buffer.toString('base64')
     }));
     res.json({ id: item.id });

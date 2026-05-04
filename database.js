@@ -109,11 +109,12 @@ if (USE_POSTGRES) {
     CREATE TABLE IF NOT EXISTS documents (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, nom TEXT,
       type_fichier TEXT, taille INTEGER, categorie TEXT DEFAULT 'autre',
-      event_id INTEGER, contenu TEXT, created_at TEXT DEFAULT now()::text
+      event_id INTEGER, reservation_id INTEGER, contenu TEXT, created_at TEXT DEFAULT now()::text
     );
     ALTER TABLE agenda ADD COLUMN IF NOT EXISTS lien TEXT;
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS lien TEXT;
     ALTER TABLE documents ADD COLUMN IF NOT EXISTS event_id INTEGER;
+    ALTER TABLE documents ADD COLUMN IF NOT EXISTS reservation_id INTEGER;
     ALTER TABLE voyages ADD COLUMN IF NOT EXISTS share_token TEXT UNIQUE;
     CREATE TABLE IF NOT EXISTS participants (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
@@ -158,9 +159,9 @@ const pgDB = pgPool ? {
     delete: async (id) => pgPool.query('DELETE FROM agenda WHERE id=$1', [id])
   },
   documents: {
-    getByVoyage: async (vid) => (await pgPool.query('SELECT id,voyage_id,nom,type_fichier,taille,categorie,event_id,created_at FROM documents WHERE voyage_id=$1 ORDER BY created_at DESC', [vid])).rows,
+    getByVoyage: async (vid) => (await pgPool.query('SELECT id,voyage_id,nom,type_fichier,taille,categorie,event_id,reservation_id,created_at FROM documents WHERE voyage_id=$1 ORDER BY created_at DESC', [vid])).rows,
     getById: async (id) => (await pgPool.query('SELECT * FROM documents WHERE id=$1', [id])).rows[0],
-    create: async (vid, data) => (await pgPool.query('INSERT INTO documents(voyage_id,nom,type_fichier,taille,categorie,event_id,contenu) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id', [vid,data.nom,data.type_fichier,data.taille,data.categorie||'autre',data.event_id||null,data.contenu])).rows[0],
+    create: async (vid, data) => (await pgPool.query('INSERT INTO documents(voyage_id,nom,type_fichier,taille,categorie,event_id,reservation_id,contenu) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id', [vid,data.nom,data.type_fichier,data.taille,data.categorie||'autre',data.event_id||null,data.reservation_id||null,data.contenu])).rows[0],
     delete: async (id) => pgPool.query('DELETE FROM documents WHERE id=$1', [id])
   },
   participants: {

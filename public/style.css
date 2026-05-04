@@ -689,6 +689,42 @@ body {
   font-weight: 600;
 }
 
+/* Documents liés dans une réservation */
+.resa-docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.resa-doc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: var(--accent-light);
+  border: 1px solid rgba(201,98,47,0.18);
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent-dark);
+  cursor: pointer;
+  transition: all 0.15s;
+  max-width: 200px;
+}
+.resa-doc-badge span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.resa-doc-badge:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
 .resa-actions { display: flex; gap: 6px; align-self: flex-start; }
 .btn-mini {
   width: 32px; height: 32px;

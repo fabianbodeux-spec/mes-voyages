@@ -290,11 +290,14 @@ async function supprimerVoyageActuel() {
 // ─── RÉSERVATIONS ─────────────────────────────────────
 
 async function chargerReservations() {
-  const reservations = await fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json());
-  afficherReservations(reservations, filtreActuel);
+  const [reservations, documents] = await Promise.all([
+    fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json())
+  ]);
+  afficherReservations(reservations, filtreActuel, documents);
 }
 
-function afficherReservations(reservations, filtre) {
+function afficherReservations(reservations, filtre, documents = []) {
   const container = document.getElementById('liste-reservations');
   const filtered = filtre === 'tous' ? reservations : reservations.filter(r => r.type === filtre);
 
@@ -315,14 +318,21 @@ function afficherReservations(reservations, filtre) {
     Object.entries(grouped).map(([date, items]) => `
       <div style="margin-bottom:4px">
         ${date !== 'Sans date' ? `<p style="font-size:0.78rem;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">${formatDate(date)}</p>` : ''}
-        ${items.map(r => renderResa(r)).join('')}
+        ${items.map(r => renderResa(r, documents.filter(d => d.reservation_id == r.id))).join('')}
       </div>
     `).join('')
   }</div>`;
 }
 
-function renderResa(r) {
+function renderResa(r, docs = []) {
   const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
+  const docsHtml = docs.length ? `
+    <div class="resa-docs">
+      ${docs.map(d => `
+        <button class="resa-doc-badge" onclick="ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g,'')}\`)" title="Ouvrir ${d.nom}">
+          ${getDocIcon(d.type_fichier)} <span>${d.nom}</span>
+        </button>`).join('')}
+    </div>` : '';
   return `
   <div class="resa-card">
     <div class="resa-card-inner">
@@ -337,6 +347,7 @@ function renderResa(r) {
         ${r.numero_confirmation ? `<div class="resa-confirmation">📋 ${r.numero_confirmation}</div>` : ''}
         ${r.notes ? `<p style="font-size:.75rem;color:var(--text-muted);margin-top:6px;line-height:1.5">${r.notes}</p>` : ''}
         ${r.lien ? `<a href="${r.lien}" target="_blank" rel="noopener" class="agenda-lien" style="margin-top:7px">🔗 Ouvrir la réservation</a>` : ''}
+        ${docsHtml}
       </div>
       <div class="resa-actions">
         <button class="btn-mini btn-mini-edit" onclick="modifierReservation(${r.id})" title="Modifier">✏️</button>
@@ -570,9 +581,10 @@ function ouvrirLieu(lieu) {
 // ─── DOCUMENTS ───────────────────────────────────────
 
 async function chargerDocuments() {
-  const [docs, events] = await Promise.all([
+  const [docs, events, reservations] = await Promise.all([
     fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json()),
-    fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json())
+    fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json())
   ]);
   const container = document.getElementById('liste-documents');
 
@@ -581,9 +593,13 @@ async function chargerDocuments() {
     return;
   }
 
-  // Index des événements par id
+  // Index des événements et réservations par id
   const eventsById = {};
   events.forEach(ev => { eventsById[ev.id] = ev; });
+  const resaById = {};
+  reservations.forEach(r => { resaById[r.id] = r; });
+
+  const iconeResa = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
 
   // Grouper par catégorie
   const categories = { transport: [], hebergement: [], vehicule: [], activite: [], autre: [] };
@@ -598,14 +614,18 @@ async function chargerDocuments() {
         <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);padding:10px 16px 6px;text-transform:uppercase;letter-spacing:.05em">${labels[cat]}</div>
         <div class="docs-list" style="padding-top:0">
           ${items.map(d => {
-            const ev = d.event_id ? eventsById[d.event_id] : null;
+            const ev   = d.event_id       ? eventsById[d.event_id] : null;
+            const resa = d.reservation_id ? resaById[d.reservation_id] : null;
+            let lienHtml = '';
+            if (resa) lienHtml = `<div class="doc-event-link">${iconeResa[resa.type] || '📌'} ${resa.titre}</div>`;
+            else if (ev) lienHtml = `<div class="doc-event-link">📅 ${ev.titre}</div>`;
             return `
             <div class="doc-card">
               <span class="doc-icon">${getDocIcon(d.type_fichier)}</span>
               <div class="doc-body">
                 <div class="doc-nom">${d.nom}</div>
                 <div class="doc-meta">${formatTaille(d.taille)} · ${formatDate(d.created_at?.split('T')[0])}</div>
-                ${ev ? `<div class="doc-event-link">📅 ${ev.titre}</div>` : ''}
+                ${lienHtml}
               </div>
               <div class="doc-actions">
                 <button class="btn-mini btn-mini-edit" onclick="ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g, '')}\`)" title="Ouvrir">👁️</button>
@@ -622,19 +642,44 @@ async function ouvrirModalDocument() {
   document.getElementById('doc-filename').textContent = '';
   document.getElementById('upload-doc-input').value = '';
   document.getElementById('doc-type').value = 'transport';
+  document.getElementById('doc-event').value = '';
+  document.getElementById('doc-reservation-id').value = '';
   document.querySelectorAll('[data-doctype]').forEach((el, i) => el.classList.toggle('active', i === 0));
 
-  // Charger les événements de l'agenda pour le sélecteur
-  const select = document.getElementById('doc-event');
-  select.innerHTML = '<option value="">— Aucun événement —</option>';
+  // Sélecteur unifié : réservations + agenda
+  const select = document.getElementById('doc-lien-select');
+  select.innerHTML = '<option value="">— Non lié —</option>';
   try {
-    const events = await fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json());
-    events.forEach(ev => {
-      const opt = document.createElement('option');
-      opt.value = ev.id;
-      opt.textContent = `${ev.date ? formatDate(ev.date) : ''} — ${ev.titre}`;
-      select.appendChild(opt);
-    });
+    const [reservations, events] = await Promise.all([
+      fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
+      fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json())
+    ]);
+
+    const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
+
+    if (reservations.length > 0) {
+      const grp = document.createElement('optgroup');
+      grp.label = '── Réservations ──';
+      reservations.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = `resa:${r.id}`;
+        opt.textContent = `${icones[r.type] || '📌'} ${r.titre}`;
+        grp.appendChild(opt);
+      });
+      select.appendChild(grp);
+    }
+
+    if (events.length > 0) {
+      const grp = document.createElement('optgroup');
+      grp.label = '── Agenda ──';
+      events.forEach(ev => {
+        const opt = document.createElement('option');
+        opt.value = `event:${ev.id}`;
+        opt.textContent = `📅 ${ev.date ? formatDate(ev.date) + ' — ' : ''}${ev.titre}`;
+        grp.appendChild(opt);
+      });
+      select.appendChild(grp);
+    }
   } catch(e) {}
 
   document.getElementById('modal-document').classList.remove('hidden');
@@ -655,8 +700,14 @@ async function uploaderDocument(input) {
   const formData = new FormData();
   formData.append('fichier', file);
   formData.append('categorie', document.getElementById('doc-type').value);
-  const eventId = document.getElementById('doc-event').value;
-  if (eventId) formData.append('event_id', eventId);
+
+  // Décoder la valeur du sélecteur unifié (resa:id ou event:id)
+  const lienVal = document.getElementById('doc-lien-select').value;
+  if (lienVal.startsWith('resa:')) {
+    formData.append('reservation_id', lienVal.split(':')[1]);
+  } else if (lienVal.startsWith('event:')) {
+    formData.append('event_id', lienVal.split(':')[1]);
+  }
 
   const resp = await fetch(`${API}/api/voyages/${voyageActuel}/documents`, { method: 'POST', body: formData });
   if (resp.ok) {
