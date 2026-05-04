@@ -217,6 +217,69 @@
     }
     .header-id-badge:hover { background: var(--accent); color: white; }
 
+    /* ── Dashboard Accueil ── */
+    .dash-hero { padding: 24px 16px 20px; color: #fff; border-radius: 0; position: relative; overflow: hidden; }
+    .dash-hero::after { content:''; position:absolute;inset:0;background:radial-gradient(ellipse at top right,rgba(255,255,255,.12) 0%,transparent 60%);pointer-events:none; }
+    .dash-hero-upcoming { background: linear-gradient(135deg,#1E3A6E,#2563EB); }
+    .dash-hero-ongoing  { background: linear-gradient(135deg,#065F46,#059669); }
+    .dash-hero-past     { background: linear-gradient(135deg,#374151,#6B7280); }
+    .dash-hero-eyebrow  { font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85;margin-bottom:5px; }
+    .dash-hero-days     { font-family:var(--font-display);font-size:2.2rem;font-weight:700;line-height:1.1;margin-bottom:6px; }
+    .dash-hero-dest     { font-size:.92rem;opacity:.9;margin-bottom:3px; }
+    .dash-hero-period   { font-size:.76rem;opacity:.72; }
+
+    .dash-stats-grid    { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px; }
+    .dash-stat-card     { background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 10px;text-align:center; }
+    .dash-stat-value    { font-family:var(--font-display);font-size:1.7rem;font-weight:700;color:var(--accent);line-height:1;margin-bottom:3px; }
+    .dash-stat-label    { font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted); }
+    .dash-stat-bar      { margin-top:6px;height:4px;border-radius:2px;background:var(--border-solid);overflow:hidden; }
+    .dash-stat-bar-fill { height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent),#E8943A);transition:width .5s; }
+
+    .dash-section-title { font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:4px 12px 6px; }
+
+    .dash-next-card  { margin:0 12px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px; }
+    .dash-next-icon  { font-size:1.6rem;flex-shrink:0; }
+    .dash-next-body  { flex:1;min-width:0; }
+    .dash-next-titre { font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .dash-next-date  { font-size:.76rem;color:var(--accent);font-weight:600;margin-top:2px; }
+    .dash-next-lieu  { font-size:.73rem;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+
+    .dash-weather-card  { margin:0 12px 12px;background:var(--card);border-radius:12px;padding:12px;overflow:hidden; }
+    .dash-weather-loc   { font-size:.74rem;font-weight:700;color:var(--text-muted);margin-bottom:10px; }
+    .dash-weather-row   { display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none; }
+    .dash-weather-row::-webkit-scrollbar { display:none; }
+    .dash-forecast-day  { flex:0 0 auto;min-width:48px;background:var(--bg);border-radius:9px;padding:7px 3px;text-align:center; }
+    .dash-forecast-label { font-size:.62rem;font-weight:700;color:var(--text-muted);margin-bottom:3px; }
+    .dash-forecast-emoji { font-size:1.3rem;line-height:1;margin-bottom:3px; }
+    .dash-forecast-temps { display:flex;gap:2px;justify-content:center;font-size:.68rem;font-weight:600; }
+    .dash-tmax { color:var(--accent); }
+    .dash-tmin { color:var(--text-muted); }
+    .dash-forecast-rain { font-size:.58rem;color:#3B82F6;margin-top:1px; }
+    .dash-notes { margin:0 12px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:.84rem;line-height:1.5;color:var(--text-muted);white-space:pre-wrap; }
+
+    /* ── Programme timeline ── */
+    .prog-day { margin-bottom: 0; }
+    .prog-day-past { opacity: .7; }
+    .prog-day-header { display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px 7px;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:88px;z-index:5; }
+    .prog-day-date  { font-weight:700;font-size:.86rem; }
+    .prog-day-num   { font-size:.68rem;font-weight:700;color:var(--accent);background:var(--accent-light);padding:2px 7px;border-radius:20px; }
+    .prog-items     { padding:8px 12px 4px;display:flex;flex-direction:column; }
+    .prog-item      { display:flex;gap:8px;min-height:54px; }
+    .prog-spine     { display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0;padding-top:8px; }
+    .prog-dot       { width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);flex-shrink:0;position:relative;z-index:1; }
+    .prog-line      { width:2px;flex:1;margin-top:3px;border-radius:1px;min-height:20px; }
+    .prog-card      { flex:1;min-width:0;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px; }
+    .prog-card-top  { display:flex;align-items:flex-start;gap:8px;padding:10px; }
+    .prog-icon      { font-size:1.3rem;flex-shrink:0;margin-top:1px; }
+    .prog-card-body { flex:1;min-width:0; }
+    .prog-titre     { font-weight:700;font-size:.86rem;margin-bottom:2px; }
+    .prog-heure     { font-size:.72rem;font-weight:600;color:var(--accent); }
+    .prog-lieu      { font-size:.74rem;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .prog-desc      { font-size:.74rem;color:var(--text-muted);margin-top:2px;line-height:1.4; }
+    .prog-badge     { font-size:.58rem;font-weight:700;padding:2px 6px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:2px; }
+    .prog-badge-resa   { background:#EFF6FF;color:#1D4ED8; }
+    .prog-badge-agenda { background:#F0FDF4;color:#15803D; }
+
     /* ── Dark mode ── */
     @media (prefers-color-scheme: dark) {
       :root { --bg:#1C1712; --card:#261F18; --text:#F5F0E6; --text-muted:#9B8B7A; --border:rgba(255,200,150,.09); --border-solid:#3A3028; --accent-light:#3A2010; }
@@ -228,6 +291,14 @@
       .add-input { background: var(--bg); }
       .id-banner { background: #0D2B1A; border-color: #166534; }
       .id-banner-nom { color: #4ADE80; }
+      .dash-stat-card  { background: var(--card); }
+      .dash-next-card  { background: var(--card); }
+      .dash-weather-card { background: var(--card); }
+      .dash-forecast-day { background: var(--bg); }
+      .dash-notes      { background: var(--card); }
+      .prog-card       { background: var(--card); }
+      .prog-badge-resa   { background:#1A2540;color:#93BFFF; }
+      .prog-badge-agenda { background:#1A2B1A;color:#6EE7A0; }
     }
   </style>
 </head>
@@ -245,8 +316,9 @@
 
 <div class="tab-nav" id="tab-nav" style="display:none">
   <div class="tab-nav-inner">
-    <button class="tab-btn active" onclick="afficherOnglet('reservations',this)"><span class="tab-icon">🎫</span>Réservations</button>
-    <button class="tab-btn" onclick="afficherOnglet('agenda',this)"><span class="tab-icon">📅</span>Agenda</button>
+    <button class="tab-btn active" onclick="afficherOnglet('accueil',this)"><span class="tab-icon">🏠</span>Accueil</button>
+    <button class="tab-btn" onclick="afficherOnglet('reservations',this)"><span class="tab-icon">🎫</span>Réservations</button>
+    <button class="tab-btn" onclick="afficherOnglet('programme',this)"><span class="tab-icon">📆</span>Programme</button>
     <button class="tab-btn" onclick="afficherOnglet('carte',this)"><span class="tab-icon">🗺️</span>Carte</button>
     <button class="tab-btn" onclick="afficherOnglet('budget',this)"><span class="tab-icon">💰</span>Budget</button>
     <button class="tab-btn" onclick="afficherOnglet('bagages',this)"><span class="tab-icon">🧳</span>Bagages</button>
@@ -399,16 +471,18 @@ function mettreAJourHeaderId() {
 
 function lancerApplication() {
   document.getElementById('content').innerHTML = `
-    <div id="panel-reservations" class="panel active"></div>
-    <div id="panel-agenda"       class="panel"></div>
+    <div id="panel-accueil"      class="panel active"></div>
+    <div id="panel-reservations" class="panel"></div>
+    <div id="panel-programme"    class="panel"></div>
     <div id="panel-carte"        class="panel"></div>
     <div id="panel-budget"       class="panel"></div>
     <div id="panel-bagages"      class="panel"></div>
   `;
   document.getElementById('tab-nav').style.display = '';
 
+  afficherAccueil();
   afficherReservations();
-  afficherAgenda();
+  afficherProgramme();
   afficherCarte();
   afficherBudget();
   afficherBagages();
@@ -427,6 +501,155 @@ function toast(msg) {
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2400);
+}
+
+/* ═══════════════════════════════════════════════
+   DASHBOARD ACCUEIL
+   ═══════════════════════════════════════════════ */
+function afficherAccueil() {
+  const c = document.getElementById('panel-accueil');
+  const voyage = data.voyage;
+  const resas  = data.reservations || [];
+  const bagages = data.bagages || [];
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const debut = voyage.date_debut ? new Date(voyage.date_debut + 'T00:00:00') : null;
+  const fin   = voyage.date_fin   ? new Date(voyage.date_fin   + 'T00:00:00') : null;
+  const fmt = d => d ? new Date(d+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short',year:'numeric'}) : '';
+
+  // Statut
+  let heroClass = 'upcoming', heroLabel = '', heroDays = '';
+  if (!debut) {
+    heroClass = 'past'; heroLabel = 'À planifier';
+  } else if (debut > today) {
+    const diff = Math.ceil((debut - today) / 86400000);
+    heroClass = 'upcoming';
+    heroLabel = '🗓️ Départ dans';
+    heroDays  = diff + ' jour' + (diff > 1 ? 's' : '');
+  } else if (fin && fin < today) {
+    const diff = Math.ceil((today - fin) / 86400000);
+    heroClass = 'past';
+    heroLabel = 'Voyage terminé';
+    heroDays  = 'il y a ' + diff + ' jour' + (diff > 1 ? 's' : '');
+  } else {
+    const totalDays = fin ? Math.round((fin - debut) / 86400000) + 1 : null;
+    const jourN = Math.round((today - debut) / 86400000) + 1;
+    heroClass = 'ongoing';
+    heroLabel = '🌍 En cours';
+    heroDays  = totalDays ? 'Jour ' + jourN + ' / ' + totalDays : 'Jour ' + jourN;
+  }
+
+  // Stats bagages
+  const bagTotal  = bagages.length;
+  const bagCoches = bagages.filter(b => b.checked).length;
+  const bagPct    = bagTotal > 0 ? Math.round(bagCoches / bagTotal * 100) : 0;
+
+  // Prochaine réservation
+  const todayStr = today.toISOString().split('T')[0];
+  const prochaine = resas
+    .filter(r => r.date_debut && r.date_debut >= todayStr)
+    .sort((a,b) => a.date_debut < b.date_debut ? -1 : 1)[0] || null;
+
+  const resaIcons = {transport:'✈️',hebergement:'🏠',vehicule:'🚗',activite:'🎯',restaurant:'🍽️'};
+  const period = (debut ? fmt(voyage.date_debut) : '') + (fin ? ' → ' + fmt(voyage.date_fin) : '');
+
+  c.innerHTML = `
+    <div class="dash-hero dash-hero-${heroClass}">
+      <div class="dash-hero-eyebrow">${heroLabel}</div>
+      <div class="dash-hero-days">${heroDays}</div>
+      <div class="dash-hero-dest">📍 ${voyage.destination || voyage.nom}</div>
+      ${period ? `<div class="dash-hero-period">${period}</div>` : ''}
+    </div>
+
+    <div class="dash-stats-grid">
+      <div class="dash-stat-card">
+        <div class="dash-stat-value">${resas.length}</div>
+        <div class="dash-stat-label">Réservations</div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-value">${bagPct}<span style="font-size:1rem">%</span></div>
+        <div class="dash-stat-label">Bagages prêts</div>
+        <div class="dash-stat-bar"><div class="dash-stat-bar-fill" style="width:${bagPct}%"></div></div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-value">${bagCoches}<span style="font-size:.85rem;color:var(--text-muted)">/${bagTotal}</span></div>
+        <div class="dash-stat-label">Articles cochés</div>
+      </div>
+    </div>
+
+    ${prochaine ? `
+    <div class="dash-section-title">🎫 Prochaine réservation</div>
+    <div class="dash-next-card">
+      <div class="dash-next-icon">${resaIcons[prochaine.type]||'📌'}</div>
+      <div class="dash-next-body">
+        <div class="dash-next-titre">${prochaine.titre}</div>
+        <div class="dash-next-date">${fmt(prochaine.date_debut)}${prochaine.heure_debut ? ' · ' + prochaine.heure_debut : ''}</div>
+        ${prochaine.adresse ? `<div class="dash-next-lieu">📍 ${prochaine.adresse}</div>` : ''}
+        ${prochaine.lien ? `<a href="${prochaine.lien}" target="_blank" class="lien-btn" style="margin-top:6px">🔗 Voir</a>` : ''}
+      </div>
+    </div>` : ''}
+
+    <div class="dash-section-title">🌤️ Météo à destination</div>
+    <div id="dash-meteo-partage"><div style="padding:14px 0;color:var(--text-muted);font-size:.85rem">Chargement…</div></div>
+
+    ${voyage.description ? `
+    <div class="dash-section-title">📝 Notes</div>
+    <div class="dash-notes">${voyage.description}</div>` : ''}
+    <div style="height:20px"></div>
+  `;
+
+  chargerMeteoPartage(voyage.destination || voyage.nom);
+}
+
+async function chargerMeteoPartage(destination) {
+  const el = document.getElementById('dash-meteo-partage');
+  if (!el) return;
+  try {
+    const dest = (destination || '').split(',')[0].trim();
+    const geoRes = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(dest) + '&count=1&language=fr&format=json');
+    const geoData = await geoRes.json();
+    if (!geoData.results || !geoData.results.length) {
+      el.innerHTML = '<div style="padding:10px 0;color:var(--text-muted);font-size:.82rem">Météo indisponible</div>'; return;
+    }
+    const { latitude, longitude, name, country } = geoData.results[0];
+    const wtRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude='+latitude+'&longitude='+longitude+'&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7');
+    const wtData = await wtRes.json();
+    const d = wtData.daily;
+    const days = d.time.map((date,i) => ({date, code:d.weathercode[i], tmax:Math.round(d.temperature_2m_max[i]), tmin:Math.round(d.temperature_2m_min[i]), rain:d.precipitation_probability_max[i]}));
+    const dayNames = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    el.innerHTML = `
+      <div class="dash-weather-card">
+        <div class="dash-weather-loc">📍 ${name}, ${country}</div>
+        <div class="dash-weather-row">
+          ${days.map((day,i) => {
+            const dn = new Date(day.date+'T00:00:00');
+            const label = i === 0 ? 'Auj.' : dayNames[dn.getDay()];
+            return `<div class="dash-forecast-day">
+              <div class="dash-forecast-label">${label}</div>
+              <div class="dash-forecast-emoji">${wmoEmoji(day.code)}</div>
+              <div class="dash-forecast-temps"><span class="dash-tmax">${day.tmax}°</span><span class="dash-tmin">${day.tmin}°</span></div>
+              ${day.rain !== null ? `<div class="dash-forecast-rain">${day.rain}%</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = '<div style="padding:10px 0;color:var(--text-muted);font-size:.82rem">Météo temporairement indisponible</div>';
+  }
+}
+
+function wmoEmoji(code) {
+  if (code === 0)  return '☀️';
+  if (code <= 2)   return '⛅';
+  if (code <= 3)   return '☁️';
+  if (code <= 49)  return '🌫️';
+  if (code <= 59)  return '🌦️';
+  if (code <= 69)  return '🌧️';
+  if (code <= 79)  return '❄️';
+  if (code <= 82)  return '🌧️';
+  if (code <= 84)  return '🌨️';
+  if (code <= 94)  return '⛈️';
+  return '🌩️';
 }
 
 /* ═══════════════════════════════════════════════
@@ -464,36 +687,89 @@ function afficherReservations() {
 }
 
 /* ═══════════════════════════════════════════════
-   AGENDA
+   PROGRAMME (timeline fusionnée)
    ═══════════════════════════════════════════════ */
-function afficherAgenda() {
-  const c = document.getElementById('panel-agenda');
-  const items = data.agenda || [];
-  if (!items.length) { c.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p>Aucun événement planifié</p></div>'; return; }
+function afficherProgramme() {
+  const c = document.getElementById('panel-programme');
+  const evts  = data.agenda || [];
+  const resas = data.reservations || [];
+  const voyage = data.voyage;
 
-  const colors = {transport:'#3B82F6',hebergement:'#10B981',activite:'#C9622F',restaurant:'#EC4899',sport:'#F59E0B',libre:'#9CA3AF'};
-  const icons  = {transport:'✈️',hebergement:'🏠',activite:'🎯',restaurant:'🍽️',sport:'🏄',libre:'☀️'};
+  const items = [];
+  const resaColors = {transport:'#3B82F6',hebergement:'#10B981',vehicule:'#F59E0B',activite:'#8B5CF6',restaurant:'#EC4899'};
+  const agdColors  = {transport:'#3B82F6',hebergement:'#10B981',activite:'#C9622F',restaurant:'#EC4899',sport:'#F59E0B',libre:'#9CA3AF'};
+  const resaIcons  = {transport:'✈️',hebergement:'🏠',vehicule:'🚗',activite:'🎯',restaurant:'🍽️'};
+  const agdIcons   = {transport:'✈️',hebergement:'🏠',activite:'🎯',restaurant:'🍽️',sport:'🏄',libre:'☀️'};
+
+  evts.forEach(ev => {
+    if (!ev.date) return;
+    items.push({ date:ev.date, heure:ev.heure||null, titre:ev.titre, lieu:ev.lieu||null, description:ev.description||null, lien:ev.lien||null, source:'agenda', color:agdColors[ev.type]||'#C9622F', icon:agdIcons[ev.type]||'📌' });
+  });
+  resas.forEach(r => {
+    const date = r.date_debut || r.date;
+    if (!date) return;
+    items.push({ date, heure:r.heure_debut||null, titre:r.titre, lieu:r.adresse||r.lieu||null, description:r.notes||null, lien:r.lien||null, source:'resa', color:resaColors[r.type]||'#C9622F', icon:resaIcons[r.type]||'📌' });
+  });
+
+  if (!items.length) { c.innerHTML = '<div class="empty"><div class="empty-icon">📆</div><p>Aucun élément planifié</p></div>'; return; }
+
+  items.sort((a,b) => {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    const ha = a.heure||'99:99', hb = b.heure||'99:99';
+    return ha < hb ? -1 : 1;
+  });
+
   const grouped = {};
-  items.forEach(i=>{ if (!grouped[i.date]) grouped[i.date]=[]; grouped[i.date].push(i); });
-  const sorted = Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b));
+  items.forEach(it => { if (!grouped[it.date]) grouped[it.date]=[]; grouped[it.date].push(it); });
 
-  c.innerHTML = sorted.map(([date,evs])=>`
-    <div>
-      <div class="agenda-day-header">${new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'})}</div>
-      ${evs.map(ev=>`
-        <div class="agenda-item">
-          <span class="agenda-heure">${ev.heure||'--:--'}</span>
-          <div class="agenda-line" style="background:${colors[ev.type]||'#C9622F'}"></div>
-          <div class="agenda-content">
-            <div class="agenda-titre">${icons[ev.type]||'📌'} ${ev.titre}</div>
-            ${ev.lieu?`<div class="agenda-lieu">📍 ${ev.lieu}</div>`:''}
-            ${ev.description?`<div class="agenda-lieu">${ev.description}</div>`:''}
-            ${ev.lien?`<a href="${ev.lien}" target="_blank" class="lien-btn">🔗 Ouvrir le lien</a>`:''}
-          </div>
-        </div>
-      `).join('')}
-    </div>
-  `).join('');
+  const today = new Date().toISOString().split('T')[0];
+  const debut = voyage.date_debut;
+  const fin   = voyage.date_fin;
+  const totalDays = (debut && fin) ? Math.round((new Date(fin) - new Date(debut)) / 86400000) + 1 : null;
+  function jourNum(d) {
+    if (!debut) return null;
+    const n = Math.round((new Date(d) - new Date(debut)) / 86400000) + 1;
+    return n >= 1 ? n : null;
+  }
+
+  c.innerHTML = Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)).map(([date,dayItems]) => {
+    const isToday = date === today;
+    const isPast  = date < today;
+    const jNum    = jourNum(date);
+    const jourLabel = jNum ? 'Jour ' + jNum + (totalDays ? ' / ' + totalDays : '') : '';
+    const dateLabel = new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'});
+
+    return `<div class="prog-day ${isPast?'prog-day-past':''}">
+      <div class="prog-day-header">
+        <span class="prog-day-date" style="${isToday?'color:var(--accent);font-weight:800':''}">${dateLabel}${isToday?' · <strong>Aujourd\'hui</strong>':''}</span>
+        ${jourLabel ? `<span class="prog-day-num">${jourLabel}</span>` : ''}
+      </div>
+      <div class="prog-items">
+        ${dayItems.map((it,idx) => {
+          const isLast = idx === dayItems.length - 1;
+          return `<div class="prog-item">
+            <div class="prog-spine">
+              <div class="prog-dot" style="background:${it.color}"></div>
+              ${!isLast ? `<div class="prog-line" style="background:${it.color}22"></div>` : ''}
+            </div>
+            <div class="prog-card">
+              <div class="prog-card-top">
+                <span class="prog-icon">${it.icon}</span>
+                <div class="prog-card-body">
+                  <div class="prog-titre">${it.titre}</div>
+                  ${it.heure ? `<span class="prog-heure">🕐 ${it.heure}</span>` : ''}
+                  ${it.lieu ? `<div class="prog-lieu">📍 ${it.lieu}</div>` : ''}
+                  ${it.description ? `<div class="prog-desc">${it.description}</div>` : ''}
+                  ${it.lien ? `<a href="${it.lien}" target="_blank" class="lien-btn" style="margin-top:5px;font-size:.72rem">🔗 Ouvrir</a>` : ''}
+                </div>
+                <span class="prog-badge ${it.source==='resa'?'prog-badge-resa':'prog-badge-agenda'}">${it.source==='resa'?'Réservation':'Agenda'}</span>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 /* ═══════════════════════════════════════════════
