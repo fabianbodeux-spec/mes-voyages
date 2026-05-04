@@ -82,6 +82,7 @@ function changerOnglet(tab, btn) {
   if (tab === 'documents') chargerDocuments();
   if (tab === 'budget') chargerBudget();
   if (tab === 'bagages') chargerBagages();
+  if (tab === 'admin') chargerAdmin();
 }
 
 // ─── VOYAGES ─────────────────────────────────────────
@@ -1669,6 +1670,93 @@ async function supprimerDepense(id) {
   await fetch(`${API}/api/depenses/${id}`, { method: 'DELETE' });
   toast('🗑️ Dépense supprimée');
   chargerBudget();
+}
+
+// ─── ADMIN ────────────────────────────────────────────
+
+async function chargerAdmin() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>`;
+
+  const [reservations, documents] = await Promise.all([
+    fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json())
+  ]);
+
+  const resaIcons = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
+  const catLabels = { transport:'Transport', hebergement:'Hébergement', activite:'Activité', identite:'Identité', visa:'Visa', assurance:'Assurance', autre:'Autre' };
+
+  container.innerHTML = `
+    <!-- ── En-tête stats ── -->
+    <div class="adm-stats">
+      <div class="adm-stat"><span class="adm-stat-n">${reservations.length}</span><span class="adm-stat-l">Réservations</span></div>
+      <div class="adm-stat-sep"></div>
+      <div class="adm-stat"><span class="adm-stat-n">${documents.length}</span><span class="adm-stat-l">Documents</span></div>
+    </div>
+
+    <!-- ── Section Réservations ── -->
+    <div class="adm-section">
+      <div class="adm-section-head">
+        <span class="adm-section-title">🎫 Réservations</span>
+        <button class="btn-mini-add" onclick="ouvrirModalReservation()">+ Ajouter</button>
+      </div>
+
+      ${reservations.length === 0 ? `<div class="adm-empty">Aucune réservation</div>` : `
+      <div class="adm-table">
+        ${reservations.map(r => `
+        <div class="adm-row">
+          <span class="adm-row-icon">${resaIcons[r.type] || '📌'}</span>
+          <div class="adm-row-body">
+            <div class="adm-row-titre">${r.titre}</div>
+            <div class="adm-row-meta">
+              ${r.date_debut ? `<span>📅 ${formatDate(r.date_debut)}</span>` : ''}
+              ${r.confirmation ? `<span class="adm-row-ref">N° ${r.confirmation}</span>` : ''}
+              ${r.adresse ? `<span>📍 ${r.adresse}</span>` : ''}
+            </div>
+          </div>
+          <div class="adm-row-actions">
+            ${r.lien ? `<a href="${r.lien}" target="_blank" rel="noopener" class="btn-mini adm-btn-link" title="Ouvrir le lien">🔗</a>` : ''}
+            <button class="btn-mini btn-mini-edit" onclick="modifierReservation(${r.id})" title="Modifier">✏️</button>
+            <button class="btn-mini btn-mini-del" onclick="supprimerReservation(${r.id})" title="Supprimer">🗑️</button>
+          </div>
+        </div>`).join('')}
+      </div>`}
+    </div>
+
+    <!-- ── Section Documents ── -->
+    <div class="adm-section">
+      <div class="adm-section-head">
+        <span class="adm-section-title">📁 Documents</span>
+        <button class="btn-mini-add" onclick="ouvrirModalDocument()">+ Ajouter</button>
+      </div>
+
+      ${documents.length === 0 ? `<div class="adm-empty">Aucun document</div>` : `
+      <div class="adm-table">
+        ${documents.map(doc => {
+          const icon = getDocIcon(doc.type_fichier);
+          const cat = catLabels[doc.categorie] || doc.categorie || 'Autre';
+          return `
+          <div class="adm-row">
+            <span class="adm-row-icon">${icon}</span>
+            <div class="adm-row-body">
+              <div class="adm-row-titre">${doc.nom}</div>
+              <div class="adm-row-meta">
+                <span class="adm-row-cat">${cat}</span>
+                ${doc.taille ? `<span>${formatTaille(doc.taille)}</span>` : ''}
+              </div>
+            </div>
+            <div class="adm-row-actions">
+              <a href="${API}/api/documents/${doc.id}/download" target="_blank" class="btn-mini adm-btn-link" title="Télécharger">⬇️</a>
+              <button class="btn-mini btn-mini-edit" onclick="modifierDocument(${doc.id})" title="Modifier">✏️</button>
+              <button class="btn-mini btn-mini-del" onclick="supprimerDocument(${doc.id})" title="Supprimer">🗑️</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`}
+    </div>
+
+    <div style="height:24px"></div>
+  `;
 }
 
 // ─── MODALS & BOTTOM SHEET ───────────────────────────

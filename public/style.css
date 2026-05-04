@@ -1725,6 +1725,85 @@ textarea { resize: vertical; line-height: 1.6; }
 .prog-badge-resa   { background: #EFF6FF; color: #1D4ED8; }
 .prog-badge-agenda { background: #F0FDF4; color: #15803D; }
 
+/* ─── ADMIN TAB ─────────────────────────────────────────────── */
+
+.adm-stats {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; padding: 18px 16px 14px;
+}
+.adm-stat { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.adm-stat-n {
+  font-family: var(--font-display);
+  font-size: 2rem; font-weight: 700; color: var(--accent); line-height: 1;
+}
+.adm-stat-l {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text-muted); margin-top: 3px;
+}
+.adm-stat-sep {
+  width: 1px; height: 40px; background: var(--border-solid); margin: 0 16px;
+}
+
+.adm-section {
+  border-top: 1px solid var(--border);
+}
+.adm-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px 10px;
+  background: var(--bg-alt);
+}
+.adm-section-title {
+  font-size: .80rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text-muted);
+}
+
+.adm-table { display: flex; flex-direction: column; }
+
+.adm-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background .14s;
+}
+.adm-row:last-child { border-bottom: none; }
+.adm-row:hover { background: var(--bg-alt); }
+
+.adm-row-icon { font-size: 1.25rem; flex-shrink: 0; width: 28px; text-align: center; }
+.adm-row-body { flex: 1; min-width: 0; }
+.adm-row-titre {
+  font-weight: 600; font-size: .88rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.adm-row-meta {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  font-size: .72rem; color: var(--text-muted);
+}
+.adm-row-ref {
+  background: var(--accent-light); color: var(--accent);
+  padding: 1px 6px; border-radius: 10px; font-weight: 700;
+}
+.adm-row-cat {
+  background: var(--bg-alt); border: 1px solid var(--border-solid);
+  padding: 1px 6px; border-radius: 10px;
+}
+
+.adm-row-actions {
+  display: flex; gap: 4px; flex-shrink: 0;
+}
+.adm-btn-link {
+  background: var(--bg-alt) !important;
+  color: var(--text-muted) !important;
+  text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+.adm-empty {
+  padding: 20px 16px;
+  text-align: center;
+  font-size: .85rem; color: var(--text-muted);
+}
+
 /* ════════════════════════════════════════════════════════════════
    DARK MODE — warm charcoal, not cold navy
    MUST remain at END of file
@@ -1814,4 +1893,9 @@ textarea { resize: vertical; line-height: 1.6; }
   .prog-day-header    { background: var(--bg-alt); }
   .prog-badge-resa    { background: #1A2540; color: #93BFFF; }
   .prog-badge-agenda  { background: #1A2B1A; color: #6EE7A0; }
+
+  /* Admin dark */
+  .adm-section-head   { background: var(--bg-alt); }
+  .adm-row-cat        { background: var(--bg); border-color: var(--border); }
+  .adm-btn-link       { background: var(--bg) !important; }
 }
