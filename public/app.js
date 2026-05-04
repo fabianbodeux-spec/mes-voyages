@@ -76,10 +76,8 @@ function changerOnglet(tab, btn) {
   document.getElementById(`tab-${tab}`).classList.add('active');
 
   if (tab === 'accueil') chargerAccueil();
-  if (tab === 'reservations') chargerReservations();
   if (tab === 'programme') chargerProgramme();
   if (tab === 'carte') chargerCarte();
-  if (tab === 'documents') chargerDocuments();
   if (tab === 'budget') chargerBudget();
   if (tab === 'bagages') chargerBagages();
   if (tab === 'admin') chargerAdmin();
@@ -482,14 +480,14 @@ async function sauvegarderReservation(e) {
 
   fermerModal('modal-reservation');
   toast(id ? '✅ Réservation modifiée' : '✅ Réservation ajoutée');
-  chargerReservations();
+  chargerAdmin();
 }
 
 async function supprimerReservation(id) {
   if (!confirm('Supprimer cette réservation ?')) return;
   await fetch(`${API}/api/reservations/${id}`, { method: 'DELETE' });
   toast('🗑️ Réservation supprimée');
-  chargerReservations();
+  chargerAdmin();
 }
 
 // ─── DASHBOARD ACCUEIL ───────────────────────────────────────────────────────
@@ -1049,7 +1047,7 @@ async function uploaderDocument(input) {
   if (resp.ok) {
     fermerModal('modal-document');
     toast('✅ Document ajouté');
-    chargerDocuments();
+    chargerAdmin();
   } else {
     toast('❌ Erreur lors de l\'upload');
   }
@@ -1060,7 +1058,7 @@ async function supprimerDocument(id) {
   if (!confirm('Supprimer ce document ?')) return;
   await fetch(`${API}/api/documents/${id}`, { method: 'DELETE' });
   toast('🗑️ Document supprimé');
-  chargerDocuments();
+  chargerAdmin();
 }
 
 async function modifierDocument(id) {
@@ -1145,8 +1143,7 @@ async function sauvegarderModifDocument() {
 
   fermerModal('modal-doc-edit');
   toast('✅ Document modifié');
-  chargerDocuments();
-  chargerReservations(); // met à jour les badges dans les cartes réservation
+  chargerAdmin();
 }
 
 // ─── VISUALISEUR DOCUMENT ───────────────────────────
