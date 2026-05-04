@@ -1640,7 +1640,10 @@ async function chargerAdmin() {
     fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json())
   ]);
 
-  const resaIcons = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
+  // Alimenter les caches pour voirReservation()
+  _resasCache = reservations;
+  _docsCache  = documents;
+
   const catLabels = { transport:'Transport', hebergement:'Hébergement', activite:'Activité', identite:'Identité', visa:'Visa', assurance:'Assurance', autre:'Autre' };
 
   container.innerHTML = `
@@ -1659,24 +1662,8 @@ async function chargerAdmin() {
       </div>
 
       ${reservations.length === 0 ? `<div class="adm-empty">Aucune réservation</div>` : `
-      <div class="adm-table">
-        ${reservations.map(r => `
-        <div class="adm-row">
-          <span class="adm-row-icon">${resaIcons[r.type] || '📌'}</span>
-          <div class="adm-row-body">
-            <div class="adm-row-titre">${r.titre}</div>
-            <div class="adm-row-meta">
-              ${r.date_debut ? `<span>📅 ${formatDate(r.date_debut)}</span>` : ''}
-              ${r.confirmation ? `<span class="adm-row-ref">N° ${r.confirmation}</span>` : ''}
-              ${r.adresse ? `<span>📍 ${r.adresse}</span>` : ''}
-            </div>
-          </div>
-          <div class="adm-row-actions">
-            ${r.lien ? `<a href="${r.lien}" target="_blank" rel="noopener" class="btn-mini adm-btn-link" title="Ouvrir le lien">🔗</a>` : ''}
-            <button class="btn-mini btn-mini-edit" onclick="modifierReservation(${r.id})" title="Modifier">✏️</button>
-            <button class="btn-mini btn-mini-del" onclick="supprimerReservation(${r.id})" title="Supprimer">🗑️</button>
-          </div>
-        </div>`).join('')}
+      <div style="padding:8px 12px">
+        ${reservations.map(r => renderResa(r, documents.filter(d => d.reservation_id == r.id))).join('')}
       </div>`}
     </div>
 
