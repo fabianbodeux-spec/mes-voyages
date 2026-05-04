@@ -59,6 +59,7 @@ const localDB = {
     getByVoyage: (vid) => charger('documents').filter(d => d.voyage_id === +vid).map(d => ({ ...d, contenu: undefined })).sort((a,b) => b.created_at.localeCompare(a.created_at)),
     getById: (id) => charger('documents').find(d => d.id === +id),
     create: (vid, data) => { const list = charger('documents'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('documents', list); return item; },
+    update: (id, data) => { const list = charger('documents'); const idx = list.findIndex(d => d.id === +id); if (idx !== -1) { list[idx] = { ...list[idx], nom: data.nom ?? list[idx].nom, categorie: data.categorie ?? list[idx].categorie, event_id: data.event_id ?? null, reservation_id: data.reservation_id ?? null }; sauvegarder('documents', list); } return list[idx]; },
     delete: (id) => sauvegarder('documents', charger('documents').filter(d => d.id !== +id))
   },
   participants: {
@@ -162,6 +163,7 @@ const pgDB = pgPool ? {
     getByVoyage: async (vid) => (await pgPool.query('SELECT id,voyage_id,nom,type_fichier,taille,categorie,event_id,reservation_id,created_at FROM documents WHERE voyage_id=$1 ORDER BY created_at DESC', [vid])).rows,
     getById: async (id) => (await pgPool.query('SELECT * FROM documents WHERE id=$1', [id])).rows[0],
     create: async (vid, data) => (await pgPool.query('INSERT INTO documents(voyage_id,nom,type_fichier,taille,categorie,event_id,reservation_id,contenu) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id', [vid,data.nom,data.type_fichier,data.taille,data.categorie||'autre',data.event_id||null,data.reservation_id||null,data.contenu])).rows[0],
+    update: async (id, data) => { await pgPool.query('UPDATE documents SET nom=$1,categorie=$2,event_id=$3,reservation_id=$4 WHERE id=$5', [data.nom,data.categorie||'autre',data.event_id||null,data.reservation_id||null,id]); return true; },
     delete: async (id) => pgPool.query('DELETE FROM documents WHERE id=$1', [id])
   },
   participants: {

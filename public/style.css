@@ -824,6 +824,7 @@ body {
 }
 .btn-mini:hover { transform: scale(1.1); }
 .btn-mini:active { transform: scale(0.9); }
+.btn-mini-view { background: #EFF6FF; color: #1D4ED8; }
 .btn-mini-edit { background: var(--accent-light); color: var(--accent); }
 .btn-mini-del  { background: #FEF2F2; color: var(--danger); }
 

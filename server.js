@@ -132,6 +132,11 @@ app.get('/api/documents/:id/download', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
+app.put('/api/documents/:id', async (req, res) => {
+  try { await run(() => db.documents.update(req.params.id, req.body)); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({error: e.message}); }
+});
+
 app.delete('/api/documents/:id', async (req, res) => {
   try { await run(() => db.documents.delete(req.params.id)); res.json({ ok: true }); }
   catch(e) { res.status(500).json({error: e.message}); }

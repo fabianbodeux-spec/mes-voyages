@@ -443,6 +443,44 @@
   </div>
 </div>
 
+<!-- ═══ MODAL MODIFIER DOCUMENT ═══ -->
+<div id="modal-doc-edit" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Modifier le document</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-doc-edit')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>Nom du document</label>
+      <input type="text" id="doc-edit-nom" placeholder="Nom du fichier">
+    </div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <div class="type-selector">
+        <button type="button" class="type-opt" data-doctype-edit="transport"     onclick="choisirDocTypeEdit(this)">✈️ Transport</button>
+        <button type="button" class="type-opt" data-doctype-edit="hebergement"   onclick="choisirDocTypeEdit(this)">🏠 Hébergement</button>
+        <button type="button" class="type-opt" data-doctype-edit="vehicule"      onclick="choisirDocTypeEdit(this)">🚗 Véhicule</button>
+        <button type="button" class="type-opt" data-doctype-edit="activite"      onclick="choisirDocTypeEdit(this)">🎯 Activité</button>
+        <button type="button" class="type-opt" data-doctype-edit="autre"         onclick="choisirDocTypeEdit(this)">📄 Autre</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>🔗 Lier à une réservation ou un événement (optionnel)</label>
+      <select id="doc-edit-lien-select">
+        <option value="">— Non lié —</option>
+      </select>
+    </div>
+    <input type="hidden" id="doc-edit-id">
+    <input type="hidden" id="doc-edit-categorie" value="autre">
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fermerModal('modal-doc-edit')">Annuler</button>
+      <button class="btn-primary" onclick="sauvegarderModifDocument()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ VISUALISEUR DOCUMENT ═══ -->
 <div id="modal-doc-viewer" class="doc-viewer-overlay hidden">
   <div class="doc-viewer-header">

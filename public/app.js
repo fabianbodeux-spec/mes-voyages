@@ -686,7 +686,8 @@ async function chargerDocuments() {
                 ${lienHtml}
               </div>
               <div class="doc-actions">
-                <button class="btn-mini btn-mini-edit" onclick="ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g, '')}\`)" title="Ouvrir">👁️</button>
+                <button class="btn-mini btn-mini-view" onclick="ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g, '')}\`)" title="Ouvrir">👁️</button>
+                <button class="btn-mini btn-mini-edit" onclick="modifierDocument(${d.id})" title="Modifier">✏️</button>
                 <button class="btn-mini btn-mini-del" onclick="supprimerDocument(${d.id})" title="Supprimer">🗑️</button>
               </div>
             </div>`;
@@ -783,6 +784,92 @@ async function supprimerDocument(id) {
   await fetch(`${API}/api/documents/${id}`, { method: 'DELETE' });
   toast('🗑️ Document supprimé');
   chargerDocuments();
+}
+
+async function modifierDocument(id) {
+  // Charger le doc depuis le cache ou via l'API
+  const docs = await fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json());
+  const doc = docs.find(d => d.id === id);
+  if (!doc) return;
+
+  // Pré-remplir le nom
+  document.getElementById('doc-edit-id').value = id;
+  document.getElementById('doc-edit-nom').value = doc.nom;
+
+  // Pré-sélectionner la catégorie
+  const cat = doc.categorie || 'autre';
+  document.getElementById('doc-edit-categorie').value = cat;
+  document.querySelectorAll('[data-doctype-edit]').forEach(el => {
+    el.classList.toggle('active', el.dataset.doctypeEdit === cat);
+  });
+
+  // Charger le sélecteur de lien (réservations + agenda)
+  const select = document.getElementById('doc-edit-lien-select');
+  select.innerHTML = '<option value="">— Non lié —</option>';
+  try {
+    const [reservations, events] = await Promise.all([
+      fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
+      fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json())
+    ]);
+    const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
+
+    if (reservations.length > 0) {
+      const grp = document.createElement('optgroup');
+      grp.label = '── Réservations ──';
+      reservations.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = `resa:${r.id}`;
+        opt.textContent = `${icones[r.type] || '📌'} ${r.titre}`;
+        if (doc.reservation_id == r.id) opt.selected = true;
+        grp.appendChild(opt);
+      });
+      select.appendChild(grp);
+    }
+    if (events.length > 0) {
+      const grp = document.createElement('optgroup');
+      grp.label = '── Agenda ──';
+      events.forEach(ev => {
+        const opt = document.createElement('option');
+        opt.value = `event:${ev.id}`;
+        opt.textContent = `📅 ${ev.date ? formatDate(ev.date) + ' — ' : ''}${ev.titre}`;
+        if (doc.event_id == ev.id) opt.selected = true;
+        grp.appendChild(opt);
+      });
+      select.appendChild(grp);
+    }
+  } catch(e) {}
+
+  document.getElementById('modal-doc-edit').classList.remove('hidden');
+}
+
+function choisirDocTypeEdit(btn) {
+  document.querySelectorAll('[data-doctype-edit]').forEach(el => el.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('doc-edit-categorie').value = btn.dataset.doctypeEdit;
+}
+
+async function sauvegarderModifDocument() {
+  const id       = document.getElementById('doc-edit-id').value;
+  const nom      = document.getElementById('doc-edit-nom').value.trim();
+  const categorie = document.getElementById('doc-edit-categorie').value;
+  const lienVal  = document.getElementById('doc-edit-lien-select').value;
+
+  if (!nom) { toast('⚠️ Le nom est requis'); return; }
+
+  const body = { nom, categorie, event_id: null, reservation_id: null };
+  if (lienVal.startsWith('resa:'))  body.reservation_id = parseInt(lienVal.split(':')[1]);
+  if (lienVal.startsWith('event:')) body.event_id       = parseInt(lienVal.split(':')[1]);
+
+  await fetch(`${API}/api/documents/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  fermerModal('modal-doc-edit');
+  toast('✅ Document modifié');
+  chargerDocuments();
+  chargerReservations(); // met à jour les badges dans les cartes réservation
 }
 
 // ─── VISUALISEUR DOCUMENT ───────────────────────────
