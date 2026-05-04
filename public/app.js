@@ -985,6 +985,193 @@ function choisirDocType(btn) {
   document.getElementById('doc-type').value = btn.dataset.doctype;
 }
 
+// ─── SCAN / OCR ──────────────────────────────────────
+
+let _scanFile = null;
+
+function basculerModeDoc(mode) {
+  const isScan = mode === 'scan';
+  document.getElementById('doc-mode-fichier').classList.toggle('hidden', isScan);
+  document.getElementById('doc-mode-scan').classList.toggle('hidden', !isScan);
+  document.getElementById('scan-mode-fichier-btn').classList.toggle('active', !isScan);
+  document.getElementById('scan-mode-scan-btn').classList.toggle('active', isScan);
+  if (isScan) _prechargerTesseract();
+}
+
+function lancerScan(mode) {
+  document.getElementById(mode === 'camera' ? 'scan-camera-input' : 'scan-file-input').click();
+}
+
+async function _prechargerTesseract() {
+  if (typeof Tesseract !== 'undefined') return;
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js';
+  document.head.appendChild(s);
+}
+
+async function traiterImageScan(input) {
+  const file = input.files[0];
+  if (!file) return;
+  _scanFile = file;
+  input.value = '';
+
+  const area = document.getElementById('scan-result-area');
+  area.classList.remove('hidden');
+  document.getElementById('scan-nom-group').classList.add('hidden');
+  document.getElementById('scan-confirm-btn').style.display = 'none';
+  document.getElementById('scan-result-fields').innerHTML = '';
+
+  // Aperçu image
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('scan-preview-img').src = e.target.result; };
+  reader.readAsDataURL(file);
+
+  // Attendre Tesseract
+  const prog = document.getElementById('scan-progress-area');
+  const fill = document.getElementById('scan-progress-fill');
+  const pct  = document.getElementById('scan-progress-pct');
+  const lbl  = document.getElementById('scan-progress-label');
+  prog.classList.remove('hidden');
+  lbl.textContent = 'Chargement du moteur OCR…';
+
+  try {
+    await new Promise((res, rej) => {
+      if (typeof Tesseract !== 'undefined') return res();
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+
+    lbl.textContent = 'Analyse du document…';
+
+    const result = await Tesseract.recognize(file, 'fra+eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          const p = Math.round(m.progress * 100);
+          fill.style.width = `${p}%`;
+          pct.textContent = `${p}%`;
+        }
+      }
+    });
+
+    prog.classList.add('hidden');
+    const infos = _extraireInfosDoc(result.data.text);
+    _afficherInfosScan(infos);
+
+  } catch(e) {
+    prog.classList.add('hidden');
+    document.getElementById('scan-result-fields').innerHTML =
+      `<p style="color:var(--danger);font-size:.83rem">❌ Erreur lors de l'analyse. Le fichier sera importé sans extraction.</p>`;
+    document.getElementById('doc-scan-nom').value = file.name;
+    document.getElementById('scan-nom-group').classList.remove('hidden');
+    document.getElementById('scan-confirm-btn').style.display = '';
+  }
+}
+
+function _extraireInfosDoc(text) {
+  const t = text;
+  const infos = {};
+
+  // Dates (DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, YYYY-MM-DD)
+  const dateRx = /\b(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})\b|\b(\d{4})[\/\-](\d{2})[\/\-](\d{2})\b/g;
+  const dates = [];
+  let dm;
+  while ((dm = dateRx.exec(t)) !== null) dates.push(dm[0]);
+  // Dates textuelles FR
+  const moisFR = 'janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre';
+  const dateTexRx = new RegExp(`\\b(\\d{1,2})\\s+(${moisFR})\\s+(\\d{4})\\b`, 'gi');
+  while ((dm = dateTexRx.exec(t)) !== null) dates.push(dm[0]);
+  if (dates.length) infos.dates = [...new Set(dates)].slice(0, 4);
+
+  // Vol IATA (ex: AF1234, EK 456)
+  const volMatch = t.match(/\b([A-Z]{2}\s?\d{3,4})\b/);
+  if (volMatch) infos.vol = volMatch[1].replace(/\s/, '');
+
+  // Numéro de confirmation / référence
+  const refRx = /(?:confirmation|booking|réservation|reference|ref\.?|n°|numéro|pnr|dossier|code)\s*:?\s*([A-Z0-9]{5,14})/gi;
+  const rm = refRx.exec(t);
+  if (rm) infos.reference = rm[1];
+  // Fallback : code alphanum ≥6 chars uppercase seul sur sa ligne
+  if (!infos.reference) {
+    const codeRx = /^([A-Z0-9]{6,12})$/gm;
+    const cm = codeRx.exec(t);
+    if (cm) infos.reference = cm[1];
+  }
+
+  // Montant
+  const montantRx = /(\d[\d\s]*[.,]\d{2})\s*€|€\s*(\d[\d\s]*[.,]\d{2})|(\d[\d\s]*[.,]\d{2})\s*EUR/i;
+  const mm = montantRx.exec(t);
+  if (mm) infos.montant = (mm[1] || mm[2] || mm[3]).trim() + ' €';
+
+  // Email
+  const emailMatch = t.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,6}/);
+  if (emailMatch) infos.email = emailMatch[0];
+
+  // Nom suggéré
+  const parts = [];
+  if (infos.vol) parts.push(`Billet ${infos.vol}`);
+  else if (infos.reference) parts.push(`Réf. ${infos.reference}`);
+  if (infos.dates && infos.dates[0]) parts.push(infos.dates[0].replace(/\//g, '-'));
+  infos.nomSuggere = parts.length ? parts.join(' — ') : 'Document scanné';
+
+  return infos;
+}
+
+function _afficherInfosScan(infos) {
+  const container = document.getElementById('scan-result-fields');
+  const rows = [];
+
+  if (infos.vol)       rows.push(['✈️ Vol', infos.vol]);
+  if (infos.reference) rows.push(['🔢 Référence', infos.reference]);
+  if (infos.dates?.length) rows.push(['📅 Date(s)', infos.dates.join(' · ')]);
+  if (infos.montant)   rows.push(['💶 Montant', infos.montant]);
+  if (infos.email)     rows.push(['📧 Email', infos.email]);
+
+  if (rows.length === 0) {
+    container.innerHTML = `<p class="scan-no-data">Aucune information structurée détectée — le document sera importé tel quel.</p>`;
+  } else {
+    container.innerHTML = `<div class="scan-fields">${rows.map(([l, v]) =>
+      `<div class="scan-field"><span class="scan-fl">${l}</span><span class="scan-fv">${v}</span></div>`
+    ).join('')}</div>`;
+  }
+
+  document.getElementById('doc-scan-nom').value = infos.nomSuggere;
+  document.getElementById('scan-nom-group').classList.remove('hidden');
+  document.getElementById('scan-confirm-btn').style.display = '';
+}
+
+async function confirmerImportScan() {
+  if (!_scanFile) return;
+  const btn = document.getElementById('scan-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Import en cours…';
+
+  const nom = (document.getElementById('doc-scan-nom').value || _scanFile.name).trim();
+  const ext = _scanFile.name.includes('.') ? _scanFile.name.split('.').pop() : 'jpg';
+  const fichier = new File([_scanFile], `${nom}.${ext}`, { type: _scanFile.type });
+
+  const formData = new FormData();
+  formData.append('fichier', fichier);
+  formData.append('categorie', document.getElementById('doc-type').value);
+
+  const lienVal = document.getElementById('doc-lien-select').value;
+  if (lienVal.startsWith('resa:'))  formData.append('reservation_id', lienVal.split(':')[1]);
+  else if (lienVal.startsWith('event:')) formData.append('event_id', lienVal.split(':')[1]);
+
+  const resp = await fetch(`${API}/api/voyages/${voyageActuel}/documents`, { method: 'POST', body: formData });
+  btn.disabled = false;
+  btn.textContent = '✅ Importer ce document';
+  if (resp.ok) {
+    fermerModal('modal-document');
+    _scanFile = null;
+    toast('✅ Document importé');
+    chargerAdmin();
+  } else {
+    toast('❌ Erreur lors de l\'import');
+  }
+}
+
 async function uploaderDocument(input) {
   const file = input.files[0];
   if (!file) return;

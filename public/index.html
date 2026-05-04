@@ -396,7 +396,18 @@
     </div>
     <input type="hidden" id="doc-event" value="">
     <input type="hidden" id="doc-reservation-id" value="">
-    <div class="form-group" style="margin-top:16px">
+    <!-- Sélecteur de mode -->
+    <div class="scan-mode-btns">
+      <button type="button" class="scan-mode-btn active" id="scan-mode-fichier-btn" onclick="basculerModeDoc('fichier')">
+        📎 Fichier
+      </button>
+      <button type="button" class="scan-mode-btn" id="scan-mode-scan-btn" onclick="basculerModeDoc('scan')">
+        📷 Scanner / Photo
+      </button>
+    </div>
+
+    <!-- Mode : Fichier classique -->
+    <div id="doc-mode-fichier" class="form-group" style="margin-top:14px">
       <label class="btn-primary" for="upload-doc-input" style="display:inline-flex;cursor:pointer">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
         Choisir un fichier
@@ -404,6 +415,49 @@
       <input type="file" id="upload-doc-input" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none" onchange="uploaderDocument(this)">
       <p id="doc-filename" style="font-size:.82rem;color:var(--text-muted);margin-top:8px"></p>
     </div>
+
+    <!-- Mode : Scanner / OCR -->
+    <div id="doc-mode-scan" class="hidden" style="margin-top:14px">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button type="button" class="btn-primary" onclick="lancerScan('camera')" style="flex:1;justify-content:center">
+          📷 Prendre une photo
+        </button>
+        <button type="button" class="btn-secondary" onclick="lancerScan('file')" style="flex:1">
+          🖼️ Image existante
+        </button>
+      </div>
+      <!-- inputs cachés -->
+      <input type="file" id="scan-camera-input" accept="image/*" capture="environment" style="display:none" onchange="traiterImageScan(this)">
+      <input type="file" id="scan-file-input" accept="image/*" style="display:none" onchange="traiterImageScan(this)">
+
+      <!-- Zone résultat (cachée avant scan) -->
+      <div id="scan-result-area" class="hidden">
+        <img id="scan-preview-img" class="scan-preview" alt="">
+
+        <!-- Barre de progression OCR -->
+        <div id="scan-progress-area" class="hidden">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+            <span id="scan-progress-label" style="font-size:.78rem;color:var(--text-muted)">Analyse en cours…</span>
+            <span id="scan-progress-pct" style="font-size:.78rem;font-weight:700;color:var(--accent)">0%</span>
+          </div>
+          <div class="scan-progress-bar"><div id="scan-progress-fill" class="scan-progress-fill"></div></div>
+        </div>
+
+        <!-- Champs extraits -->
+        <div id="scan-result-fields" style="margin-top:10px"></div>
+
+        <!-- Nom suggéré éditable -->
+        <div id="scan-nom-group" class="form-group hidden" style="margin-top:10px">
+          <label>Nom du document</label>
+          <input type="text" id="doc-scan-nom" placeholder="Nom du document scanné">
+        </div>
+
+        <button type="button" id="scan-confirm-btn" class="btn-primary" style="width:100%;display:none;margin-top:12px;justify-content:center" onclick="confirmerImportScan()">
+          ✅ Importer ce document
+        </button>
+      </div>
+    </div>
+
     <input type="hidden" id="doc-type" value="transport">
   </div>
 </div>
