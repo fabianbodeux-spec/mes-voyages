@@ -668,10 +668,11 @@ function wmoEmoji(code) {
 // ─── PROGRAMME (timeline jour par jour) ──────────────────────────────────────
 
 async function chargerProgramme() {
-  const [evts, resas, voyage] = await Promise.all([
+  const [evts, resas, voyage, docs] = await Promise.all([
     fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json()),
     fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
-    fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.json())
+    fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json())
   ]);
 
   const container = document.getElementById('liste-programme');
@@ -690,7 +691,8 @@ async function chargerProgramme() {
       lien: ev.lien || null,
       type: ev.type,
       source: 'agenda',
-      id: ev.id
+      id: ev.id,
+      docs: docs.filter(d => d.event_id == ev.id)
     });
   });
 
@@ -706,7 +708,8 @@ async function chargerProgramme() {
       lien: r.lien || null,
       type: r.type,
       source: 'resa',
-      id: r.id
+      id: r.id,
+      docs: docs.filter(d => d.reservation_id == r.id)
     });
   });
 
@@ -791,6 +794,13 @@ async function chargerProgramme() {
                   ${it.lieu ? `<div class="prog-lieu">📍 ${it.lieu}</div>` : ''}
                   ${it.description ? `<div class="prog-desc">${it.description}</div>` : ''}
                   ${it.lien ? `<a href="${it.lien}" target="_blank" rel="noopener" class="prog-lien">🔗 Ouvrir</a>` : ''}
+                  ${it.docs && it.docs.length ? `
+                  <div class="prog-docs">
+                    ${it.docs.map(d => `
+                      <button class="prog-doc-badge" onclick="event.stopPropagation();ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g,'')}\`)">
+                        ${getDocIcon(d.type_fichier)}<span>${d.nom}</span>
+                      </button>`).join('')}
+                  </div>` : ''}
                 </div>
                 <div class="prog-actions">
                   ${badge}

@@ -1725,6 +1725,18 @@ textarea { resize: vertical; line-height: 1.6; }
 .prog-badge-resa   { background: #EFF6FF; color: #1D4ED8; }
 .prog-badge-agenda { background: #F0FDF4; color: #15803D; }
 
+.prog-docs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.prog-doc-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--accent-light); color: var(--accent);
+  border: 1px solid rgba(201,98,47,.18);
+  border-radius: 20px; padding: 3px 9px;
+  font-size: .72rem; font-weight: 600; cursor: pointer;
+  transition: background .14s;
+}
+.prog-doc-badge:hover { background: #f8dfd0; }
+.prog-doc-badge span { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .btn-mini-map { background: #EFF6FF; color: #1D4ED8; }
 .btn-mini-map.active { background: #1D4ED8; color: #fff; }
 
