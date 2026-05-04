@@ -77,7 +77,6 @@ function changerOnglet(tab, btn) {
 
   if (tab === 'accueil') chargerAccueil();
   if (tab === 'programme') chargerProgramme();
-  if (tab === 'carte') chargerCarte();
   if (tab === 'budget') chargerBudget();
   if (tab === 'bagages') chargerBagages();
   if (tab === 'admin') chargerAdmin();
@@ -772,6 +771,10 @@ async function chargerProgramme() {
           const editFn = it.source === 'resa' ? `modifierReservation(${it.id})` : `modifierAgenda(${it.id})`;
           const delFn = it.source === 'resa' ? `supprimerReservation(${it.id})` : `supprimerAgenda(${it.id})`;
 
+          const mapSrc = it.lieu
+            ? `https://maps.google.com/maps?q=${encodeURIComponent(it.lieu)}&output=embed&z=14`
+            : null;
+
           return `
           <div class="prog-item">
             <div class="prog-spine">
@@ -796,6 +799,10 @@ async function chargerProgramme() {
                   </div>
                 </div>
               </div>
+              ${mapSrc ? `
+              <div class="prog-map">
+                <iframe src="${mapSrc}" class="prog-map-frame" loading="lazy" frameborder="0" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+              </div>` : ''}
             </div>
           </div>`;
         }).join('')}
@@ -862,53 +869,6 @@ async function supprimerAgenda(id) {
   await fetch(`${API}/api/agenda/${id}`, { method: 'DELETE' });
   toast('🗑️ Événement supprimé');
   chargerProgramme();
-}
-
-// ─── CARTE ───────────────────────────────────────────
-
-async function chargerCarte() {
-  const [reservations, agenda, voyage] = await Promise.all([
-    fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
-    fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json()),
-    fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.json())
-  ]);
-
-  const lieuxResa = reservations
-    .filter(r => r.adresse || r.lieu)
-    .map(r => ({ titre: r.titre, lieu: r.adresse || r.lieu, type: r.type }));
-
-  const lieuxAgenda = agenda
-    .filter(a => a.lieu)
-    .map(a => ({ titre: a.titre, lieu: a.lieu, type: a.type }));
-
-  const lieux = [...lieuxResa, ...lieuxAgenda];
-
-  const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️', sport: '🏄', libre: '☀️' };
-
-  const lieuxList = document.getElementById('carte-lieux');
-  if (lieux.length === 0) {
-    lieuxList.innerHTML = '<p style="font-size:.82rem;color:var(--text-muted);padding:4px 0">Ajoutez des adresses dans vos réservations pour les voir sur la carte</p>';
-  } else {
-    lieuxList.innerHTML = lieux.map(l => `
-      <div class="lieu-item" onclick="ouvrirLieu('${encodeURIComponent(l.lieu)}')">
-        <span class="lieu-emoji">${icones[l.type] || '📌'}</span>
-        <div>
-          <div style="font-weight:600;font-size:.85rem">${l.titre}</div>
-          <div style="font-size:.78rem;color:var(--text-muted)">${l.lieu}</div>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  // Charger la carte avec la destination du voyage
-  const query = lieux.length > 0 ? lieux[0].lieu : voyage.destination;
-  const iframe = document.getElementById('carte-frame');
-  iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed&z=10`;
-}
-
-function ouvrirLieu(lieu) {
-  const iframe = document.getElementById('carte-frame');
-  iframe.src = `https://maps.google.com/maps?q=${lieu}&output=embed&z=14`;
 }
 
 // ─── DOCUMENTS ───────────────────────────────────────

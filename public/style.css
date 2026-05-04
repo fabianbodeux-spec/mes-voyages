@@ -1725,6 +1725,18 @@ textarea { resize: vertical; line-height: 1.6; }
 .prog-badge-resa   { background: #EFF6FF; color: #1D4ED8; }
 .prog-badge-agenda { background: #F0FDF4; color: #15803D; }
 
+.prog-map {
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.prog-map-frame {
+  display: block;
+  width: 100%;
+  height: 185px;
+  border: none;
+}
+
 /* ─── ADMIN TAB ─────────────────────────────────────────────── */
 
 .adm-stats {
