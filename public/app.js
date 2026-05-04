@@ -289,11 +289,17 @@ async function supprimerVoyageActuel() {
 
 // ─── RÉSERVATIONS ─────────────────────────────────────
 
+// Cache local pour l'affichage du détail sans re-fetch
+let _resasCache = [];
+let _docsCache  = [];
+
 async function chargerReservations() {
   const [reservations, documents] = await Promise.all([
     fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
     fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json())
   ]);
+  _resasCache = reservations;
+  _docsCache  = documents;
   afficherReservations(reservations, filtreActuel, documents);
 }
 
@@ -326,15 +332,11 @@ function afficherReservations(reservations, filtre, documents = []) {
 
 function renderResa(r, docs = []) {
   const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
-  const docsHtml = docs.length ? `
-    <div class="resa-docs">
-      ${docs.map(d => `
-        <button class="resa-doc-badge" onclick="ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g,'')}\`)" title="Ouvrir ${d.nom}">
-          ${getDocIcon(d.type_fichier)} <span>${d.nom}</span>
-        </button>`).join('')}
-    </div>` : '';
+  // Indicateurs compacts sur la carte
+  const hasLink = !!r.lien;
+  const docCount = docs.length;
   return `
-  <div class="resa-card">
+  <div class="resa-card" onclick="voirReservation(${r.id})">
     <div class="resa-card-inner">
       <div class="resa-icon icon-${r.type}">${icones[r.type] || '📌'}</div>
       <div class="resa-body">
@@ -344,17 +346,73 @@ function renderResa(r, docs = []) {
           ${r.lieu ? `<span>📍 ${r.lieu}</span>` : ''}
           ${r.date_fin && r.date_fin !== r.date_debut ? `<span>📅 jusqu'au ${formatDate(r.date_fin)}</span>` : ''}
         </div>
-        ${r.numero_confirmation ? `<div class="resa-confirmation">📋 ${r.numero_confirmation}</div>` : ''}
-        ${r.notes ? `<p style="font-size:.75rem;color:var(--text-muted);margin-top:6px;line-height:1.5">${r.notes}</p>` : ''}
-        ${r.lien ? `<a href="${r.lien}" target="_blank" rel="noopener" class="agenda-lien" style="margin-top:7px">🔗 Ouvrir la réservation</a>` : ''}
-        ${docsHtml}
+        <div class="resa-card-badges">
+          ${r.numero_confirmation ? `<span class="resa-badge-mini">📋 ${r.numero_confirmation}</span>` : ''}
+          ${hasLink ? `<span class="resa-badge-mini resa-badge-lien">🔗 Lien</span>` : ''}
+          ${docCount ? `<span class="resa-badge-mini resa-badge-doc">📎 ${docCount}</span>` : ''}
+        </div>
       </div>
-      <div class="resa-actions">
+      <div class="resa-actions" onclick="event.stopPropagation()">
         <button class="btn-mini btn-mini-edit" onclick="modifierReservation(${r.id})" title="Modifier">✏️</button>
         <button class="btn-mini btn-mini-del" onclick="supprimerReservation(${r.id})" title="Supprimer">🗑️</button>
       </div>
     </div>
   </div>`;
+}
+
+function voirReservation(id) {
+  const r = _resasCache.find(x => x.id === id);
+  if (!r) return;
+  const docs = _docsCache.filter(d => d.reservation_id == id);
+  const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
+
+  const docsHtml = docs.length ? `
+    <div class="rd-section">
+      <div class="rd-section-label">📎 Documents liés</div>
+      <div class="resa-docs">
+        ${docs.map(d => `
+          <button class="resa-doc-badge" onclick="ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g,'')}\`)">
+            ${getDocIcon(d.type_fichier)} <span>${d.nom}</span>
+          </button>`).join('')}
+      </div>
+    </div>` : '';
+
+  document.getElementById('resa-detail-body').innerHTML = `
+    <div class="rd-header">
+      <div class="rd-icon icon-${r.type}">${icones[r.type] || '📌'}</div>
+      <div class="rd-header-text">
+        <div class="rd-titre">${r.titre}</div>
+        ${r.date_debut ? `<div class="rd-date">${formatDate(r.date_debut)}</div>` : ''}
+      </div>
+    </div>
+
+    <div class="rd-rows">
+      ${r.heure_debut ? `<div class="rd-row"><span class="rd-row-icon">🕐</span><span>${r.heure_debut}${r.heure_fin ? ' → ' + r.heure_fin : ''}</span></div>` : ''}
+      ${r.date_fin && r.date_fin !== r.date_debut ? `<div class="rd-row"><span class="rd-row-icon">📅</span><span>Jusqu'au ${formatDate(r.date_fin)}${r.heure_fin ? ' · ' + r.heure_fin : ''}</span></div>` : ''}
+      ${r.lieu    ? `<div class="rd-row"><span class="rd-row-icon">📍</span><span>${r.lieu}</span></div>` : ''}
+      ${r.adresse ? `<div class="rd-row"><span class="rd-row-icon">🏠</span><span>${r.adresse}</span></div>` : ''}
+      ${r.numero_confirmation ? `
+        <div class="rd-row">
+          <span class="rd-row-icon">📋</span>
+          <span class="rd-code">${r.numero_confirmation}</span>
+          <button class="rd-copy-btn" onclick="navigator.clipboard.writeText('${r.numero_confirmation.replace(/'/g,"\\'")}').then(()=>toast('✅ Copié !'))">Copier</button>
+        </div>` : ''}
+    </div>
+
+    ${r.notes ? `<div class="rd-notes">${r.notes.replace(/\n/g,'<br>')}</div>` : ''}
+
+    ${r.lien ? `<a href="${r.lien}" target="_blank" rel="noopener" class="rd-lien-btn" onclick="event.stopPropagation()">🔗 Ouvrir le lien de réservation</a>` : ''}
+
+    ${docsHtml}
+
+    <div class="rd-actions">
+      <button class="sheet-btn" onclick="fermerBottomSheet(); modifierReservation(${id})">✏️ Modifier</button>
+      <button class="sheet-btn danger" onclick="fermerBottomSheet(); supprimerReservation(${id})">🗑️ Supprimer</button>
+    </div>
+  `;
+
+  document.getElementById('resa-detail-sheet').classList.remove('hidden');
+  document.getElementById('overlay-sheet').classList.remove('hidden');
 }
 
 function filtrerReservations(filtre, btn) {
@@ -1281,7 +1339,7 @@ function copierLienPartage() {
 }
 
 function fermerBottomSheet() {
-  document.getElementById('menu-voyage').classList.add('hidden');
+  document.querySelectorAll('.bottom-sheet').forEach(s => s.classList.add('hidden'));
   document.getElementById('overlay-sheet').classList.add('hidden');
 }
 
