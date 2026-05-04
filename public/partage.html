@@ -166,6 +166,57 @@
     .add-btn { padding: 11px 18px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: .86rem; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: all .18s; }
     .add-btn:hover { background: var(--accent-dark); }
 
+    /* ── Articles cochés : vert friendly ── */
+    .bag-item.checked { background: #F0FDF4; border-color: #86EFAC; opacity: 1; }
+    .bag-item.checked:hover { border-color: #4ADE80; }
+    .bag-check.checked { background: #22C55E; border-color: #16A34A; color: white; box-shadow: 0 2px 6px rgba(34,197,94,.35); transform: scale(1.08); }
+    .bag-item.checked .bag-nom { text-decoration: line-through; color: #6B9E6B; }
+
+    /* ── Écran d'identification ── */
+    .id-screen { max-width: 460px; margin: 40px auto 0; text-align: center; padding: 0 14px 80px; }
+    .id-hero { font-size: 3.5rem; margin-bottom: 14px; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+    .id-voyage-nom { font-family: var(--font-display); font-size: 1.4rem; font-weight: 400; color: var(--text); margin-bottom: 6px; }
+    .id-sous-titre { font-size: .82rem; color: var(--text-muted); font-weight: 500; margin-bottom: 28px; }
+    .id-parts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 24px; }
+    .id-part-btn {
+      display: flex; align-items: center; gap: 9px;
+      padding: 10px 18px 10px 10px;
+      background: var(--card); border: 2px solid var(--border-solid);
+      border-radius: 50px; cursor: pointer; font-family: var(--font-body);
+      font-size: .88rem; font-weight: 700; color: var(--text);
+      transition: all .2s; box-shadow: var(--shadow-sm);
+    }
+    .id-part-btn:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent-dark); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .id-ou { font-size: .72rem; font-weight: 700; color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+    .id-ou::before, .id-ou::after { content:''; flex:1; height:1px; background:var(--border-solid); }
+    .id-form { display: flex; gap: 8px; margin-bottom: 16px; }
+    .id-form .add-input { flex: 1; }
+    .id-skip { display: block; font-size: .8rem; color: var(--text-muted); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; background: none; border: none; font-family: var(--font-body); margin: 0 auto; }
+    .id-skip:hover { color: var(--text); }
+    .id-error { color: var(--danger); font-size: .82rem; margin-top: 8px; font-weight: 600; min-height: 20px; }
+
+    /* ── Bandeau identité dans les bagages ── */
+    .id-banner {
+      display: flex; align-items: center; gap: 10px;
+      background: #F0FDF4; border: 1.5px solid #86EFAC;
+      border-radius: 14px; padding: 10px 14px; margin-bottom: 16px;
+    }
+    .id-banner-nom { flex: 1; font-weight: 700; font-size: .9rem; color: #15803D; }
+    .id-change-btn { font-size: .73rem; font-weight: 700; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 7px; }
+    .id-change-btn:hover { background: var(--bg); color: var(--text); }
+
+    /* ── Identité dans le header ── */
+    .header-id-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--accent-light); color: var(--accent-dark);
+      border-radius: 20px; padding: 4px 12px 4px 6px;
+      font-size: .72rem; font-weight: 700; white-space: nowrap;
+      cursor: pointer; border: none; font-family: var(--font-body);
+      transition: all .18s;
+    }
+    .header-id-badge:hover { background: var(--accent); color: white; }
+
     /* ── Dark mode ── */
     @media (prefers-color-scheme: dark) {
       :root { --bg:#1C1712; --card:#261F18; --text:#F5F0E6; --text-muted:#9B8B7A; --border:rgba(255,200,150,.09); --border-solid:#3A3028; --accent-light:#3A2010; }
@@ -175,6 +226,8 @@
       .icon-activite    { background: linear-gradient(135deg,#3A2010,#4A2510); }
       .icon-restaurant  { background: linear-gradient(135deg,#3A1030,#4A1540); }
       .add-input { background: var(--bg); }
+      .id-banner { background: #0D2B1A; border-color: #166534; }
+      .id-banner-nom { color: #4ADE80; }
     }
   </style>
 </head>
@@ -186,7 +239,7 @@
       <h1 id="voyage-nom">Chargement…</h1>
       <p id="voyage-dates" class="header-dates"></p>
     </div>
-    <span class="badge-read">👁 Partagé</span>
+    <div id="header-id-zone"><span class="badge-read">👁 Partagé</span></div>
   </div>
 </div>
 
@@ -212,6 +265,7 @@ const token = location.pathname.split('/partage/')[1];
 let data = null;
 let voyageId = null;
 let participantActif = null;
+let identite = null; // { nom, participant_id, couleur }
 
 /* ═══════════════════════════════════════════════
    CHARGEMENT
@@ -232,6 +286,118 @@ async function charger() {
   const d1 = fmt(data.voyage.date_debut), d2 = fmt(data.voyage.date_fin);
   document.getElementById('voyage-dates').textContent = d1 && d2 ? d1+' → '+d2 : d1;
 
+  // Récupérer l'identité stockée
+  try {
+    const stored = localStorage.getItem('partage_id_' + token);
+    if (stored) identite = JSON.parse(stored);
+  } catch(e) {}
+
+  if (!identite) {
+    afficherEcranIdentification();
+  } else {
+    mettreAJourHeaderId();
+    lancerApplication();
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   IDENTIFICATION
+   ═══════════════════════════════════════════════ */
+function afficherEcranIdentification() {
+  document.getElementById('tab-nav').style.display = 'none';
+  const participants = data.participants || [];
+
+  document.getElementById('content').innerHTML = `
+    <div class="id-screen">
+      <div class="id-hero">✈️</div>
+      <h2 class="id-voyage-nom">${data.voyage.nom}</h2>
+      <p class="id-sous-titre">Qui êtes-vous ?</p>
+
+      ${participants.length ? `
+        <div class="id-parts">
+          ${participants.map(p => `
+            <button class="id-part-btn" onclick='_identifierParticipant(${JSON.stringify(p)})'>
+              <div class="avatar" style="background:${p.couleur||'#C9622F'};width:26px;height:26px;font-size:.62rem;flex-shrink:0">${p.nom[0].toUpperCase()}</div>
+              ${p.nom}
+            </button>
+          `).join('')}
+        </div>
+        <div class="id-ou">ou entrez votre prénom</div>
+      ` : '<p style="color:var(--text-muted);font-size:.84rem;margin-bottom:20px">Entrez votre prénom pour accéder à votre liste de bagages</p>'}
+
+      <div class="id-form">
+        <input id="id-nom-input" class="add-input" placeholder="Votre prénom…"
+          onkeydown="if(event.key==='Enter') _identifierParNom()">
+        <button class="add-btn" onclick="_identifierParNom()">Continuer →</button>
+      </div>
+      <div id="id-error" class="id-error"></div>
+      <button class="id-skip" onclick="_accederLectureSeule()">Accéder en lecture seule</button>
+    </div>
+  `;
+  setTimeout(() => {
+    const el = document.getElementById('id-nom-input');
+    if (el) el.focus();
+  }, 100);
+}
+
+function _identifierParticipant(p) {
+  identite = { nom: p.nom, participant_id: p.id, couleur: p.couleur || '#C9622F' };
+  localStorage.setItem('partage_id_' + token, JSON.stringify(identite));
+  mettreAJourHeaderId();
+  lancerApplication();
+}
+
+function _identifierParNom() {
+  const nom = (document.getElementById('id-nom-input').value || '').trim();
+  if (!nom) return;
+  const errEl = document.getElementById('id-error');
+
+  const participants = data.participants || [];
+  const match = participants.find(p => p.nom.toLowerCase() === nom.toLowerCase());
+
+  if (match) {
+    _identifierParticipant(match);
+  } else {
+    // Nom inconnu : lecture seule avec message
+    identite = { nom, participant_id: null, couleur: '#6B7280' };
+    // Ne PAS stocker dans localStorage → nouvelle identification demandée à chaque visite
+    if (errEl) errEl.textContent = `"${nom}" n'est pas dans la liste des participants. Vous accéderez en lecture seule.`;
+    setTimeout(() => {
+      mettreAJourHeaderId();
+      lancerApplication();
+    }, 1400);
+  }
+}
+
+function _accederLectureSeule() {
+  identite = { nom: null, participant_id: null, couleur: '#6B7280' };
+  mettreAJourHeaderId();
+  lancerApplication();
+}
+
+function changerIdentite() {
+  identite = null;
+  participantActif = null;
+  localStorage.removeItem('partage_id_' + token);
+  document.getElementById('tab-nav').style.display = 'none';
+  afficherEcranIdentification();
+}
+
+function mettreAJourHeaderId() {
+  const zone = document.getElementById('header-id-zone');
+  if (!zone) return;
+  if (identite && identite.nom) {
+    zone.innerHTML = `
+      <button class="header-id-badge" onclick="changerIdentite()" title="Changer d'identité">
+        <div class="avatar" style="background:${identite.couleur||'#C9622F'};width:20px;height:20px;font-size:.55rem;flex-shrink:0">${identite.nom[0].toUpperCase()}</div>
+        ${identite.nom}
+      </button>`;
+  } else {
+    zone.innerHTML = '<span class="badge-read">👁 Partagé</span>';
+  }
+}
+
+function lancerApplication() {
   document.getElementById('content').innerHTML = `
     <div id="panel-reservations" class="panel active"></div>
     <div id="panel-agenda"       class="panel"></div>
@@ -434,32 +600,52 @@ function calculerBilan(participants, depenses) {
    ═══════════════════════════════════════════════ */
 function afficherBagages() {
   const c = document.getElementById('panel-bagages');
-  const participants = data.participants||[];
+  const participants = data.participants || [];
+
   if (!participants.length) {
     c.innerHTML = '<div class="empty"><div class="empty-icon">🧳</div><p>Aucun participant enregistré.<br>Le créateur du voyage doit d\'abord ajouter les participants dans l\'application.</p></div>';
     return;
   }
 
-  participantActif = participants[0].id;
+  // Cas 1 : identifié comme participant → liste personnelle verrouillée
+  if (identite && identite.participant_id) {
+    const moi = participants.find(p => p.id == identite.participant_id);
+    if (!moi) {
+      // Participant supprimé entre temps
+      c.innerHTML = '<div class="empty"><div class="empty-icon">🧳</div><p>Votre profil participant est introuvable. Veuillez vous ré-identifier.</p><button class="add-btn" onclick="changerIdentite()" style="margin-top:14px">Changer d\'identité</button></div>';
+      return;
+    }
+    participantActif = identite.participant_id;
+    c.innerHTML = `
+      <div class="id-banner">
+        <div class="avatar" style="background:${identite.couleur||'#C9622F'};width:28px;height:28px;font-size:.65rem;flex-shrink:0">${identite.nom[0].toUpperCase()}</div>
+        <span class="id-banner-nom">Ma liste — ${identite.nom}</span>
+        <button class="id-change-btn" onclick="changerIdentite()">Changer</button>
+      </div>
+      <div id="bag-list"></div>
+    `;
+    renderListeBagages();
 
-  c.innerHTML = `
-    <div class="ptabs" id="ptabs">
-      ${participants.map((p,i)=>`
-        <div class="ptab ${i===0?'active':''}" onclick="selectionnerParticipant(${p.id},this)">
-          <div class="avatar" style="background:${p.couleur||'#C9622F'};width:22px;height:22px;font-size:.58rem">${p.nom[0].toUpperCase()}</div>
-          ${p.nom}
-        </div>`).join('')}
-    </div>
-    <div id="bag-list"></div>
-  `;
-  renderListeBagages();
-}
+  // Cas 2 : identifié par nom mais pas trouvé dans participants → lecture seule
+  } else if (identite && identite.nom) {
+    c.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🧳</div>
+        <p>Bonjour <strong>${identite.nom}</strong> !<br>Votre prénom n'est pas dans la liste des participants.<br>Demandez à l'organisateur du voyage de vous ajouter.</p>
+        <button class="add-btn" onclick="changerIdentite()" style="margin-top:16px">Changer d'identité</button>
+      </div>
+    `;
 
-function selectionnerParticipant(pid, el) {
-  participantActif = pid;
-  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  renderListeBagages();
+  // Cas 3 : visiteur anonyme → lecture seule (tous les participants visibles, aucune action)
+  } else {
+    c.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🧳</div>
+        <p>Identifiez-vous pour accéder à votre liste de bagages.</p>
+        <button class="add-btn" onclick="changerIdentite()" style="margin-top:16px">S'identifier</button>
+      </div>
+    `;
+  }
 }
 
 function renderListeBagages() {
