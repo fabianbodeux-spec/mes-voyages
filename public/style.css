@@ -1250,23 +1250,30 @@ textarea { resize: vertical; line-height: 1.6; }
 .bagage-item:hover { border-color: var(--border-solid); box-shadow: var(--shadow); }
 .bagage-item:active { transform: scale(0.98); }
 .bagage-item.checked {
-  background: var(--bg);
-  border-color: var(--border);
-  opacity: 0.6;
+  background: #F0FDF4;
+  border-color: #86EFAC;
+  box-shadow: 0 1px 4px rgba(34,197,94,0.10);
+}
+.bagage-item.checked:hover {
+  border-color: #4ADE80;
+  box-shadow: 0 2px 8px rgba(34,197,94,0.18);
 }
 
 .bagage-check {
-  width: 22px; height: 22px;
-  border-radius: 7px;
+  width: 24px; height: 24px;
+  border-radius: 8px;
   flex-shrink: 0;
   border: 2px solid var(--border-solid);
   display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
+  background: white;
 }
 .bagage-check.checked {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: #22C55E;
+  border-color: #16A34A;
   color: white;
+  box-shadow: 0 2px 6px rgba(34,197,94,0.35);
+  transform: scale(1.08);
 }
 
 .bagage-nom {
@@ -1278,7 +1285,8 @@ textarea { resize: vertical; line-height: 1.6; }
 }
 .bagage-item.checked .bagage-nom {
   text-decoration: line-through;
-  color: var(--text-muted);
+  color: #6B9E6B;
+  font-weight: 400;
 }
 
 .bagage-del {
