@@ -771,6 +771,7 @@ async function chargerProgramme() {
           const editFn = it.source === 'resa' ? `modifierReservation(${it.id})` : `modifierAgenda(${it.id})`;
           const delFn = it.source === 'resa' ? `supprimerReservation(${it.id})` : `supprimerAgenda(${it.id})`;
 
+          const mapId  = `map-${it.source}-${it.id}`;
           const mapSrc = it.lieu
             ? `https://maps.google.com/maps?q=${encodeURIComponent(it.lieu)}&output=embed&z=14`
             : null;
@@ -794,14 +795,15 @@ async function chargerProgramme() {
                 <div class="prog-actions">
                   ${badge}
                   <div style="display:flex;gap:4px;margin-top:6px">
+                    ${mapSrc ? `<button class="btn-mini btn-mini-map" onclick="event.stopPropagation();toggleProgMap('${mapId}', this)" title="Voir sur la carte">🗺️</button>` : ''}
                     <button class="btn-mini btn-mini-edit" onclick="event.stopPropagation();${editFn}">✏️</button>
                     <button class="btn-mini btn-mini-del" onclick="event.stopPropagation();${delFn}">🗑️</button>
                   </div>
                 </div>
               </div>
               ${mapSrc ? `
-              <div class="prog-map">
-                <iframe src="${mapSrc}" class="prog-map-frame" loading="lazy" frameborder="0" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+              <div id="${mapId}" class="prog-map hidden">
+                <iframe src="" data-src="${mapSrc}" class="prog-map-frame" frameborder="0" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
               </div>` : ''}
             </div>
           </div>`;
@@ -809,6 +811,20 @@ async function chargerProgramme() {
       </div>
     </div>`;
   }).join('');
+}
+
+function toggleProgMap(mapId, btn) {
+  const div = document.getElementById(mapId);
+  const isOpen = !div.classList.contains('hidden');
+  div.classList.toggle('hidden', isOpen);
+  btn.classList.toggle('active', !isOpen);
+  // Charger l'iframe uniquement à la première ouverture
+  if (!isOpen) {
+    const iframe = div.querySelector('iframe');
+    if (!iframe.src || iframe.src === window.location.href) {
+      iframe.src = iframe.dataset.src;
+    }
+  }
 }
 
 function getResaColor(type) {

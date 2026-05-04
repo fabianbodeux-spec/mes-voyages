@@ -1725,10 +1725,18 @@ textarea { resize: vertical; line-height: 1.6; }
 .prog-badge-resa   { background: #EFF6FF; color: #1D4ED8; }
 .prog-badge-agenda { background: #F0FDF4; color: #15803D; }
 
+.btn-mini-map { background: #EFF6FF; color: #1D4ED8; }
+.btn-mini-map.active { background: #1D4ED8; color: #fff; }
+
 .prog-map {
   border-top: 1px solid var(--border);
   overflow: hidden;
   border-radius: 0 0 var(--radius) var(--radius);
+  animation: mapSlideDown .22s ease;
+}
+@keyframes mapSlideDown {
+  from { max-height: 0; opacity: 0; }
+  to   { max-height: 220px; opacity: 1; }
 }
 .prog-map-frame {
   display: block;
