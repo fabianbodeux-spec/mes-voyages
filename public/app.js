@@ -65,7 +65,7 @@ function afficherVoyage(id) {
       header.style.borderBottom = `3px solid ${voyage.couleur}`;
 
       // Reset onglet actif
-      changerOnglet('reservations', document.querySelector('[data-tab="reservations"]'));
+      changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
     });
 }
 
@@ -75,8 +75,9 @@ function changerOnglet(tab, btn) {
   btn.classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
+  if (tab === 'accueil') chargerAccueil();
   if (tab === 'reservations') chargerReservations();
-  if (tab === 'agenda') chargerAgenda();
+  if (tab === 'programme') chargerProgramme();
   if (tab === 'carte') chargerCarte();
   if (tab === 'documents') chargerDocuments();
   if (tab === 'budget') chargerBudget();
@@ -490,48 +491,323 @@ async function supprimerReservation(id) {
   chargerReservations();
 }
 
-// ─── AGENDA ──────────────────────────────────────────
+// ─── DASHBOARD ACCUEIL ───────────────────────────────────────────────────────
 
-async function chargerAgenda() {
-  const items = await fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json());
-  const container = document.getElementById('liste-agenda');
+async function chargerAccueil() {
+  const container = document.getElementById('dash-content');
+  container.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>`;
+
+  const [voyage, reservations, bagages] = await Promise.all([
+    fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/bagages`).then(r => r.json())
+  ]);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const debut = voyage.date_debut ? new Date(voyage.date_debut + 'T00:00:00') : null;
+  const fin   = voyage.date_fin   ? new Date(voyage.date_fin   + 'T00:00:00') : null;
+
+  // ── Statut du voyage ──────────────────────────────────────────────────────
+  let heroClass = 'upcoming', heroLabel = '', heroDays = '';
+  if (!debut) {
+    heroClass = 'past'; heroLabel = 'À planifier';
+  } else if (debut > today) {
+    const diff = Math.ceil((debut - today) / 86400000);
+    heroClass = 'upcoming';
+    heroLabel = '🗓️ Départ dans';
+    heroDays  = `${diff} jour${diff > 1 ? 's' : ''}`;
+  } else if (fin && fin < today) {
+    const diff = Math.ceil((today - fin) / 86400000);
+    heroClass = 'past';
+    heroLabel = 'Voyage terminé';
+    heroDays  = `il y a ${diff} jour${diff > 1 ? 's' : ''}`;
+  } else {
+    const totalDays = fin ? Math.round((fin - debut) / 86400000) + 1 : null;
+    const jourN = Math.round((today - debut) / 86400000) + 1;
+    heroClass = 'ongoing';
+    heroLabel = '🌍 En cours';
+    heroDays  = totalDays ? `Jour ${jourN} / ${totalDays}` : `Jour ${jourN}`;
+  }
+
+  // ── Prochaine réservation ─────────────────────────────────────────────────
+  const todayStr = today.toISOString().split('T')[0];
+  const futures = reservations
+    .filter(r => r.date_debut && r.date_debut >= todayStr)
+    .sort((a, b) => a.date_debut < b.date_debut ? -1 : 1);
+  const prochaine = futures[0] || null;
+
+  // ── Statistiques bagages ──────────────────────────────────────────────────
+  const bagTotal  = bagages.length;
+  const bagCoches = bagages.filter(b => b.checked).length;
+  const bagPct    = bagTotal > 0 ? Math.round(bagCoches / bagTotal * 100) : 0;
+
+  // ── Rendu principal ────────────────────────────────────────────────────────
+  const resaIcons = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
+
+  container.innerHTML = `
+    <!-- Hero countdown -->
+    <div class="dash-hero dash-hero-${heroClass}">
+      <div class="dash-hero-eyebrow">${heroLabel}</div>
+      <div class="dash-hero-days">${heroDays}</div>
+      <div class="dash-hero-dest">📍 ${voyage.destination || voyage.nom}</div>
+      ${debut ? `<div class="dash-hero-period">${formatDates(voyage.date_debut, voyage.date_fin)}</div>` : ''}
+    </div>
+
+    <!-- Stats grid -->
+    <div class="dash-stats-grid">
+      <div class="dash-stat-card">
+        <div class="dash-stat-value">${reservations.length}</div>
+        <div class="dash-stat-label">Réservations</div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-value">${bagPct}<span style="font-size:1rem">%</span></div>
+        <div class="dash-stat-label">Bagages prêts</div>
+        <div class="dash-stat-bar"><div class="dash-stat-bar-fill" style="width:${bagPct}%"></div></div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-value">${bagCoches}<span style="font-size:.85rem;color:var(--text-muted)">/${bagTotal}</span></div>
+        <div class="dash-stat-label">Articles cochés</div>
+      </div>
+    </div>
+
+    <!-- Prochaine réservation -->
+    ${prochaine ? `
+    <div class="dash-section-title">🎫 Prochaine réservation</div>
+    <div class="dash-next-card" onclick="voirReservation(${prochaine.id})">
+      <div class="dash-next-icon">${resaIcons[prochaine.type] || '📌'}</div>
+      <div class="dash-next-body">
+        <div class="dash-next-titre">${prochaine.titre}</div>
+        <div class="dash-next-date">${formatDate(prochaine.date_debut)}${prochaine.heure ? ' · ' + prochaine.heure : ''}</div>
+        ${prochaine.adresse ? `<div class="dash-next-lieu">📍 ${prochaine.adresse}</div>` : ''}
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="flex-shrink:0;color:var(--text-muted)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    </div>` : ''}
+
+    <!-- Météo -->
+    <div class="dash-section-title">🌤️ Météo à destination</div>
+    <div id="dash-meteo"><div style="padding:16px;text-align:center;color:var(--text-muted);font-size:.88rem">Chargement de la météo…</div></div>
+
+    <!-- Description -->
+    ${voyage.description ? `
+    <div class="dash-section-title">📝 Notes du voyage</div>
+    <div class="dash-notes">${voyage.description}</div>` : ''}
+
+    <div style="height:24px"></div>
+  `;
+
+  // Charger la météo de façon asynchrone
+  chargerMeteo(voyage.destination || voyage.nom);
+}
+
+async function chargerMeteo(destination) {
+  const el = document.getElementById('dash-meteo');
+  if (!el) return;
+
+  try {
+    const dest = (destination || '').split(',')[0].trim();
+    // Géocodage via Open-Meteo
+    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(dest)}&count=1&language=fr&format=json`);
+    const geoData = await geoRes.json();
+    if (!geoData.results || geoData.results.length === 0) {
+      el.innerHTML = `<div class="dash-meteo-na">Météo indisponible pour cette destination</div>`;
+      return;
+    }
+    const { latitude, longitude, name, country } = geoData.results[0];
+
+    // Prévisions 7 jours
+    const wtRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7`);
+    const wtData = await wtRes.json();
+    const d = wtData.daily;
+
+    const days = d.time.map((date, i) => ({
+      date,
+      code: d.weathercode[i],
+      tmax: Math.round(d.temperature_2m_max[i]),
+      tmin: Math.round(d.temperature_2m_min[i]),
+      rain: d.precipitation_probability_max[i]
+    }));
+
+    const dayNames = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+
+    el.innerHTML = `
+      <div class="dash-weather-card">
+        <div class="dash-weather-loc">📍 ${name}, ${country}</div>
+        <div class="dash-weather-row">
+          ${days.map((day, i) => {
+            const dn = new Date(day.date + 'T00:00:00');
+            const label = i === 0 ? "Auj." : dayNames[dn.getDay()];
+            return `
+            <div class="dash-forecast-day">
+              <div class="dash-forecast-label">${label}</div>
+              <div class="dash-forecast-emoji">${wmoEmoji(day.code)}</div>
+              <div class="dash-forecast-temps"><span class="dash-tmax">${day.tmax}°</span><span class="dash-tmin">${day.tmin}°</span></div>
+              ${day.rain !== null ? `<div class="dash-forecast-rain">${day.rain}%</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="dash-meteo-na">Météo temporairement indisponible</div>`;
+  }
+}
+
+function wmoEmoji(code) {
+  if (code === 0)  return '☀️';
+  if (code <= 2)   return '⛅';
+  if (code <= 3)   return '☁️';
+  if (code <= 49)  return '🌫️';
+  if (code <= 59)  return '🌦️';
+  if (code <= 69)  return '🌧️';
+  if (code <= 79)  return '❄️';
+  if (code <= 82)  return '🌧️';
+  if (code <= 84)  return '🌨️';
+  if (code <= 94)  return '⛈️';
+  return '🌩️';
+}
+
+// ─── AGENDA (modal helpers — kept for create/edit) ───────────────────────────
+
+// ─── PROGRAMME (timeline jour par jour) ──────────────────────────────────────
+
+async function chargerProgramme() {
+  const [evts, resas, voyage] = await Promise.all([
+    fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.json())
+  ]);
+
+  const container = document.getElementById('liste-programme');
+
+  // Fusionner : chaque résa avec une date → apparaît dans la timeline
+  const items = [];
+
+  evts.forEach(ev => {
+    if (!ev.date) return;
+    items.push({
+      date: ev.date,
+      heure: ev.heure || null,
+      titre: ev.titre,
+      lieu: ev.lieu || null,
+      description: ev.description || null,
+      lien: ev.lien || null,
+      type: ev.type,
+      source: 'agenda',
+      id: ev.id
+    });
+  });
+
+  resas.forEach(r => {
+    const date = r.date_debut || r.date;
+    if (!date) return;
+    items.push({
+      date,
+      heure: r.heure || null,
+      titre: r.titre,
+      lieu: r.adresse || r.lieu || null,
+      description: r.notes || null,
+      lien: r.lien || null,
+      type: r.type,
+      source: 'resa',
+      id: r.id
+    });
+  });
 
   if (items.length === 0) {
-    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon">📅</div><p>Aucun événement planifié</p></div>`;
+    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon">📆</div><p>Aucun élément planifié</p><p style="font-size:.83rem;margin-top:6px;color:var(--text-muted)">Ajoutez des réservations ou des événements avec une date</p></div>`;
     return;
   }
 
+  // Trier par date puis heure
+  items.sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    const ha = a.heure || '99:99', hb = b.heure || '99:99';
+    return ha < hb ? -1 : 1;
+  });
+
   // Grouper par date
   const grouped = {};
-  items.forEach(i => {
-    if (!grouped[i.date]) grouped[i.date] = [];
-    grouped[i.date].push(i);
+  items.forEach(it => {
+    if (!grouped[it.date]) grouped[it.date] = [];
+    grouped[it.date].push(it);
   });
 
   const today = new Date().toISOString().split('T')[0];
-  container.innerHTML = Object.entries(grouped).map(([date, events]) => `
-    <div class="agenda-day">
-      <div class="agenda-day-header ${date === today ? 'today' : ''}">
-        ${formatDateLong(date)}${date === today ? ' · Aujourd\'hui' : ''}
-      </div>
-      ${events.map(ev => `
-        <div class="agenda-item">
-          <span class="agenda-heure">${ev.heure || '--:--'}</span>
-          <div class="agenda-line" style="background:${getAgendaColor(ev.type)}"></div>
-          <div class="agenda-content">
-            <div class="agenda-titre">${getAgendaIcon(ev.type)} ${ev.titre}</div>
-            ${ev.lieu ? `<div class="agenda-lieu">📍 ${ev.lieu}</div>` : ''}
-            ${ev.description ? `<div class="agenda-lieu">${ev.description}</div>` : ''}
-            ${ev.lien ? `<a href="${ev.lien}" target="_blank" rel="noopener" class="agenda-lien">🔗 Ouvrir le lien</a>` : ''}
-          </div>
-          <div class="agenda-actions">
-            <button class="btn-mini btn-mini-edit" onclick="modifierAgenda(${ev.id})">✏️</button>
-            <button class="btn-mini btn-mini-del" onclick="supprimerAgenda(${ev.id})">🗑️</button>
-          </div>
+
+  // Calculer les bornes du voyage pour "jour X / N"
+  const debut = voyage.date_debut;
+  const fin = voyage.date_fin;
+  const totalDays = (debut && fin) ? Math.round((new Date(fin) - new Date(debut)) / 86400000) + 1 : null;
+
+  function jourNum(dateStr) {
+    if (!debut) return null;
+    const n = Math.round((new Date(dateStr) - new Date(debut)) / 86400000) + 1;
+    return n >= 1 ? n : null;
+  }
+
+  function resaIcon(type) {
+    const m = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
+    return m[type] || '📌';
+  }
+
+  container.innerHTML = Object.entries(grouped).map(([date, dayItems]) => {
+    const isToday = date === today;
+    const isPast = date < today;
+    const jourLabel = jourNum(date) ? `Jour ${jourNum(date)}${totalDays ? ` / ${totalDays}` : ''}` : '';
+
+    return `
+    <div class="prog-day ${isToday ? 'prog-day-today' : ''} ${isPast ? 'prog-day-past' : ''}">
+      <div class="prog-day-header">
+        <div class="prog-day-label">
+          <span class="prog-day-date">${formatDateLong(date)}${isToday ? ' · <strong>Aujourd\'hui</strong>' : ''}</span>
+          ${jourLabel ? `<span class="prog-day-num">${jourLabel}</span>` : ''}
         </div>
-      `).join('')}
-    </div>
-  `).join('');
+      </div>
+      <div class="prog-items">
+        ${dayItems.map((it, idx) => {
+          const isLast = idx === dayItems.length - 1;
+          const color = it.source === 'resa' ? getResaColor(it.type) : getAgendaColor(it.type);
+          const icon = it.source === 'resa' ? resaIcon(it.type) : getAgendaIcon(it.type);
+          const badge = it.source === 'resa'
+            ? `<span class="prog-badge prog-badge-resa">Réservation</span>`
+            : `<span class="prog-badge prog-badge-agenda">Agenda</span>`;
+          const editFn = it.source === 'resa' ? `modifierReservation(${it.id})` : `modifierAgenda(${it.id})`;
+          const delFn = it.source === 'resa' ? `supprimerReservation(${it.id})` : `supprimerAgenda(${it.id})`;
+
+          return `
+          <div class="prog-item">
+            <div class="prog-spine">
+              <div class="prog-dot" style="background:${color}"></div>
+              ${!isLast ? `<div class="prog-line" style="background:${color}22"></div>` : ''}
+            </div>
+            <div class="prog-card">
+              <div class="prog-card-top">
+                <span class="prog-icon">${icon}</span>
+                <div class="prog-card-body">
+                  <div class="prog-titre">${it.titre}</div>
+                  ${it.heure ? `<span class="prog-heure">🕐 ${it.heure}</span>` : ''}
+                  ${it.lieu ? `<div class="prog-lieu">📍 ${it.lieu}</div>` : ''}
+                  ${it.description ? `<div class="prog-desc">${it.description}</div>` : ''}
+                  ${it.lien ? `<a href="${it.lien}" target="_blank" rel="noopener" class="prog-lien">🔗 Ouvrir</a>` : ''}
+                </div>
+                <div class="prog-actions">
+                  ${badge}
+                  <div style="display:flex;gap:4px;margin-top:6px">
+                    <button class="btn-mini btn-mini-edit" onclick="event.stopPropagation();${editFn}">✏️</button>
+                    <button class="btn-mini btn-mini-del" onclick="event.stopPropagation();${delFn}">🗑️</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getResaColor(type) {
+  const colors = { transport: '#3B82F6', hebergement: '#10B981', vehicule: '#F59E0B', activite: '#8B5CF6', restaurant: '#EC4899' };
+  return colors[type] || '#C9622F';
 }
 
 function ouvrirModalAgenda(id = null) {
@@ -579,14 +855,14 @@ async function sauvegarderAgenda(e) {
 
   fermerModal('modal-agenda');
   toast(id ? '✅ Événement modifié' : '✅ Événement ajouté');
-  chargerAgenda();
+  chargerProgramme();
 }
 
 async function supprimerAgenda(id) {
   if (!confirm('Supprimer cet événement ?')) return;
   await fetch(`${API}/api/agenda/${id}`, { method: 'DELETE' });
   toast('🗑️ Événement supprimé');
-  chargerAgenda();
+  chargerProgramme();
 }
 
 // ─── CARTE ───────────────────────────────────────────

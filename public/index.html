@@ -85,11 +85,14 @@
 
   <!-- Onglets navigation -->
   <nav class="tab-nav">
-    <button class="tab-btn active" data-tab="reservations" onclick="changerOnglet('reservations', this)">
+    <button class="tab-btn active" data-tab="accueil" onclick="changerOnglet('accueil', this)">
+      <span class="tab-icon">🏠</span><span>Accueil</span>
+    </button>
+    <button class="tab-btn" data-tab="reservations" onclick="changerOnglet('reservations', this)">
       <span class="tab-icon">🎫</span><span>Réservations</span>
     </button>
-    <button class="tab-btn" data-tab="agenda" onclick="changerOnglet('agenda', this)">
-      <span class="tab-icon">📅</span><span>Agenda</span>
+    <button class="tab-btn" data-tab="programme" onclick="changerOnglet('programme', this)">
+      <span class="tab-icon">📆</span><span>Programme</span>
     </button>
     <button class="tab-btn" data-tab="carte" onclick="changerOnglet('carte', this)">
       <span class="tab-icon">🗺️</span><span>Carte</span>
@@ -106,6 +109,11 @@
   </nav>
 
   <main class="main-content tabs-content">
+
+    <!-- ONGLET ACCUEIL / DASHBOARD -->
+    <div id="tab-accueil" class="tab-panel active">
+      <div id="dash-content"></div>
+    </div>
 
     <!-- ONGLET RÉSERVATIONS -->
     <div id="tab-reservations" class="tab-panel active">
@@ -125,15 +133,15 @@
       <div id="liste-reservations"></div>
     </div>
 
-    <!-- ONGLET AGENDA -->
-    <div id="tab-agenda" class="tab-panel">
+    <!-- ONGLET PROGRAMME (ancien Agenda) -->
+    <div id="tab-programme" class="tab-panel">
       <div class="panel-actions">
         <button class="btn-primary" onclick="ouvrirModalAgenda()">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           Ajouter un événement
         </button>
       </div>
-      <div id="liste-agenda"></div>
+      <div id="liste-programme"></div>
     </div>
 
     <!-- ONGLET CARTE -->
