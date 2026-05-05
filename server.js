@@ -233,7 +233,7 @@ app.post('/api/voyages/:id/partager', async (req, res) => {
       await run(() => db.voyages.setToken(req.params.id, token));
     }
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    res.json({ token, url: `${baseUrl}/partage/${token}` });
+    res.json({ token, url: `${baseUrl}/share/${token}` });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -241,18 +241,32 @@ app.get('/api/partage/:token', async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
-    const [reservations, agenda, participants, depenses, bagages] = await Promise.all([
+    const [reservations, agenda, participants, depenses, bagages, docsRaw] = await Promise.all([
       run(() => db.reservations.getByVoyage(voyage.id)),
       run(() => db.agenda.getByVoyage(voyage.id)),
       run(() => db.participants.getByVoyage(voyage.id)),
       run(() => db.depenses.getByVoyage(voyage.id)),
-      run(() => db.bagages.getByVoyage(voyage.id))
+      run(() => db.bagages.getByVoyage(voyage.id)),
+      run(() => db.documents.getByVoyage(voyage.id))
     ]);
-    res.json({ voyage, reservations, agenda, participants, depenses, bagages });
+    const documents = docsRaw.map(({ contenu, ...meta }) => meta);
+    res.json({ voyage, reservations, agenda, participants, depenses, bagages, documents });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Anciens liens /partage/ → redirect vers /share/ même depuis bfcache
 app.get('/partage/:token', (req, res) => {
+  const t = req.params.token;
+  res.set('Cache-Control', 'no-store');
+  res.send(`<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=/share/${t}">
+<script>
+location.replace('/share/${t}');
+window.addEventListener('pageshow',function(e){if(e.persisted)location.replace('/share/${t}');});
+</script></head><body></body></html>`);
+});
+
+app.get('/share/:token', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'public', 'partage.html'));
 });
 

@@ -38,6 +38,8 @@ const localDB = {
   voyages: {
     getAll: () => charger('voyages').sort((a,b) => (a.date_debut||'').localeCompare(b.date_debut||'')),
     getById: (id) => charger('voyages').find(v => v.id === +id),
+    getByToken: (token) => charger('voyages').find(v => v.share_token === token),
+    setToken: (id, token) => { const list = charger('voyages'); const idx = list.findIndex(v => v.id === +id); if (idx !== -1) { list[idx].share_token = token; sauvegarder('voyages', list); } return true; },
     create: (data) => { const list = charger('voyages'); const item = { ...data, id: nextId(list), created_at: new Date().toISOString() }; list.push(item); sauvegarder('voyages', list); return item; },
     update: (id, data) => { const list = charger('voyages'); const idx = list.findIndex(v => v.id === +id); if (idx===-1) return false; list[idx] = { ...list[idx], ...data }; sauvegarder('voyages', list); return true; },
     delete: (id) => { sauvegarder('voyages', charger('voyages').filter(v => v.id !== +id)); sauvegarder('reservations', charger('reservations').filter(r => r.voyage_id !== +id)); sauvegarder('agenda', charger('agenda').filter(a => a.voyage_id !== +id)); sauvegarder('documents', charger('documents').filter(d => d.voyage_id !== +id)); }

@@ -8,1112 +8,751 @@
   <title>Voyage partagé</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --accent:       #C9622F;
-      --accent-light: #FDF0EA;
-      --accent-dark:  #A84D22;
-      --success:      #16A34A;
-      --danger:       #DC2626;
-      --bg:           #FAF7F2;
-      --card:         #FFFFFF;
-      --text:         #1A1A2E;
-      --text-muted:   #6B7280;
-      --border:       rgba(0,0,0,0.07);
-      --border-solid: #E8E4DD;
-      --shadow-sm:    0 1px 4px rgba(26,26,46,0.04);
-      --shadow:       0 4px 24px rgba(26,26,46,0.07);
-      --font-display: 'DM Serif Display', Georgia, serif;
-      --font-body:    'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    /* ── Identification overlay ─────────────────── */
+    #id-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      padding-top: calc(env(safe-area-inset-top) + 24px);
     }
-    html { scroll-behavior: smooth; }
-    body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
-
-    /* ── Header ── */
-    .app-header {
-      background: rgba(255,255,255,.96); border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; z-index: 100;
-      padding: env(safe-area-inset-top) 0 0;
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      box-shadow: var(--shadow-sm);
+    .id-card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 32px 24px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
     }
-    .header-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 12px; padding: 13px 18px; }
-    .header-voyage { flex: 1; min-width: 0; }
-    .header-voyage h1 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 400; color: var(--text); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .header-dates { font-size: .71rem; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
-    .badge-read { background: var(--accent-light); color: var(--accent); font-size: .65rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; white-space: nowrap; letter-spacing: .05em; text-transform: uppercase; flex-shrink: 0; }
-
-    /* ── Tabs ── */
-    .tab-nav {
-      background: rgba(255,255,255,.96); border-bottom: 1px solid var(--border);
-      position: sticky; top: 52px; z-index: 99;
-      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-      overflow-x: auto; scrollbar-width: none;
+    .id-hero { font-size: 3rem; margin-bottom: 12px; }
+    .id-voyage-nom {
+      font-family: var(--font-display);
+      font-size: 1.35rem; font-weight: 400;
+      color: var(--text); margin-bottom: 6px;
     }
-    .tab-nav::-webkit-scrollbar { display: none; }
-    .tab-nav-inner { max-width: 720px; margin: 0 auto; display: flex; padding: 0 4px; }
-    .tab-btn { flex: 1; min-width: 68px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 6px 8px; border: none; background: transparent; cursor: pointer; color: var(--text-muted); font-size: .64rem; font-weight: 700; font-family: var(--font-body); border-bottom: 2.5px solid transparent; transition: all .2s; white-space: nowrap; letter-spacing: .04em; text-transform: uppercase; }
-    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .tab-icon { font-size: 1.1rem; }
-
-    /* ── Panels ── */
-    .content { max-width: 720px; margin: 0 auto; padding: 14px 14px 80px; }
-    .panel { display: none; }
-    .panel.active { display: block; }
-
-    /* ── Utilities ── */
-    .loading { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: .9rem; }
-    .empty { text-align: center; padding: 40px 20px; color: var(--text-muted); }
-    .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
-    .empty p { font-size: .87rem; line-height: 1.6; }
-    .sep { font-size: .67rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .1em; padding: 12px 0 7px; display: flex; align-items: center; gap: 10px; }
-    .sep::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-    .toast-msg { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--text); color: white; padding: 10px 20px; border-radius: 24px; font-size: .84rem; font-weight: 700; z-index: 9999; white-space: nowrap; box-shadow: var(--shadow); animation: toastIn .25s ease; }
-    @keyframes toastIn { from { opacity:0; transform: translateX(-50%) translateY(10px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
-
-    /* ── Reservation cards ── */
-    .resa-card { background: var(--card); border-radius: 13px; padding: 13px; margin-bottom: 8px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; gap: 12px; align-items: flex-start; }
-    .resa-icon { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
-    .icon-transport   { background: linear-gradient(135deg,#EFF6FF,#DBEAFE); }
-    .icon-hebergement { background: linear-gradient(135deg,#F0FDF4,#DCFCE7); }
-    .icon-vehicule    { background: linear-gradient(135deg,#FEFCE8,#FEF9C3); }
-    .icon-activite    { background: linear-gradient(135deg,var(--accent-light),#FBE0D0); }
-    .icon-restaurant  { background: linear-gradient(135deg,#FDF4FF,#FAE8FF); }
-    .resa-body { flex: 1; min-width: 0; }
-    .resa-titre { font-weight: 700; font-size: .9rem; color: var(--text); letter-spacing: -.01em; }
-    .resa-meta { font-size: .73rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-    .resa-code { display: inline-block; margin-top: 6px; font-size: .69rem; background: var(--bg); padding: 2px 9px; border-radius: 6px; color: var(--text-muted); font-family: monospace; border: 1px solid var(--border-solid); }
-    .resa-notes { font-size: .75rem; color: var(--text-muted); margin-top: 5px; line-height: 1.5; }
-    .lien-btn { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: .75rem; color: var(--accent); font-weight: 700; text-decoration: none; background: var(--accent-light); padding: 3px 10px; border-radius: 6px; }
-
-    /* ── Agenda ── */
-    .agenda-day-header { font-size: .69rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .1em; padding: 10px 0 7px; display: flex; align-items: center; gap: 10px; }
-    .agenda-day-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-    .agenda-item { display: flex; gap: 11px; align-items: flex-start; padding: 12px 13px; background: var(--card); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 7px; box-shadow: var(--shadow-sm); }
-    .agenda-heure { font-size: .74rem; font-weight: 800; color: var(--accent); min-width: 42px; text-align: right; flex-shrink: 0; padding-top: 2px; font-variant-numeric: tabular-nums; }
-    .agenda-line { width: 3px; border-radius: 3px; align-self: stretch; flex-shrink: 0; min-height: 22px; }
-    .agenda-content { flex: 1; min-width: 0; }
-    .agenda-titre { font-weight: 700; font-size: .88rem; color: var(--text); letter-spacing: -.01em; }
-    .agenda-lieu { font-size: .73rem; color: var(--text-muted); margin-top: 3px; }
-
-    /* ── Carte ── */
-    .lieux-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-    .lieu-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; background: var(--card); border-radius: 12px; border: 1px solid var(--border); cursor: pointer; transition: all .2s; }
-    .lieu-item:hover { background: var(--accent-light); border-color: var(--accent); }
-    .carte-frame { width: 100%; height: 360px; border: none; border-radius: 14px; display: block; box-shadow: var(--shadow); }
-
-    /* ── Budget ── */
-    .budget-hero { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
-    .budget-hero-label { font-size: .77rem; font-weight: 600; color: rgba(255,255,255,.82); letter-spacing: .02em; }
-    .budget-hero-amount { font-family: var(--font-display); font-size: 1.55rem; font-weight: 400; color: white; }
-    .budget-hero-nb { font-size: .73rem; font-weight: 700; color: rgba(255,255,255,.72); margin-top: 2px; }
-    .p-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
-    .p-chip { display: flex; align-items: center; gap: 7px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 7px 12px 7px 8px; box-shadow: var(--shadow-sm); }
-    .avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 800; color: white; flex-shrink: 0; }
-    .chip-nom { font-size: .82rem; font-weight: 700; color: var(--text); }
-    .chip-total { font-size: .77rem; font-weight: 700; color: var(--accent); margin-left: 4px; }
-    .dep-card { display: flex; align-items: center; gap: 11px; background: var(--card); border-radius: 12px; padding: 12px 14px; margin-bottom: 7px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
-    .dep-cat { font-size: 1.3rem; flex-shrink: 0; }
-    .dep-body { flex: 1; min-width: 0; }
-    .dep-titre { font-weight: 700; font-size: .88rem; color: var(--text); }
-    .dep-meta { font-size: .71rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; align-items: center; }
-    .dep-montant { font-family: var(--font-display); font-size: 1.05rem; font-weight: 400; color: var(--text); white-space: nowrap; }
-    .bilan-card { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; gap: 6px; margin-bottom: 7px; box-shadow: var(--shadow-sm); }
-    .bilan-side { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .85rem; }
-    .bilan-mid { display: flex; flex-direction: column; align-items: center; flex: 1; }
-    .bilan-arrow { font-size: 1rem; color: var(--accent); }
-    .bilan-sum { font-size: .77rem; font-weight: 800; color: var(--accent); }
-    .bilan-ok { text-align: center; padding: 18px; font-size: .92rem; font-weight: 700; color: var(--success); }
-    .avatar-xs { width: 17px; height: 17px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .55rem; font-weight: 800; color: white; flex-shrink: 0; }
-
-    /* ══════════════════════════════════════════
-       BAGAGES — interactive
-       ══════════════════════════════════════════ */
-    .ptabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-    .ptab { display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 7px; border-radius: 20px; border: 1.5px solid var(--border-solid); background: var(--card); cursor: pointer; font-size: .82rem; font-weight: 600; font-family: var(--font-body); transition: all .18s; color: var(--text); }
-    .ptab.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent-dark); }
-
-    .bag-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-    .btn-suggest { display: inline-flex; align-items: center; gap: 7px; background: var(--accent); color: white; border: none; border-radius: 12px; padding: 11px 18px; font-size: .86rem; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: all .22s; box-shadow: 0 4px 14px rgba(201,98,47,.30); flex: 1; justify-content: center; }
-    .btn-suggest:hover { background: var(--accent-dark); transform: translateY(-1px); }
-    .btn-suggest:active { transform: scale(.98); }
-    .btn-add-item { display: inline-flex; align-items: center; gap: 7px; background: var(--card); color: var(--text); border: 1.5px solid var(--border-solid); border-radius: 12px; padding: 11px 18px; font-size: .86rem; font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: all .18s; flex: 1; justify-content: center; }
-    .btn-add-item:hover { background: var(--bg); }
-
-    .progress-label { font-size: .71rem; font-weight: 700; color: var(--text-muted); display: flex; justify-content: space-between; margin-bottom: 5px; }
-    .progress-bar { background: var(--border-solid); border-radius: 4px; height: 5px; overflow: hidden; margin-bottom: 14px; }
-    .progress-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--success)); transition: width .4s ease; }
-
-    .bag-cat-header { font-size: .67rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .1em; padding: 10px 2px 6px; display: flex; align-items: center; justify-content: space-between; }
-    .bag-count { font-size: .7rem; color: var(--accent); font-weight: 800; }
-
-    .bag-item { display: flex; align-items: center; gap: 11px; padding: 11px 13px; background: var(--card); border-radius: 12px; margin-bottom: 5px; border: 1.5px solid var(--border); box-shadow: var(--shadow-sm); transition: all .18s; cursor: pointer; }
-    .bag-item:hover { border-color: var(--border-solid); }
-    .bag-item.checked { background: var(--bg); border-color: var(--border); opacity: .55; }
-    .bag-check { width: 21px; height: 21px; border-radius: 6px; flex-shrink: 0; border: 2px solid var(--border-solid); display: flex; align-items: center; justify-content: center; font-size: .7rem; transition: all .2s; pointer-events: none; }
-    .bag-check.checked { background: var(--accent); border-color: var(--accent); color: white; }
-    .bag-nom { flex: 1; font-size: .88rem; font-weight: 500; color: var(--text); pointer-events: none; }
-    .bag-item.checked .bag-nom { text-decoration: line-through; color: var(--text-muted); }
-    .bag-del { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.1rem; line-height: 1; padding: 4px; border-radius: 6px; opacity: .4; transition: opacity .15s; }
-    .bag-del:hover { opacity: 1; color: var(--danger); }
-
-    /* Inline add form */
-    .add-form { display: flex; gap: 8px; margin-top: 10px; }
-    .add-input { flex: 1; padding: 11px 14px; border: 1.5px solid var(--border-solid); border-radius: 12px; font-size: .88rem; font-family: var(--font-body); background: var(--card); color: var(--text); outline: none; }
-    .add-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201,98,47,.10); }
-    .add-btn { padding: 11px 18px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: .86rem; font-weight: 700; font-family: var(--font-body); cursor: pointer; transition: all .18s; }
-    .add-btn:hover { background: var(--accent-dark); }
-
-    /* ── Articles cochés : vert friendly ── */
-    .bag-item.checked { background: #F0FDF4; border-color: #86EFAC; opacity: 1; }
-    .bag-item.checked:hover { border-color: #4ADE80; }
-    .bag-check.checked { background: #22C55E; border-color: #16A34A; color: white; box-shadow: 0 2px 6px rgba(34,197,94,.35); transform: scale(1.08); }
-    .bag-item.checked .bag-nom { text-decoration: line-through; color: #6B9E6B; }
-
-    /* ── Écran d'identification ── */
-    .id-screen { max-width: 460px; margin: 40px auto 0; text-align: center; padding: 0 14px 80px; }
-    .id-hero { font-size: 3.5rem; margin-bottom: 14px; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
-    .id-voyage-nom { font-family: var(--font-display); font-size: 1.4rem; font-weight: 400; color: var(--text); margin-bottom: 6px; }
-    .id-sous-titre { font-size: .82rem; color: var(--text-muted); font-weight: 500; margin-bottom: 28px; }
-    .id-parts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 24px; }
+    .id-sous-titre { color: var(--text-muted); font-size: .88rem; margin-bottom: 20px; }
+    .id-parts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
     .id-part-btn {
-      display: flex; align-items: center; gap: 9px;
-      padding: 10px 18px 10px 10px;
-      background: var(--card); border: 2px solid var(--border-solid);
-      border-radius: 50px; cursor: pointer; font-family: var(--font-body);
-      font-size: .88rem; font-weight: 700; color: var(--text);
-      transition: all .2s; box-shadow: var(--shadow-sm);
-    }
-    .id-part-btn:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent-dark); transform: translateY(-2px); box-shadow: var(--shadow); }
-    .id-ou { font-size: .72rem; font-weight: 700; color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
-    .id-ou::before, .id-ou::after { content:''; flex:1; height:1px; background:var(--border-solid); }
-    .id-form { display: flex; gap: 8px; margin-bottom: 16px; }
-    .id-form .add-input { flex: 1; }
-    .id-skip { display: block; font-size: .8rem; color: var(--text-muted); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; background: none; border: none; font-family: var(--font-body); margin: 0 auto; }
-    .id-skip:hover { color: var(--text); }
-    .id-error { color: var(--danger); font-size: .82rem; margin-top: 8px; font-weight: 600; min-height: 20px; }
-
-    /* ── Bandeau identité dans les bagages ── */
-    .id-banner {
       display: flex; align-items: center; gap: 10px;
-      background: #F0FDF4; border: 1.5px solid #86EFAC;
-      border-radius: 14px; padding: 10px 14px; margin-bottom: 16px;
+      padding: 12px 16px;
+      border: 1.5px solid var(--border-solid); border-radius: 12px;
+      background: var(--card); cursor: pointer;
+      font-size: .92rem; font-weight: 600;
+      font-family: var(--font-body); color: var(--text);
+      transition: all .15s;
     }
-    .id-banner-nom { flex: 1; font-weight: 700; font-size: .9rem; color: #15803D; }
-    .id-change-btn { font-size: .73rem; font-weight: 700; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 7px; }
-    .id-change-btn:hover { background: var(--bg); color: var(--text); }
-
-    /* ── Identité dans le header ── */
-    .header-id-badge {
-      display: flex; align-items: center; gap: 6px;
-      background: var(--accent-light); color: var(--accent-dark);
-      border-radius: 20px; padding: 4px 12px 4px 6px;
-      font-size: .72rem; font-weight: 700; white-space: nowrap;
-      cursor: pointer; border: none; font-family: var(--font-body);
-      transition: all .18s;
+    .id-part-btn:hover { background: var(--accent-light); border-color: var(--accent); }
+    .id-ou { color: var(--text-muted); font-size: .82rem; margin-bottom: 12px; }
+    .id-form { display: flex; gap: 8px; margin-bottom: 14px; }
+    .id-input {
+      flex: 1; padding: 11px 14px; min-width: 0;
+      border: 1.5px solid var(--border-solid); border-radius: 12px;
+      font-size: .88rem; font-family: var(--font-body);
+      background: var(--card); color: var(--text); outline: none;
     }
-    .header-id-badge:hover { background: var(--accent); color: white; }
-
-    /* ── Dashboard Accueil ── */
-    .dash-hero { padding: 24px 16px 20px; color: #fff; border-radius: 0; position: relative; overflow: hidden; }
-    .dash-hero::after { content:''; position:absolute;inset:0;background:radial-gradient(ellipse at top right,rgba(255,255,255,.12) 0%,transparent 60%);pointer-events:none; }
-    .dash-hero-upcoming { background: linear-gradient(135deg,#1E3A6E,#2563EB); }
-    .dash-hero-ongoing  { background: linear-gradient(135deg,#065F46,#059669); }
-    .dash-hero-past     { background: linear-gradient(135deg,#374151,#6B7280); }
-    .dash-hero-eyebrow  { font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85;margin-bottom:5px; }
-    .dash-hero-days     { font-family:var(--font-display);font-size:2.2rem;font-weight:700;line-height:1.1;margin-bottom:6px; }
-    .dash-hero-dest     { font-size:.92rem;opacity:.9;margin-bottom:3px; }
-    .dash-hero-period   { font-size:.76rem;opacity:.72; }
-
-    .dash-stats-grid    { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px; }
-    .dash-stat-card     { background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 10px;text-align:center; }
-    .dash-stat-value    { font-family:var(--font-display);font-size:1.7rem;font-weight:700;color:var(--accent);line-height:1;margin-bottom:3px; }
-    .dash-stat-label    { font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted); }
-    .dash-stat-bar      { margin-top:6px;height:4px;border-radius:2px;background:var(--border-solid);overflow:hidden; }
-    .dash-stat-bar-fill { height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent),#E8943A);transition:width .5s; }
-
-    .dash-section-title { font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:4px 12px 6px; }
-
-    .dash-next-card  { margin:0 12px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px; }
-    .dash-next-icon  { font-size:1.6rem;flex-shrink:0; }
-    .dash-next-body  { flex:1;min-width:0; }
-    .dash-next-titre { font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-    .dash-next-date  { font-size:.76rem;color:var(--accent);font-weight:600;margin-top:2px; }
-    .dash-next-lieu  { font-size:.73rem;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-
-    .dash-weather-card  { margin:0 12px 12px;background:var(--card);border-radius:12px;padding:12px;overflow:hidden; }
-    .dash-weather-loc   { font-size:.74rem;font-weight:700;color:var(--text-muted);margin-bottom:10px; }
-    .dash-weather-row   { display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none; }
-    .dash-weather-row::-webkit-scrollbar { display:none; }
-    .dash-forecast-day  { flex:0 0 auto;min-width:48px;background:var(--bg);border-radius:9px;padding:7px 3px;text-align:center; }
-    .dash-forecast-label { font-size:.62rem;font-weight:700;color:var(--text-muted);margin-bottom:3px; }
-    .dash-forecast-emoji { font-size:1.3rem;line-height:1;margin-bottom:3px; }
-    .dash-forecast-temps { display:flex;gap:2px;justify-content:center;font-size:.68rem;font-weight:600; }
-    .dash-tmax { color:var(--accent); }
-    .dash-tmin { color:var(--text-muted); }
-    .dash-forecast-rain { font-size:.58rem;color:#3B82F6;margin-top:1px; }
-    .dash-notes { margin:0 12px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:.84rem;line-height:1.5;color:var(--text-muted);white-space:pre-wrap; }
-
-    /* ── Programme timeline ── */
-    .prog-day { margin-bottom: 0; }
-    .prog-day-past { opacity: .7; }
-    .prog-day-header { display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px 7px;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:88px;z-index:5; }
-    .prog-day-date  { font-weight:700;font-size:.86rem; }
-    .prog-day-num   { font-size:.68rem;font-weight:700;color:var(--accent);background:var(--accent-light);padding:2px 7px;border-radius:20px; }
-    .prog-items     { padding:8px 12px 4px;display:flex;flex-direction:column; }
-    .prog-item      { display:flex;gap:8px;min-height:54px; }
-    .prog-spine     { display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0;padding-top:8px; }
-    .prog-dot       { width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);flex-shrink:0;position:relative;z-index:1; }
-    .prog-line      { width:2px;flex:1;margin-top:3px;border-radius:1px;min-height:20px; }
-    .prog-card      { flex:1;min-width:0;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px; }
-    .prog-card-top  { display:flex;align-items:flex-start;gap:8px;padding:10px; }
-    .prog-icon      { font-size:1.3rem;flex-shrink:0;margin-top:1px; }
-    .prog-card-body { flex:1;min-width:0; }
-    .prog-titre     { font-weight:700;font-size:.86rem;margin-bottom:2px; }
-    .prog-heure     { font-size:.72rem;font-weight:600;color:var(--accent); }
-    .prog-lieu      { font-size:.74rem;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-    .prog-desc      { font-size:.74rem;color:var(--text-muted);margin-top:2px;line-height:1.4; }
-    .prog-badge     { font-size:.58rem;font-weight:700;padding:2px 6px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:2px; }
-    .prog-badge-resa   { background:#EFF6FF;color:#1D4ED8; }
-    .prog-badge-agenda { background:#F0FDF4;color:#15803D; }
-
-    /* ── Dark mode ── */
-    @media (prefers-color-scheme: dark) {
-      :root { --bg:#1C1712; --card:#261F18; --text:#F5F0E6; --text-muted:#9B8B7A; --border:rgba(255,200,150,.09); --border-solid:#3A3028; --accent-light:#3A2010; }
-      .icon-transport   { background: linear-gradient(135deg,#1A2540,#1E2E50); }
-      .icon-hebergement { background: linear-gradient(135deg,#0D2B1A,#0A3520); }
-      .icon-vehicule    { background: linear-gradient(135deg,#3A2500,#4A3000); }
-      .icon-activite    { background: linear-gradient(135deg,#3A2010,#4A2510); }
-      .icon-restaurant  { background: linear-gradient(135deg,#3A1030,#4A1540); }
-      .add-input { background: var(--bg); }
-      .id-banner { background: #0D2B1A; border-color: #166534; }
-      .id-banner-nom { color: #4ADE80; }
-      .dash-stat-card  { background: var(--card); }
-      .dash-next-card  { background: var(--card); }
-      .dash-weather-card { background: var(--card); }
-      .dash-forecast-day { background: var(--bg); }
-      .dash-notes      { background: var(--card); }
-      .prog-card       { background: var(--card); }
-      .prog-badge-resa   { background:#1A2540;color:#93BFFF; }
-      .prog-badge-agenda { background:#1A2B1A;color:#6EE7A0; }
+    .id-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .id-skip {
+      color: var(--text-muted); font-size: .78rem;
+      background: none; border: none; cursor: pointer;
+      text-decoration: underline; font-family: var(--font-body);
+    }
+    /* ── Layout fix : screen-voyage doit remplir exactement 100vh ── */
+    #screen-voyage {
+      height: 100vh;
+      overflow: hidden;
+    }
+    #screen-voyage .main-content {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+    /* ── Partage badge ─────────────────────────── */
+    #partage-id-badge {
+      background: var(--accent-light); color: var(--accent);
+      font-size: .65rem; font-weight: 800;
+      padding: 4px 10px; border-radius: 20px;
+      white-space: nowrap; letter-spacing: .05em;
+      text-transform: uppercase; flex-shrink: 0;
     }
   </style>
 </head>
 <body>
 
-<div class="app-header">
-  <div class="header-inner">
-    <div class="header-voyage">
-      <h1 id="voyage-nom">Chargement…</h1>
-      <p id="voyage-dates" class="header-dates"></p>
+<!-- ═══ IDENTIFICATION ═══════════════════════════════════════════ -->
+<div id="id-overlay">
+  <div class="id-card">
+    <div class="id-hero">✈️</div>
+    <h2 class="id-voyage-nom" id="id-voyage-nom">Voyage partagé</h2>
+    <p class="id-sous-titre">Qui êtes-vous ?</p>
+    <div id="id-participants" class="id-parts"></div>
+    <p class="id-ou">ou entrez votre prénom</p>
+    <div class="id-form">
+      <input id="id-nom-input" class="id-input" placeholder="Votre prénom…"
+             onkeydown="if(event.key==='Enter')_idParNom()">
+      <button class="btn-primary" onclick="_idParNom()">Continuer →</button>
     </div>
-    <div id="header-id-zone"><span class="badge-read">👁 Partagé</span></div>
+    <button class="id-skip" onclick="_idLectureSeule()">Accéder en lecture seule</button>
   </div>
 </div>
 
-<div class="tab-nav" id="tab-nav" style="display:none">
-  <div class="tab-nav-inner">
-    <button class="tab-btn active" onclick="afficherOnglet('accueil',this)"><span class="tab-icon">🏠</span>Accueil</button>
-    <button class="tab-btn" onclick="afficherOnglet('reservations',this)"><span class="tab-icon">🎫</span>Réservations</button>
-    <button class="tab-btn" onclick="afficherOnglet('programme',this)"><span class="tab-icon">📆</span>Programme</button>
-    <button class="tab-btn" onclick="afficherOnglet('carte',this)"><span class="tab-icon">🗺️</span>Carte</button>
-    <button class="tab-btn" onclick="afficherOnglet('budget',this)"><span class="tab-icon">💰</span>Budget</button>
-    <button class="tab-btn" onclick="afficherOnglet('bagages',this)"><span class="tab-icon">🧳</span>Bagages</button>
+<!-- ═══ ÉCRAN VOYAGE (identique à l'app principale) ══════════════ -->
+<div id="screen-voyage" class="screen active">
+
+  <header class="app-header voyage-header" id="voyage-header">
+    <div class="header-content">
+      <button class="btn-icon btn-back" onclick="afficherAccueil()" title="Changer d'identité">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="header-title">
+        <h1 id="voyage-nom"></h1>
+        <span id="voyage-dates" class="subtitle"></span>
+      </div>
+      <span id="partage-id-badge">PARTAGÉ</span>
+    </div>
+  </header>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="accueil" onclick="changerOnglet('accueil', this)">
+      <span class="tab-icon">🏠</span><span>Accueil</span>
+    </button>
+    <button class="tab-btn" data-tab="programme" onclick="changerOnglet('programme', this)">
+      <span class="tab-icon">📆</span><span>Programme</span>
+    </button>
+    <button class="tab-btn" data-tab="budget" onclick="changerOnglet('budget', this)">
+      <span class="tab-icon">💰</span><span>Budget</span>
+    </button>
+    <button class="tab-btn" data-tab="bagages" onclick="changerOnglet('bagages', this)">
+      <span class="tab-icon">🧳</span><span>Bagages</span>
+    </button>
+    <button class="tab-btn" data-tab="admin" onclick="changerOnglet('admin', this)">
+      <span class="tab-icon">⚙️</span><span>Admin</span>
+    </button>
+  </nav>
+
+  <main class="main-content tabs-content">
+
+    <!-- ACCUEIL -->
+    <div id="tab-accueil" class="tab-panel active">
+      <div id="dash-content"></div>
+    </div>
+
+    <!-- PROGRAMME -->
+    <div id="tab-programme" class="tab-panel">
+      <div class="panel-actions">
+        <button class="btn-primary" onclick="ouvrirModalAgenda()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Ajouter un événement
+        </button>
+      </div>
+      <div id="liste-programme"></div>
+    </div>
+
+    <!-- BAGAGES -->
+    <div id="tab-bagages" class="tab-panel">
+      <div class="budget-section">
+        <div class="budget-section-header">
+          <span class="budget-section-title">🧳 Ma liste de bagages</span>
+        </div>
+        <div style="padding:0 16px 14px">
+          <div id="bagages-participant-selector" class="avatars-row" style="margin-bottom:12px"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary" onclick="genererSuggestions()" style="flex:1;justify-content:center">
+              ✨ Suggestions intelligentes
+            </button>
+            <button class="btn-secondary" onclick="ouvrirModalAjoutArticle()" style="flex:1">
+              + Article
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="bagages-progress-bar" style="display:none;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:.78rem;font-weight:700;color:var(--text-muted)">PROGRESSION</span>
+          <span id="bagages-progress-text" style="font-size:.78rem;font-weight:700;color:var(--accent)"></span>
+        </div>
+        <div style="background:var(--border-solid);border-radius:4px;height:6px;overflow:hidden">
+          <div id="bagages-progress-fill" style="height:100%;border-radius:4px;background:linear-gradient(90deg,#C9622F,#E8943A);transition:width .4s"></div>
+        </div>
+      </div>
+      <div id="liste-bagages" style="padding:12px 16px;display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+
+    <!-- BUDGET -->
+    <div id="tab-budget" class="tab-panel">
+      <div class="budget-section">
+        <div class="budget-section-header">
+          <span class="budget-section-title">👥 Participants</span>
+          <button class="btn-mini-add" onclick="ouvrirModalParticipant()">+ Ajouter</button>
+        </div>
+        <div id="liste-participants" class="participants-list"></div>
+      </div>
+      <div id="liste-depenses"></div>
+      <div style="padding:12px 16px 4px">
+        <button onclick="_depenseOuvrir()"
+          style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+                 background:#16a34a;color:#fff;border:none;border-radius:14px;
+                 padding:13px 22px;font-size:.88rem;font-weight:700;
+                 font-family:var(--font-body);cursor:pointer;
+                 box-shadow:0 4px 16px rgba(22,163,74,.28);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Ajouter une dépense
+        </button>
+      </div>
+      <div class="budget-section" id="section-bilan" style="display:none">
+        <div class="budget-section-header">
+          <span class="budget-section-title">⚖️ Bilan — qui doit quoi</span>
+        </div>
+        <div id="bilan-content"></div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="tab-admin" class="tab-panel">
+      <div id="admin-content"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══ MODAL RÉSERVATION ════════════════════════════════════════ -->
+<div id="modal-reservation" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-resa-titre">Nouvelle réservation</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-reservation')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="form-reservation" onsubmit="sauvegarderReservation(event)">
+      <div class="form-group">
+        <label>Type de réservation *</label>
+        <div class="type-selector">
+          <button type="button" class="type-opt active" data-type="transport" onclick="choisirType(this)">✈️ Transport</button>
+          <button type="button" class="type-opt" data-type="hebergement" onclick="choisirType(this)">🏠 Hébergement</button>
+          <button type="button" class="type-opt" data-type="vehicule" onclick="choisirType(this)">🚗 Véhicule</button>
+          <button type="button" class="type-opt" data-type="activite" onclick="choisirType(this)">🎯 Activité</button>
+          <button type="button" class="type-opt" data-type="restaurant" onclick="choisirType(this)">🍽️ Restaurant</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Titre *</label>
+        <input type="text" id="r-titre" placeholder="Ex: Vol Bruxelles - Ajaccio" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Date début</label><input type="date" id="r-date-debut"></div>
+        <div class="form-group"><label>Date fin</label><input type="date" id="r-date-fin"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Heure début</label><input type="time" id="r-heure-debut"></div>
+        <div class="form-group"><label>Heure fin</label><input type="time" id="r-heure-fin"></div>
+      </div>
+      <div class="form-group"><label>Lieu</label><input type="text" id="r-lieu" placeholder="Ex: Aéroport de Charleroi"></div>
+      <div class="form-group"><label>Adresse</label><input type="text" id="r-adresse" placeholder="Rue, ville..."></div>
+      <div class="form-group"><label>N° de confirmation</label><input type="text" id="r-confirmation" placeholder="Ex: BK-123456789"></div>
+      <div class="form-group"><label>Notes</label><textarea id="r-notes" rows="2" placeholder="Infos complémentaires..."></textarea></div>
+      <div class="form-group"><label>🔗 Lien</label><input type="url" id="r-lien" placeholder="https://..."></div>
+      <input type="hidden" id="r-type" value="transport">
+      <input type="hidden" id="r-id">
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="fermerModal('modal-reservation')">Annuler</button>
+        <button type="submit" class="btn-primary">Enregistrer</button>
+      </div>
+    </form>
   </div>
 </div>
 
-<div class="content" id="content">
-  <div class="loading">⏳ Chargement du voyage…</div>
+<!-- ═══ MODAL AGENDA ═════════════════════════════════════════════ -->
+<div id="modal-agenda" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-agenda-titre">Nouvel événement</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-agenda')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="form-agenda" onsubmit="sauvegarderAgenda(event)">
+      <div class="form-row">
+        <div class="form-group"><label>Date *</label><input type="date" id="a-date" required></div>
+        <div class="form-group"><label>Heure</label><input type="time" id="a-heure"></div>
+      </div>
+      <div class="form-group"><label>Titre *</label><input type="text" id="a-titre" placeholder="Ex: Visite du vieux port" required></div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="a-type">
+          <option value="transport">✈️ Transport</option>
+          <option value="hebergement">🏠 Hébergement</option>
+          <option value="activite" selected>🎯 Activité</option>
+          <option value="restaurant">🍽️ Restaurant</option>
+          <option value="sport">🏄 Sport</option>
+          <option value="libre">☀️ Temps libre</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Lieu</label><input type="text" id="a-lieu" placeholder="Ex: Ajaccio"></div>
+      <div class="form-group"><label>Description</label><textarea id="a-description" rows="2" placeholder="Détails..."></textarea></div>
+      <div class="form-group"><label>🔗 Lien</label><input type="url" id="a-lien" placeholder="https://..."></div>
+      <input type="hidden" id="a-id">
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="fermerModal('modal-agenda')">Annuler</button>
+        <button type="submit" class="btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
 </div>
+
+<!-- ═══ MODAL DOCUMENT ═══════════════════════════════════════════ -->
+<div id="modal-document" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Ajouter un document</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-document')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <div class="type-selector">
+        <button type="button" class="type-opt active" data-doctype="transport" onclick="choisirDocType(this)">✈️ Transport</button>
+        <button type="button" class="type-opt" data-doctype="hebergement" onclick="choisirDocType(this)">🏠 Hébergement</button>
+        <button type="button" class="type-opt" data-doctype="vehicule" onclick="choisirDocType(this)">🚗 Véhicule</button>
+        <button type="button" class="type-opt" data-doctype="activite" onclick="choisirDocType(this)">🎯 Activité</button>
+        <button type="button" class="type-opt" data-doctype="autre" onclick="choisirDocType(this)">📄 Autre</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>🔗 Lier à une réservation ou un événement (optionnel)</label>
+      <select id="doc-lien-select"><option value="">— Non lié —</option></select>
+    </div>
+    <input type="hidden" id="doc-event" value="">
+    <input type="hidden" id="doc-reservation-id" value="">
+    <div class="scan-mode-btns">
+      <button type="button" class="scan-mode-btn active" id="scan-mode-fichier-btn" onclick="basculerModeDoc('fichier')">📎 Fichier</button>
+      <button type="button" class="scan-mode-btn" id="scan-mode-scan-btn" onclick="basculerModeDoc('scan')">📷 Scanner / Photo</button>
+    </div>
+    <div id="doc-mode-fichier" class="form-group" style="margin-top:14px">
+      <label class="btn-primary" for="upload-doc-input" style="display:inline-flex;cursor:pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Choisir un fichier
+      </label>
+      <input type="file" id="upload-doc-input" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none" onchange="uploaderDocument(this)">
+      <p id="doc-filename" style="font-size:.82rem;color:var(--text-muted);margin-top:8px"></p>
+    </div>
+    <div id="doc-mode-scan" class="hidden" style="margin-top:14px">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button type="button" class="btn-primary" onclick="lancerScan('camera')" style="flex:1;justify-content:center">📷 Prendre une photo</button>
+        <button type="button" class="btn-secondary" onclick="lancerScan('file')" style="flex:1">🖼️ Image existante</button>
+      </div>
+      <input type="file" id="scan-camera-input" accept="image/*" capture="environment" style="display:none" onchange="traiterImageScan(this)">
+      <input type="file" id="scan-file-input" accept="image/*" style="display:none" onchange="traiterImageScan(this)">
+      <div id="scan-result-area" class="hidden">
+        <img id="scan-preview-img" class="scan-preview" alt="">
+        <div id="scan-progress-area" class="hidden">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+            <span id="scan-progress-label" style="font-size:.78rem;color:var(--text-muted)">Analyse en cours…</span>
+            <span id="scan-progress-pct" style="font-size:.78rem;font-weight:700;color:var(--accent)">0%</span>
+          </div>
+          <div class="scan-progress-bar"><div id="scan-progress-fill" class="scan-progress-fill"></div></div>
+        </div>
+        <div id="scan-result-fields" style="margin-top:10px"></div>
+        <div id="scan-nom-group" class="form-group hidden" style="margin-top:10px">
+          <label>Nom du document</label>
+          <input type="text" id="doc-scan-nom" placeholder="Nom du document scanné">
+        </div>
+        <button type="button" id="scan-confirm-btn" class="btn-primary" style="width:100%;display:none;margin-top:12px;justify-content:center" onclick="confirmerImportScan()">
+          ✅ Importer ce document
+        </button>
+      </div>
+    </div>
+    <input type="hidden" id="doc-type" value="transport">
+  </div>
+</div>
+
+<!-- ═══ MODAL MODIFIER DOCUMENT ═════════════════════════════════ -->
+<div id="modal-doc-edit" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Modifier le document</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-doc-edit')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group"><label>Nom du document</label><input type="text" id="doc-edit-nom" placeholder="Nom du fichier"></div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <div class="type-selector">
+        <button type="button" class="type-opt" data-doctype-edit="transport"   onclick="choisirDocTypeEdit(this)">✈️ Transport</button>
+        <button type="button" class="type-opt" data-doctype-edit="hebergement" onclick="choisirDocTypeEdit(this)">🏠 Hébergement</button>
+        <button type="button" class="type-opt" data-doctype-edit="vehicule"    onclick="choisirDocTypeEdit(this)">🚗 Véhicule</button>
+        <button type="button" class="type-opt" data-doctype-edit="activite"    onclick="choisirDocTypeEdit(this)">🎯 Activité</button>
+        <button type="button" class="type-opt" data-doctype-edit="autre"       onclick="choisirDocTypeEdit(this)">📄 Autre</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>🔗 Lier à une réservation ou un événement</label>
+      <select id="doc-edit-lien-select"><option value="">— Non lié —</option></select>
+    </div>
+    <input type="hidden" id="doc-edit-id">
+    <input type="hidden" id="doc-edit-categorie" value="autre">
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fermerModal('modal-doc-edit')">Annuler</button>
+      <button class="btn-primary" onclick="sauvegarderModifDocument()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ VISUALISEUR DOCUMENT ════════════════════════════════════ -->
+<div id="modal-doc-viewer" class="doc-viewer-overlay hidden">
+  <div class="doc-viewer-header">
+    <span id="doc-viewer-nom" class="doc-viewer-titre"></span>
+    <button class="doc-viewer-close" onclick="fermerDocViewer()">✕ Fermer</button>
+  </div>
+  <iframe id="doc-viewer-frame" class="doc-viewer-frame" src=""></iframe>
+</div>
+
+<!-- ═══ MODAL AJOUT ARTICLE BAGAGE ══════════════════════════════ -->
+<div id="modal-article" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Ajouter un article</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-article')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>Article *</label>
+      <input type="text" id="art-nom" placeholder="Ex: Crème solaire, Passeport...">
+    </div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <select id="art-categorie">
+        <option value="documents">📄 Documents</option>
+        <option value="vetements">👕 Vêtements</option>
+        <option value="toilette">🧴 Toilette</option>
+        <option value="sante">💊 Santé</option>
+        <option value="electronique">📱 Électronique</option>
+        <option value="plage">🏖️ Plage / Sport</option>
+        <option value="divers">📦 Divers</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fermerModal('modal-article')">Annuler</button>
+      <button class="btn-primary" onclick="ajouterArticle()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL PARTICIPANT ════════════════════════════════════════ -->
+<div id="modal-participant" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Ajouter un participant</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-participant')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group"><label>Prénom *</label><input type="text" id="p-nom" placeholder="Ex: Sandra"></div>
+    <div class="form-group">
+      <label>Couleur</label>
+      <div class="color-picker">
+        <button type="button" class="color-opt active" data-color="#6366F1" style="background:#6366F1" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#10B981" style="background:#10B981" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#F59E0B" style="background:#F59E0B" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#EF4444" style="background:#EF4444" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#EC4899" style="background:#EC4899" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#14B8A6" style="background:#14B8A6" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt" data-color="#F97316" style="background:#F97316" onclick="choisirCouleurParticipant(this)"></button>
+      </div>
+      <input type="hidden" id="p-couleur" value="#6366F1">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fermerModal('modal-participant')">Annuler</button>
+      <button class="btn-primary" onclick="sauvegarderParticipant()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL DÉPENSE ════════════════════════════════════════════ -->
+<div id="modal-depense" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-depense-titre">Nouvelle dépense</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-depense')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group"><label>Description *</label><input type="text" id="dep-titre" placeholder="Ex: Restaurant, Essence, Villa..."></div>
+    <div class="form-row">
+      <div class="form-group"><label>Montant (€) *</label><input type="number" id="dep-montant" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="form-group"><label>Date</label><input type="date" id="dep-date"></div>
+    </div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <select id="dep-categorie">
+        <option value="hebergement">🏠 Hébergement</option>
+        <option value="transport">✈️ Transport</option>
+        <option value="restauration">🍽️ Restauration</option>
+        <option value="activite">🎯 Activité</option>
+        <option value="courses">🛒 Courses</option>
+        <option value="autre" selected>📦 Autre</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Payé par *</label><div id="dep-payeur-list" class="participants-selector"></div></div>
+    <div class="form-group">
+      <label>Partagé entre</label>
+      <div id="dep-participants-list" class="participants-selector"></div>
+      <p style="font-size:.72rem;color:var(--text-muted);margin-top:6px">Tous cochés = partage égal entre tout le monde</p>
+    </div>
+    <input type="hidden" id="dep-id">
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fermerModal('modal-depense')">Annuler</button>
+      <button class="btn-primary" onclick="_depenseSauvegarder()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MENU OPTIONS VOYAGE ══════════════════════════════════════ -->
+<div id="menu-voyage" class="bottom-sheet hidden">
+  <div class="bottom-sheet-handle"></div>
+  <button class="sheet-btn" onclick="partagerVoyage()">🔗 Partager ce voyage</button>
+  <button class="sheet-btn" onclick="fermerBottomSheet();afficherAccueil()">👤 Changer d'identité</button>
+  <button class="sheet-btn" onclick="fermerBottomSheet()">Annuler</button>
+</div>
+
+<!-- ═══ MODAL PARTAGE ════════════════════════════════════════════ -->
+<div id="modal-partage" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🔗 Partager le voyage</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-partage')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:16px;line-height:1.6">Partage ce lien avec tes compagnons de voyage.</p>
+    <div style="background:var(--bg);border-radius:12px;padding:14px;word-break:break-all;font-size:.82rem;color:var(--text);border:1px solid var(--border-solid)" id="partage-url"></div>
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn-secondary" onclick="fermerModal('modal-partage')">Fermer</button>
+      <button class="btn-primary" onclick="copierLienPartage()">📋 Copier le lien</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BOTTOM SHEET : DÉTAIL RÉSERVATION ════════════════════════ -->
+<div id="resa-detail-sheet" class="bottom-sheet hidden">
+  <div class="bottom-sheet-handle"></div>
+  <div id="resa-detail-body" class="resa-detail-sheet-body"></div>
+</div>
+
+<div id="overlay-sheet" class="overlay-sheet hidden" onclick="fermerBottomSheet()"></div>
+
+<!-- ═══ TOAST ════════════════════════════════════════════════════ -->
+<div id="toast" class="toast hidden"></div>
+
+
+<script src="/app.js"></script>
 
 <script>
-/* ═══════════════════════════════════════════════
-   ÉTAT
-   ═══════════════════════════════════════════════ */
-const token = location.pathname.split('/partage/')[1];
-let data = null;
-let voyageId = null;
-let participantActif = null;
-let identite = null; // { nom, participant_id, couleur }
+/* ════════════════════════════════════════════════════
+   PARTAGE — Mode initialisation
+   Remplace les fonctions de navigation de l'app principale
+   par un comportement adapté au lien partagé.
+   ════════════════════════════════════════════════════ */
 
-/* ═══════════════════════════════════════════════
-   CHARGEMENT
-   ═══════════════════════════════════════════════ */
-async function charger() {
-  const resp = await fetch('/api/partage/' + token);
-  if (!resp.ok) {
-    document.getElementById('content').innerHTML =
-      '<div class="empty"><div class="empty-icon">🔒</div><p>Lien invalide ou expiré</p></div>';
-    return;
-  }
-  data = await resp.json();
-  voyageId = data.voyage.id;
+// Désactiver le chargement de la liste de voyages (pas de screen-home ici)
+window.chargerVoyages = function() {};
 
-  document.getElementById('voyage-nom').textContent = data.voyage.nom;
-  document.title = data.voyage.nom + ' — Voyage partagé';
-  const fmt = d => d ? new Date(d+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short',year:'numeric'}) : '';
-  const d1 = fmt(data.voyage.date_debut), d2 = fmt(data.voyage.date_fin);
-  document.getElementById('voyage-dates').textContent = d1 && d2 ? d1+' → '+d2 : d1;
 
-  // Récupérer l'identité stockée
+const _partageToken = location.pathname.replace(/^\/(partage|share)\//, '');
+
+// "Retour" = retour à l'écran d'identification
+window.afficherAccueil = function() {
+  localStorage.removeItem('partage_id_' + _partageToken);
+  document.getElementById('screen-voyage').classList.remove('active');
+  document.getElementById('id-overlay').style.display = 'flex';
+};
+
+async function _initPartage() {
   try {
-    const stored = localStorage.getItem('partage_id_' + token);
-    if (stored) identite = JSON.parse(stored);
-  } catch(e) {}
-
-  if (!identite) {
-    afficherEcranIdentification();
-  } else {
-    mettreAJourHeaderId();
-    lancerApplication();
-  }
-}
-
-/* ═══════════════════════════════════════════════
-   IDENTIFICATION
-   ═══════════════════════════════════════════════ */
-function afficherEcranIdentification() {
-  document.getElementById('tab-nav').style.display = 'none';
-  const participants = data.participants || [];
-
-  document.getElementById('content').innerHTML = `
-    <div class="id-screen">
-      <div class="id-hero">✈️</div>
-      <h2 class="id-voyage-nom">${data.voyage.nom}</h2>
-      <p class="id-sous-titre">Qui êtes-vous ?</p>
-
-      ${participants.length ? `
-        <div class="id-parts">
-          ${participants.map(p => `
-            <button class="id-part-btn" onclick='_identifierParticipant(${JSON.stringify(p)})'>
-              <div class="avatar" style="background:${p.couleur||'#C9622F'};width:26px;height:26px;font-size:.62rem;flex-shrink:0">${p.nom[0].toUpperCase()}</div>
-              ${p.nom}
-            </button>
-          `).join('')}
-        </div>
-        <div class="id-ou">ou entrez votre prénom</div>
-      ` : '<p style="color:var(--text-muted);font-size:.84rem;margin-bottom:20px">Entrez votre prénom pour accéder à votre liste de bagages</p>'}
-
-      <div class="id-form">
-        <input id="id-nom-input" class="add-input" placeholder="Votre prénom…"
-          onkeydown="if(event.key==='Enter') _identifierParNom()">
-        <button class="add-btn" onclick="_identifierParNom()">Continuer →</button>
-      </div>
-      <div id="id-error" class="id-error"></div>
-      <button class="id-skip" onclick="_accederLectureSeule()">Accéder en lecture seule</button>
-    </div>
-  `;
-  setTimeout(() => {
-    const el = document.getElementById('id-nom-input');
-    if (el) el.focus();
-  }, 100);
-}
-
-function _identifierParticipant(p) {
-  identite = { nom: p.nom, participant_id: p.id, couleur: p.couleur || '#C9622F' };
-  localStorage.setItem('partage_id_' + token, JSON.stringify(identite));
-  mettreAJourHeaderId();
-  lancerApplication();
-}
-
-function _identifierParNom() {
-  const nom = (document.getElementById('id-nom-input').value || '').trim();
-  if (!nom) return;
-  const errEl = document.getElementById('id-error');
-
-  const participants = data.participants || [];
-  const match = participants.find(p => p.nom.toLowerCase() === nom.toLowerCase());
-
-  if (match) {
-    _identifierParticipant(match);
-  } else {
-    // Nom inconnu : lecture seule avec message
-    identite = { nom, participant_id: null, couleur: '#6B7280' };
-    // Ne PAS stocker dans localStorage → nouvelle identification demandée à chaque visite
-    if (errEl) errEl.textContent = `"${nom}" n'est pas dans la liste des participants. Vous accéderez en lecture seule.`;
-    setTimeout(() => {
-      mettreAJourHeaderId();
-      lancerApplication();
-    }, 1400);
-  }
-}
-
-function _accederLectureSeule() {
-  identite = { nom: null, participant_id: null, couleur: '#6B7280' };
-  mettreAJourHeaderId();
-  lancerApplication();
-}
-
-function changerIdentite() {
-  identite = null;
-  participantActif = null;
-  localStorage.removeItem('partage_id_' + token);
-  document.getElementById('tab-nav').style.display = 'none';
-  afficherEcranIdentification();
-}
-
-function mettreAJourHeaderId() {
-  const zone = document.getElementById('header-id-zone');
-  if (!zone) return;
-  if (identite && identite.nom) {
-    zone.innerHTML = `
-      <button class="header-id-badge" onclick="changerIdentite()" title="Changer d'identité">
-        <div class="avatar" style="background:${identite.couleur||'#C9622F'};width:20px;height:20px;font-size:.55rem;flex-shrink:0">${identite.nom[0].toUpperCase()}</div>
-        ${identite.nom}
-      </button>`;
-  } else {
-    zone.innerHTML = '<span class="badge-read">👁 Partagé</span>';
-  }
-}
-
-function lancerApplication() {
-  document.getElementById('content').innerHTML = `
-    <div id="panel-accueil"      class="panel active"></div>
-    <div id="panel-reservations" class="panel"></div>
-    <div id="panel-programme"    class="panel"></div>
-    <div id="panel-carte"        class="panel"></div>
-    <div id="panel-budget"       class="panel"></div>
-    <div id="panel-bagages"      class="panel"></div>
-  `;
-  document.getElementById('tab-nav').style.display = '';
-
-  afficherAccueil();
-  afficherReservations();
-  afficherProgramme();
-  afficherCarte();
-  afficherBudget();
-  afficherBagages();
-}
-
-function afficherOnglet(nom, btn) {
-  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('panel-'+nom).classList.add('active');
-}
-
-function toast(msg) {
-  const el = document.createElement('div');
-  el.className = 'toast-msg';
-  el.textContent = msg;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 2400);
-}
-
-/* ═══════════════════════════════════════════════
-   DASHBOARD ACCUEIL
-   ═══════════════════════════════════════════════ */
-function afficherAccueil() {
-  const c = document.getElementById('panel-accueil');
-  const voyage = data.voyage;
-  const resas  = data.reservations || [];
-  const bagages = data.bagages || [];
-
-  const today = new Date(); today.setHours(0,0,0,0);
-  const debut = voyage.date_debut ? new Date(voyage.date_debut + 'T00:00:00') : null;
-  const fin   = voyage.date_fin   ? new Date(voyage.date_fin   + 'T00:00:00') : null;
-  const fmt = d => d ? new Date(d+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short',year:'numeric'}) : '';
-
-  // Statut
-  let heroClass = 'upcoming', heroLabel = '', heroDays = '';
-  if (!debut) {
-    heroClass = 'past'; heroLabel = 'À planifier';
-  } else if (debut > today) {
-    const diff = Math.ceil((debut - today) / 86400000);
-    heroClass = 'upcoming';
-    heroLabel = '🗓️ Départ dans';
-    heroDays  = diff + ' jour' + (diff > 1 ? 's' : '');
-  } else if (fin && fin < today) {
-    const diff = Math.ceil((today - fin) / 86400000);
-    heroClass = 'past';
-    heroLabel = 'Voyage terminé';
-    heroDays  = 'il y a ' + diff + ' jour' + (diff > 1 ? 's' : '');
-  } else {
-    const totalDays = fin ? Math.round((fin - debut) / 86400000) + 1 : null;
-    const jourN = Math.round((today - debut) / 86400000) + 1;
-    heroClass = 'ongoing';
-    heroLabel = '🌍 En cours';
-    heroDays  = totalDays ? 'Jour ' + jourN + ' / ' + totalDays : 'Jour ' + jourN;
-  }
-
-  // Stats bagages
-  const bagTotal  = bagages.length;
-  const bagCoches = bagages.filter(b => b.checked).length;
-  const bagPct    = bagTotal > 0 ? Math.round(bagCoches / bagTotal * 100) : 0;
-
-  // Prochaine réservation
-  const todayStr = today.toISOString().split('T')[0];
-  const prochaine = resas
-    .filter(r => r.date_debut && r.date_debut >= todayStr)
-    .sort((a,b) => a.date_debut < b.date_debut ? -1 : 1)[0] || null;
-
-  const resaIcons = {transport:'✈️',hebergement:'🏠',vehicule:'🚗',activite:'🎯',restaurant:'🍽️'};
-  const period = (debut ? fmt(voyage.date_debut) : '') + (fin ? ' → ' + fmt(voyage.date_fin) : '');
-
-  c.innerHTML = `
-    <div class="dash-hero dash-hero-${heroClass}">
-      <div class="dash-hero-eyebrow">${heroLabel}</div>
-      <div class="dash-hero-days">${heroDays}</div>
-      <div class="dash-hero-dest">📍 ${voyage.destination || voyage.nom}</div>
-      ${period ? `<div class="dash-hero-period">${period}</div>` : ''}
-    </div>
-
-    <div class="dash-stats-grid">
-      <div class="dash-stat-card">
-        <div class="dash-stat-value">${resas.length}</div>
-        <div class="dash-stat-label">Réservations</div>
-      </div>
-      <div class="dash-stat-card">
-        <div class="dash-stat-value">${bagPct}<span style="font-size:1rem">%</span></div>
-        <div class="dash-stat-label">Bagages prêts</div>
-        <div class="dash-stat-bar"><div class="dash-stat-bar-fill" style="width:${bagPct}%"></div></div>
-      </div>
-      <div class="dash-stat-card">
-        <div class="dash-stat-value">${bagCoches}<span style="font-size:.85rem;color:var(--text-muted)">/${bagTotal}</span></div>
-        <div class="dash-stat-label">Articles cochés</div>
-      </div>
-    </div>
-
-    ${prochaine ? `
-    <div class="dash-section-title">🎫 Prochaine réservation</div>
-    <div class="dash-next-card">
-      <div class="dash-next-icon">${resaIcons[prochaine.type]||'📌'}</div>
-      <div class="dash-next-body">
-        <div class="dash-next-titre">${prochaine.titre}</div>
-        <div class="dash-next-date">${fmt(prochaine.date_debut)}${prochaine.heure_debut ? ' · ' + prochaine.heure_debut : ''}</div>
-        ${prochaine.adresse ? `<div class="dash-next-lieu">📍 ${prochaine.adresse}</div>` : ''}
-        ${prochaine.lien ? `<a href="${prochaine.lien}" target="_blank" class="lien-btn" style="margin-top:6px">🔗 Voir</a>` : ''}
-      </div>
-    </div>` : ''}
-
-    <div class="dash-section-title">🌤️ Météo à destination</div>
-    <div id="dash-meteo-partage"><div style="padding:14px 0;color:var(--text-muted);font-size:.85rem">Chargement…</div></div>
-
-    ${voyage.description ? `
-    <div class="dash-section-title">📝 Notes</div>
-    <div class="dash-notes">${voyage.description}</div>` : ''}
-    <div style="height:20px"></div>
-  `;
-
-  chargerMeteoPartage(voyage.destination || voyage.nom);
-}
-
-async function chargerMeteoPartage(destination) {
-  const el = document.getElementById('dash-meteo-partage');
-  if (!el) return;
-  try {
-    const dest = (destination || '').split(',')[0].trim();
-    const geoRes = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(dest) + '&count=1&language=fr&format=json');
-    const geoData = await geoRes.json();
-    if (!geoData.results || !geoData.results.length) {
-      el.innerHTML = '<div style="padding:10px 0;color:var(--text-muted);font-size:.82rem">Météo indisponible</div>'; return;
-    }
-    const { latitude, longitude, name, country } = geoData.results[0];
-    const wtRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude='+latitude+'&longitude='+longitude+'&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7');
-    const wtData = await wtRes.json();
-    const d = wtData.daily;
-    const days = d.time.map((date,i) => ({date, code:d.weathercode[i], tmax:Math.round(d.temperature_2m_max[i]), tmin:Math.round(d.temperature_2m_min[i]), rain:d.precipitation_probability_max[i]}));
-    const dayNames = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-    el.innerHTML = `
-      <div class="dash-weather-card">
-        <div class="dash-weather-loc">📍 ${name}, ${country}</div>
-        <div class="dash-weather-row">
-          ${days.map((day,i) => {
-            const dn = new Date(day.date+'T00:00:00');
-            const label = i === 0 ? 'Auj.' : dayNames[dn.getDay()];
-            return `<div class="dash-forecast-day">
-              <div class="dash-forecast-label">${label}</div>
-              <div class="dash-forecast-emoji">${wmoEmoji(day.code)}</div>
-              <div class="dash-forecast-temps"><span class="dash-tmax">${day.tmax}°</span><span class="dash-tmin">${day.tmin}°</span></div>
-              ${day.rain !== null ? `<div class="dash-forecast-rain">${day.rain}%</div>` : ''}
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`;
-  } catch(e) {
-    el.innerHTML = '<div style="padding:10px 0;color:var(--text-muted);font-size:.82rem">Météo temporairement indisponible</div>';
-  }
-}
-
-function wmoEmoji(code) {
-  if (code === 0)  return '☀️';
-  if (code <= 2)   return '⛅';
-  if (code <= 3)   return '☁️';
-  if (code <= 49)  return '🌫️';
-  if (code <= 59)  return '🌦️';
-  if (code <= 69)  return '🌧️';
-  if (code <= 79)  return '❄️';
-  if (code <= 82)  return '🌧️';
-  if (code <= 84)  return '🌨️';
-  if (code <= 94)  return '⛈️';
-  return '🌩️';
-}
-
-/* ═══════════════════════════════════════════════
-   RÉSERVATIONS
-   ═══════════════════════════════════════════════ */
-function afficherReservations() {
-  const c = document.getElementById('panel-reservations');
-  const resas = data.reservations || [];
-  if (!resas.length) { c.innerHTML = '<div class="empty"><div class="empty-icon">🎫</div><p>Aucune réservation</p></div>'; return; }
-
-  const ico = {transport:'✈️',hebergement:'🏠',vehicule:'🚗',activite:'🎯',restaurant:'🍽️'};
-  const grouped = {};
-  resas.forEach(r => { const k = r.date_debut||''; if (!grouped[k]) grouped[k]=[]; grouped[k].push(r); });
-  const sorted = Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b));
-
-  c.innerHTML = sorted.map(([date,items]) => `
-    <div class="sep">${date ? new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'}) : 'Sans date'}</div>
-    ${items.map(r=>`
-      <div class="resa-card">
-        <div class="resa-icon icon-${r.type}">${ico[r.type]||'📌'}</div>
-        <div class="resa-body">
-          <div class="resa-titre">${r.titre}</div>
-          <div class="resa-meta">
-            ${r.heure_debut?`<span>🕐 ${r.heure_debut}${r.heure_fin?' → '+r.heure_fin:''}</span>`:''}
-            ${r.lieu?`<span>📍 ${r.lieu}</span>`:''}
-            ${r.date_fin&&r.date_fin!==r.date_debut?`<span>↩ jusqu'au ${new Date(r.date_fin+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short'})}</span>`:''}
-          </div>
-          ${r.numero_confirmation?`<div class="resa-code">📋 ${r.numero_confirmation}</div>`:''}
-          ${r.notes?`<div class="resa-notes">${r.notes}</div>`:''}
-          ${r.lien?`<a href="${r.lien}" target="_blank" class="lien-btn">🔗 Voir la réservation</a>`:''}
-        </div>
-      </div>
-    `).join('')}
-  `).join('');
-}
-
-/* ═══════════════════════════════════════════════
-   PROGRAMME (timeline fusionnée)
-   ═══════════════════════════════════════════════ */
-function afficherProgramme() {
-  const c = document.getElementById('panel-programme');
-  const evts  = data.agenda || [];
-  const resas = data.reservations || [];
-  const voyage = data.voyage;
-
-  const items = [];
-  const resaColors = {transport:'#3B82F6',hebergement:'#10B981',vehicule:'#F59E0B',activite:'#8B5CF6',restaurant:'#EC4899'};
-  const agdColors  = {transport:'#3B82F6',hebergement:'#10B981',activite:'#C9622F',restaurant:'#EC4899',sport:'#F59E0B',libre:'#9CA3AF'};
-  const resaIcons  = {transport:'✈️',hebergement:'🏠',vehicule:'🚗',activite:'🎯',restaurant:'🍽️'};
-  const agdIcons   = {transport:'✈️',hebergement:'🏠',activite:'🎯',restaurant:'🍽️',sport:'🏄',libre:'☀️'};
-
-  evts.forEach(ev => {
-    if (!ev.date) return;
-    items.push({ date:ev.date, heure:ev.heure||null, titre:ev.titre, lieu:ev.lieu||null, description:ev.description||null, lien:ev.lien||null, source:'agenda', color:agdColors[ev.type]||'#C9622F', icon:agdIcons[ev.type]||'📌' });
-  });
-  resas.forEach(r => {
-    const date = r.date_debut || r.date;
-    if (!date) return;
-    items.push({ date, heure:r.heure_debut||null, titre:r.titre, lieu:r.adresse||r.lieu||null, description:r.notes||null, lien:r.lien||null, source:'resa', color:resaColors[r.type]||'#C9622F', icon:resaIcons[r.type]||'📌' });
-  });
-
-  if (!items.length) { c.innerHTML = '<div class="empty"><div class="empty-icon">📆</div><p>Aucun élément planifié</p></div>'; return; }
-
-  items.sort((a,b) => {
-    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
-    const ha = a.heure||'99:99', hb = b.heure||'99:99';
-    return ha < hb ? -1 : 1;
-  });
-
-  const grouped = {};
-  items.forEach(it => { if (!grouped[it.date]) grouped[it.date]=[]; grouped[it.date].push(it); });
-
-  const today = new Date().toISOString().split('T')[0];
-  const debut = voyage.date_debut;
-  const fin   = voyage.date_fin;
-  const totalDays = (debut && fin) ? Math.round((new Date(fin) - new Date(debut)) / 86400000) + 1 : null;
-  function jourNum(d) {
-    if (!debut) return null;
-    const n = Math.round((new Date(d) - new Date(debut)) / 86400000) + 1;
-    return n >= 1 ? n : null;
-  }
-
-  c.innerHTML = Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)).map(([date,dayItems]) => {
-    const isToday = date === today;
-    const isPast  = date < today;
-    const jNum    = jourNum(date);
-    const jourLabel = jNum ? 'Jour ' + jNum + (totalDays ? ' / ' + totalDays : '') : '';
-    const dateLabel = new Date(date+'T00:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'});
-
-    return `<div class="prog-day ${isPast?'prog-day-past':''}">
-      <div class="prog-day-header">
-        <span class="prog-day-date" style="${isToday?'color:var(--accent);font-weight:800':''}">${dateLabel}${isToday?' · <strong>Aujourd\'hui</strong>':''}</span>
-        ${jourLabel ? `<span class="prog-day-num">${jourLabel}</span>` : ''}
-      </div>
-      <div class="prog-items">
-        ${dayItems.map((it,idx) => {
-          const isLast = idx === dayItems.length - 1;
-          return `<div class="prog-item">
-            <div class="prog-spine">
-              <div class="prog-dot" style="background:${it.color}"></div>
-              ${!isLast ? `<div class="prog-line" style="background:${it.color}22"></div>` : ''}
-            </div>
-            <div class="prog-card">
-              <div class="prog-card-top">
-                <span class="prog-icon">${it.icon}</span>
-                <div class="prog-card-body">
-                  <div class="prog-titre">${it.titre}</div>
-                  ${it.heure ? `<span class="prog-heure">🕐 ${it.heure}</span>` : ''}
-                  ${it.lieu ? `<div class="prog-lieu">📍 ${it.lieu}</div>` : ''}
-                  ${it.description ? `<div class="prog-desc">${it.description}</div>` : ''}
-                  ${it.lien ? `<a href="${it.lien}" target="_blank" class="lien-btn" style="margin-top:5px;font-size:.72rem">🔗 Ouvrir</a>` : ''}
-                </div>
-                <span class="prog-badge ${it.source==='resa'?'prog-badge-resa':'prog-badge-agenda'}">${it.source==='resa'?'Réservation':'Agenda'}</span>
-              </div>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-/* ═══════════════════════════════════════════════
-   CARTE
-   ═══════════════════════════════════════════════ */
-function afficherCarte() {
-  const c = document.getElementById('panel-carte');
-  const ico = {transport:'✈️',hebergement:'🏠',vehicule:'🚗',activite:'🎯',restaurant:'🍽️'};
-  const lieux = [
-    ...(data.reservations||[]).filter(r=>r.adresse||r.lieu).map(r=>({label:r.titre,addr:r.adresse||r.lieu,icon:ico[r.type]||'📌'})),
-    ...(data.agenda||[]).filter(a=>a.lieu).map(a=>({label:a.titre,addr:a.lieu,icon:'📅'}))
-  ];
-  const query = lieux.length ? lieux[0].addr : (data.voyage.destination||'');
-  c.innerHTML = `
-    ${lieux.length ? `<div class="lieux-list">${lieux.map(l=>`
-      <div class="lieu-item" onclick="document.getElementById('carte-frame').src='https://maps.google.com/maps?q=${encodeURIComponent(l.addr)}&output=embed&z=14'">
-        <span style="font-size:1.1rem">${l.icon}</span>
-        <div><div style="font-weight:700;font-size:.85rem">${l.label}</div><div style="font-size:.73rem;color:var(--text-muted)">${l.addr}</div></div>
-      </div>`).join('')}</div>` : ''}
-    <iframe id="carte-frame" class="carte-frame" src="https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed&z=10" loading="lazy" allowfullscreen></iframe>
-  `;
-}
-
-/* ═══════════════════════════════════════════════
-   BUDGET — lecture seule
-   ═══════════════════════════════════════════════ */
-function afficherBudget() {
-  const c = document.getElementById('panel-budget');
-  const participants = data.participants||[], depenses = data.depenses||[];
-  if (!participants.length && !depenses.length) {
-    c.innerHTML = '<div class="empty"><div class="empty-icon">💰</div><p>Aucune donnée de budget</p></div>'; return;
-  }
-  const catIco = {hebergement:'🏠',transport:'✈️',restauration:'🍽️',activite:'🎯',courses:'🛒',autre:'📦'};
-  const total = depenses.reduce((s,d)=>s+parseFloat(d.montant||0),0);
-  const totalByP = {};
-  participants.forEach(p=>totalByP[p.id]=0);
-  depenses.forEach(d=>{ if(d.payeur_id) totalByP[d.payeur_id]=(totalByP[d.payeur_id]||0)+parseFloat(d.montant||0); });
-  const bilan = calculerBilan(participants, depenses);
-
-  c.innerHTML = `
-    ${total>0?`<div class="budget-hero"><div><div class="budget-hero-label">Total des dépenses</div><div class="budget-hero-amount">${total.toFixed(2)} €</div><div class="budget-hero-nb">${depenses.length} dépense${depenses.length>1?'s':''}</div></div><div style="font-size:2.5rem">💶</div></div>`:''}
-    ${participants.length?`<div class="sep">Participants</div><div class="p-chips">${participants.map(p=>`
-      <div class="p-chip">
-        <div class="avatar" style="background:${p.couleur||'#C9622F'}">${p.nom[0].toUpperCase()}</div>
-        <span class="chip-nom">${p.nom}</span>
-        ${(totalByP[p.id]||0)>0?`<span class="chip-total">${(totalByP[p.id]).toFixed(2)}€</span>`:''}
-      </div>`).join('')}</div>`:''}
-    ${depenses.length?`<div class="sep">Dépenses</div>${depenses.map(d=>{
-      const pay=participants.find(p=>p.id==d.payeur_id);
-      return `<div class="dep-card">
-        <span class="dep-cat">${catIco[d.categorie]||'📦'}</span>
-        <div class="dep-body">
-          <div class="dep-titre">${d.titre}</div>
-          <div class="dep-meta">
-            ${pay?`<span><span class="avatar-xs" style="background:${pay.couleur}">${pay.nom[0]}</span> ${pay.nom}</span>`:''}
-            ${d.date?`<span>📅 ${new Date(d.date+'T00:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short'})}</span>`:''}
-          </div>
-        </div>
-        <div class="dep-montant">${parseFloat(d.montant).toFixed(2)} €</div>
-      </div>`;}).join('')}`:''}
-    ${participants.length>1?`<div class="sep">Bilan</div>${bilan.length===0
-      ?'<div class="bilan-ok">✅ Tout le monde est quitte !</div>'
-      :bilan.map(t=>{
-        const fr=participants.find(p=>p.id==t.from), to=participants.find(p=>p.id==t.to);
-        if(!fr||!to) return '';
-        return `<div class="bilan-card">
-          <div class="bilan-side"><div class="avatar" style="background:${fr.couleur||'#999'}">${fr.nom[0]}</div><span>${fr.nom}</span></div>
-          <div class="bilan-mid"><span class="bilan-sum">${t.amount.toFixed(2)} €</span><span class="bilan-arrow">→</span></div>
-          <div class="bilan-side"><div class="avatar" style="background:${to.couleur||'#999'}">${to.nom[0]}</div><span>${to.nom}</span></div>
-        </div>`;}).join('')}`:''}
-  `;
-}
-
-function calculerBilan(participants, depenses) {
-  const bal = {};
-  participants.forEach(p=>bal[p.id]=0);
-  depenses.forEach(d=>{
-    if (!d.payeur_id) return;
-    let pids;
-    try { pids = d.participants_ids ? JSON.parse(d.participants_ids) : participants.map(p=>p.id); }
-    catch(e) { pids = participants.map(p=>p.id); }
-    if (!pids||!pids.length) pids = participants.map(p=>p.id);
-    const m = parseFloat(d.montant||0);
-    const part = m/pids.length;
-    bal[d.payeur_id] = (bal[d.payeur_id]||0)+m;
-    pids.forEach(pid=>{ bal[pid]=(bal[pid]||0)-part; });
-  });
-  const deb = Object.entries(bal).filter(([,b])=>b<-0.01).sort(([,a],[,b])=>a-b);
-  const cre = Object.entries(bal).filter(([,b])=>b> 0.01).sort(([,a],[,b])=>b-a);
-  const tx=[]; let i=0,j=0;
-  while(i<deb.length&&j<cre.length){
-    const [did,db]=deb[i],[cid,cb]=cre[j];
-    const amt=Math.min(-db,cb);
-    tx.push({from:parseInt(did),to:parseInt(cid),amount:amt});
-    deb[i][1]+=amt; cre[j][1]-=amt;
-    if(Math.abs(deb[i][1])<0.01)i++;
-    if(Math.abs(cre[j][1])<0.01)j++;
-  }
-  return tx;
-}
-
-/* ═══════════════════════════════════════════════
-   BAGAGES — INTERACTIF
-   ═══════════════════════════════════════════════ */
-function afficherBagages() {
-  const c = document.getElementById('panel-bagages');
-  const participants = data.participants || [];
-
-  if (!participants.length) {
-    c.innerHTML = '<div class="empty"><div class="empty-icon">🧳</div><p>Aucun participant enregistré.<br>Le créateur du voyage doit d\'abord ajouter les participants dans l\'application.</p></div>';
-    return;
-  }
-
-  // Cas 1 : identifié comme participant → liste personnelle verrouillée
-  if (identite && identite.participant_id) {
-    const moi = participants.find(p => p.id == identite.participant_id);
-    if (!moi) {
-      // Participant supprimé entre temps
-      c.innerHTML = '<div class="empty"><div class="empty-icon">🧳</div><p>Votre profil participant est introuvable. Veuillez vous ré-identifier.</p><button class="add-btn" onclick="changerIdentite()" style="margin-top:14px">Changer d\'identité</button></div>';
+    const resp = await fetch('/api/partage/' + _partageToken);
+    if (!resp.ok) {
+      document.getElementById('id-overlay').innerHTML =
+        '<div class="id-card"><div class="id-hero">🔒</div>' +
+        '<h2 style="font-family:var(--font-display);margin-bottom:8px">Lien invalide</h2>' +
+        '<p style="color:var(--text-muted)">Ce lien de partage est invalide ou a expiré.</p></div>';
       return;
     }
-    participantActif = identite.participant_id;
-    c.innerHTML = `
-      <div class="id-banner">
-        <div class="avatar" style="background:${identite.couleur||'#C9622F'};width:28px;height:28px;font-size:.65rem;flex-shrink:0">${identite.nom[0].toUpperCase()}</div>
-        <span class="id-banner-nom">Ma liste — ${identite.nom}</span>
-        <button class="id-change-btn" onclick="changerIdentite()">Changer</button>
-      </div>
-      <div id="bag-list"></div>
-    `;
-    renderListeBagages();
+    const d = await resp.json();
+    voyageActuel = d.voyage.id;
 
-  // Cas 2 : identifié par nom mais pas trouvé dans participants → lecture seule
-  } else if (identite && identite.nom) {
-    c.innerHTML = `
-      <div class="empty">
-        <div class="empty-icon">🧳</div>
-        <p>Bonjour <strong>${identite.nom}</strong> !<br>Votre prénom n'est pas dans la liste des participants.<br>Demandez à l'organisateur du voyage de vous ajouter.</p>
-        <button class="add-btn" onclick="changerIdentite()" style="margin-top:16px">Changer d'identité</button>
-      </div>
-    `;
+    // Remplir l'en-tête du voyage
+    document.getElementById('voyage-nom').textContent = d.voyage.nom;
+    document.getElementById('voyage-dates').textContent =
+      formatDates(d.voyage.date_debut, d.voyage.date_fin);
+    const hdr = document.getElementById('voyage-header');
+    if (hdr && d.voyage.couleur) hdr.style.borderBottom = '3px solid ' + d.voyage.couleur;
 
-  // Cas 3 : visiteur anonyme → lecture seule (tous les participants visibles, aucune action)
-  } else {
-    c.innerHTML = `
-      <div class="empty">
-        <div class="empty-icon">🧳</div>
-        <p>Identifiez-vous pour accéder à votre liste de bagages.</p>
-        <button class="add-btn" onclick="changerIdentite()" style="margin-top:16px">S'identifier</button>
-      </div>
-    `;
-  }
-}
+    // Écran d'identification
+    document.getElementById('id-voyage-nom').textContent = d.voyage.nom;
+    const pEl = document.getElementById('id-participants');
+    const parts = d.participants || [];
+    pEl.innerHTML = parts.map(p =>
+      '<button class="id-part-btn" onclick=\'_idParticipant(' + JSON.stringify(p) + ')\'>' +
+        '<div class="avatar" style="background:' + (p.couleur||'#C9622F') +
+        ';width:28px;height:28px;font-size:.6rem;flex-shrink:0">' +
+        (p.nom||'?')[0].toUpperCase() + '</div>' +
+        p.nom +
+      '</button>'
+    ).join('');
+    if (!parts.length) document.querySelector('.id-ou').style.display = 'none';
 
-function renderListeBagages() {
-  const c = document.getElementById('bag-list');
-  if (!c) return;
-  // Utilise == pour éviter problème de type string/number
-  const all = (data.bagages||[]).filter(b => b.participant_id == participantActif);
-  const checked = all.filter(b=>b.checked).length;
-  const pct = all.length ? Math.round((checked/all.length)*100) : 0;
+    // Identité déjà stockée ?
+    try {
+      const stored = localStorage.getItem('partage_id_' + _partageToken);
+      if (stored) { _lancerPartage(JSON.parse(stored)); return; }
+    } catch(e) {}
 
-  const catLabels = {documents:'📄 Documents',vetements:'👕 Vêtements',toilette:'🧴 Toilette',sante:'💊 Santé',electronique:'📱 Électronique',plage:'🏖️ Plage / Sport',divers:'📦 Divers'};
-  const catOrder  = ['documents','vetements','toilette','sante','electronique','plage','divers'];
-  const grouped = {};
-  all.forEach(b=>{ if(!grouped[b.categorie]) grouped[b.categorie]=[]; grouped[b.categorie].push(b); });
-  const cats = catOrder.filter(k=>grouped[k]);
-
-  c.innerHTML = `
-    <div class="bag-actions">
-      <button class="btn-suggest" onclick="genererSuggestions()">✨ Suggestions intelligentes</button>
-      <button class="btn-add-item" onclick="afficherFormulaireAjout()">+ Article</button>
-    </div>
-    ${all.length ? `
-      <div class="progress-label"><span>Progression</span><span>${checked} / ${all.length} articles</span></div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-      ${cats.map(cat=>`
-        <div>
-          <div class="bag-cat-header">
-            <span>${catLabels[cat]||cat}</span>
-            <span class="bag-count">${grouped[cat].filter(b=>b.checked).length}/${grouped[cat].length}</span>
-          </div>
-          ${grouped[cat].map(b=>`
-            <div class="bag-item ${b.checked?'checked':''}" onclick="toggleBagage(${b.id},${b.checked})">
-              <div class="bag-check ${b.checked?'checked':''}">${b.checked?'✓':''}</div>
-              <span class="bag-nom">${b.nom}</span>
-              <button class="bag-del" onclick="event.stopPropagation();supprimerBagage(${b.id})">✕</button>
-            </div>
-          `).join('')}
-        </div>
-      `).join('')}
-    ` : '<div class="empty" style="padding:24px 0"><div class="empty-icon">📦</div><p>Aucun article. Génère des suggestions ou ajoute des articles manuellement.</p></div>'}
-    <div id="add-form-container"></div>
-  `;
-}
-
-/* ── Toggle check ── */
-async function toggleBagage(id, checked) {
-  // Optimistic UI
-  const item = (data.bagages||[]).find(b=>b.id==id);
-  if (item) item.checked = !checked;
-  renderListeBagages();
-  try {
-    await fetch('/api/bagages/'+id, {
-      method:'PUT', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({checked: !checked})
-    });
+    document.getElementById('id-overlay').style.display = 'flex';
   } catch(e) {
-    // Rollback
-    if (item) item.checked = checked;
-    renderListeBagages();
-    toast('❌ Erreur de connexion');
+    console.error('initPartage error:', e);
   }
 }
 
-/* ── Supprimer ── */
-async function supprimerBagage(id) {
-  data.bagages = (data.bagages||[]).filter(b=>b.id!=id);
-  renderListeBagages();
-  try {
-    await fetch('/api/bagages/'+id, {method:'DELETE'});
-  } catch(e) { toast('❌ Erreur réseau'); }
+function _idParticipant(p) {
+  const id = { nom: p.nom, participant_id: p.id, couleur: p.couleur || '#C9622F' };
+  localStorage.setItem('partage_id_' + _partageToken, JSON.stringify(id));
+  _lancerPartage(id);
 }
 
-/* ── Formulaire ajout inline ── */
-function afficherFormulaireAjout() {
-  const c = document.getElementById('add-form-container');
-  if (!c) return;
-  c.innerHTML = `
-    <div class="add-form">
-      <input id="add-input" class="add-input" placeholder="Nom de l'article…" onkeydown="if(event.key==='Enter')ajouterArticle()">
-      <button class="add-btn" onclick="ajouterArticle()">Ajouter</button>
-    </div>
-  `;
-  document.getElementById('add-input').focus();
-}
-
-async function ajouterArticle() {
-  const input = document.getElementById('add-input');
-  if (!input) return;
-  const nom = input.value.trim();
+function _idParNom() {
+  const nom = (document.getElementById('id-nom-input').value || '').trim();
   if (!nom) return;
-
-  // Detect category from name
-  const cat = detecterCategorie(nom);
-
-  try {
-    const resp = await fetch('/api/voyages/'+voyageId+'/bagages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({nom, categorie: cat, participant_id: participantActif, checked: false})
-    });
-    const {id} = await resp.json();
-    if (!data.bagages) data.bagages = [];
-    data.bagages.push({id, voyage_id: voyageId, participant_id: participantActif, nom, categorie: cat, checked: false});
-    renderListeBagages();
-  } catch(e) { toast('❌ Erreur réseau'); }
+  _lancerPartage({ nom, participant_id: null, couleur: '#6B7280' });
 }
 
-/* ── Suggestions intelligentes ── */
-async function genererSuggestions() {
-  const v = data.voyage;
-  const suggestions = getSuggestionsContextuelles(v.nom||'', v.destination||'');
-  const items = [];
-  Object.entries(suggestions).forEach(([cat, noms]) => {
-    noms.forEach(nom => items.push({nom, categorie: cat}));
-  });
-  if (!items.length) { toast('Pas de suggestions pour cette destination'); return; }
-
-  toast('⏳ Génération en cours…');
-  try {
-    await fetch('/api/voyages/'+voyageId+'/bagages/bulk', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({participant_id: participantActif, items})
-    });
-    // Recharger les bagages depuis l'API
-    const resp = await fetch('/api/voyages/'+voyageId+'/bagages');
-    data.bagages = await resp.json();
-    renderListeBagages();
-    toast('✅ Liste générée !');
-  } catch(e) { toast('❌ Erreur réseau'); }
+function _idLectureSeule() {
+  _lancerPartage({ nom: null });
 }
 
-/* ── Détection de catégorie par mots-clés ── */
-function detecterCategorie(nom) {
-  const n = nom.toLowerCase();
-  if (/passeport|carte.id|billet|e-ticket|assurance|brevet|carnet/i.test(n)) return 'documents';
-  if (/t-shirt|short|maillot|pyjama|chaussure|veste|pantalon|robe|jupe|pull|sous.vêtement|chaussette|tong/i.test(n)) return 'vetements';
-  if (/brosse|dentifrice|shampoing|gel|douche|déodorant|rasoir|crème|parfum|coton|serviette.de.bain/i.test(n)) return 'toilette';
-  if (/médica|comprim|sirop|pansement|bandage|thermomètre|doliprane|ibuprofène/i.test(n)) return 'sante';
-  if (/téléphone|chargeur|ordinateur|tablette|appareil|gopro|casque|écouteur|adaptateur/i.test(n)) return 'electronique';
-  if (/masque|palmes|tuba|serviette.plage|lunettes|chapeau|crème.solaire|bouée/i.test(n)) return 'plage';
-  return 'divers';
+function _lancerPartage(identite) {
+  document.getElementById('id-overlay').style.display = 'none';
+  document.getElementById('screen-voyage').classList.add('active');
+
+  // Badge identité dans le header
+  const badge = document.getElementById('partage-id-badge');
+  if (badge && identite && identite.nom) {
+    badge.textContent = identite.nom;
+    badge.style.background = (identite.couleur || '#C9622F') + '22';
+    badge.style.color = identite.couleur || '#C9622F';
+    badge.style.borderColor = identite.couleur || '#C9622F';
+    badge.style.border = '1px solid ' + (identite.couleur || '#C9622F');
+  }
+
+  changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
 }
 
-/* ── Suggestions contextuelles (version locale sans météo) ── */
-function getSuggestionsContextuelles(nom, destination) {
-  const ctx = (nom + ' ' + destination).toLowerCase();
-  const s = {
-    documents: ['Passeport / Carte d\'identité','Billets / E-tickets','Assurance voyage'],
-    vetements:  ['T-shirts','Sous-vêtements','Pyjama','Chaussettes','Chaussures de sport'],
-    toilette:   ['Brosse à dents','Dentifrice','Shampoing','Gel douche','Déodorant'],
-    sante:      ['Médicaments personnels','Antalgiques','Pansements','Crème solaire SPF50'],
-    electronique:['Chargeur téléphone','Adaptateur secteur','Écouteurs / AirPods'],
-    plage:      [],
-    divers:     ['Sac à dos','Cadenas valise','Livre / Liseuse']
+// ── Override : voirReservation — alimente le cache si besoin ──
+const _origVoirReservation = window.voirReservation;
+window.voirReservation = async function(id) {
+  if (_resasCache.length === 0) {
+    const [resas, docs] = await Promise.all([
+      fetch(`/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
+      fetch(`/api/voyages/${voyageActuel}/documents`).then(r => r.json())
+    ]);
+    _resasCache = resas;
+    _docsCache  = docs;
+  }
+  _origVoirReservation(id);
+};
+
+// ── Dépense : ouvrir le modal (toujours, même sans participants) ──
+async function _depenseOuvrir(id = null) {
+  document.getElementById('modal-depense-titre').textContent = id ? 'Modifier la dépense' : 'Nouvelle dépense';
+  document.getElementById('dep-id').value = id || '';
+  document.getElementById('dep-date').value = new Date().toISOString().split('T')[0];
+
+  let depExistante = null;
+  if (id) {
+    const deps = await fetch(`/api/voyages/${voyageActuel}/depenses`).then(r => r.json());
+    depExistante = deps.find(d => String(d.id) === String(id));
+    if (depExistante) {
+      document.getElementById('dep-titre').value = depExistante.titre || '';
+      document.getElementById('dep-montant').value = depExistante.montant || '';
+      document.getElementById('dep-date').value = depExistante.date || new Date().toISOString().split('T')[0];
+      document.getElementById('dep-categorie').value = depExistante.categorie || 'autre';
+    }
+  } else {
+    document.getElementById('dep-titre').value = '';
+    document.getElementById('dep-montant').value = '';
+    document.getElementById('dep-categorie').value = 'autre';
+  }
+
+  const payeurList = document.getElementById('dep-payeur-list');
+  const partList   = document.getElementById('dep-participants-list');
+
+  if (participantsActuels.length > 0) {
+    const payeurIds = depExistante ? JSON.parse(depExistante.participants_ids || '[]') : [];
+    payeurList.innerHTML = participantsActuels.map(p =>
+      `<label class="participant-radio">
+        <input type="radio" name="dep-payeur" value="${p.id}"
+          ${depExistante && String(depExistante.payeur_id) === String(p.id) ? 'checked' : ''}>
+        <span style="background:${p.couleur||'#C9622F'}22;color:${p.couleur||'#C9622F'};border:1px solid ${p.couleur||'#C9622F'};border-radius:20px;padding:4px 12px;font-size:.85rem">${p.nom}</span>
+      </label>`
+    ).join('');
+    if (!payeurList.querySelector('input[type=radio]:checked') && payeurList.querySelector('input[type=radio]')) {
+      payeurList.querySelector('input[type=radio]').checked = true;
+    }
+    partList.innerHTML = participantsActuels.map(p =>
+      `<label class="participant-checkbox">
+        <input type="checkbox" name="dep-part" value="${p.id}"
+          ${!depExistante || payeurIds.includes(p.id) || payeurIds.length === 0 ? 'checked' : ''}>
+        <span style="background:${p.couleur||'#C9622F'}22;color:${p.couleur||'#C9622F'};border:1px solid ${p.couleur||'#C9622F'};border-radius:20px;padding:4px 12px;font-size:.85rem">${p.nom}</span>
+      </label>`
+    ).join('');
+  } else {
+    payeurList.innerHTML = '<p style="font-size:.8rem;color:var(--text-muted);padding:4px 0">Aucun participant — dépense enregistrée sans partage</p><input type="radio" name="dep-payeur" value="0" checked style="display:none">';
+    partList.innerHTML = '';
+  }
+
+  document.getElementById('modal-depense').classList.remove('hidden');
+}
+
+// ── Dépense : sauvegarder ──
+async function _depenseSauvegarder() {
+  const titre   = document.getElementById('dep-titre').value.trim();
+  const montant = parseFloat(document.getElementById('dep-montant').value);
+  if (!titre || isNaN(montant) || montant <= 0) { toast('⚠️ Remplis le titre et le montant'); return; }
+
+  let payeur_id = null;
+  let participants_ids = '[]';
+
+  if (participantsActuels.length > 0) {
+    const payeurRadio = document.querySelector('input[name="dep-payeur"]:checked');
+    if (!payeurRadio) { toast('⚠️ Choisis qui a payé'); return; }
+    payeur_id = parseInt(payeurRadio.value);
+    const checked = [...document.querySelectorAll('input[name="dep-part"]:checked')].map(el => parseInt(el.value));
+    participants_ids = JSON.stringify(checked.length > 0 ? checked : participantsActuels.map(p => p.id));
+  }
+
+  const data = {
+    titre, montant, payeur_id, participants_ids,
+    date: document.getElementById('dep-date').value,
+    categorie: document.getElementById('dep-categorie').value
   };
-
-  // Mer / plage / soleil
-  if (/corse|mer|plage|mediterran|caraib|maldiv|bali|thailand|egypt|egypte|maroc|tunisie|espagne|portugal|grece|italie|reunion|antilles|ocean/i.test(ctx)) {
-    s.vetements.push('Maillot de bain','Tongs','Sarong / Paréo');
-    s.toilette.push('Après-soleil');
-    s.plage.push('Crème solaire SPF50+','Lunettes de soleil','Chapeau / Casquette','Serviette de plage','Sac étanche');
-  }
-
-  // Plongée / snorkeling
-  if (/plong|snorkel|diving|scuba/i.test(ctx)) {
-    s.plage.push('Masque et tuba','Palmes','Combinaison néoprène','Lampe torche étanche','Ordinateur de plongée');
-    s.documents.push('Brevet de plongée (PADI/CMAS)','Carnet de plongée');
-    s.sante.push('Médicaments anti-nausées','Gouttes auriculaires');
-    s.electronique.push('GoPro / Caméra étanche');
-  }
-
-  // Montagne / ski / randonnée
-  if (/vosges|alpes|montagne|ski|randon|trek|pyren|neige/i.test(ctx)) {
-    s.vetements.push('Veste polaire','Imperméable','Gants','Bonnet','Chaussures de randonnée');
-    s.sante.push('Baume à lèvres');
-    s.plage.push('Bâtons de marche','Gourde','Lampe frontale');
-  }
-
-  // Professionnel / salon / ville
-  if (/paris|interschutz|salon|conf|professionnel|business|hannov/i.test(ctx)) {
-    s.vetements.push('Tenue habillée','Chaussures de ville');
-    s.documents.push('Cartes de visite');
-  }
-
-  // Supprimer les catégories vides
-  Object.keys(s).forEach(k => { if (!s[k].length) delete s[k]; });
-  return s;
+  const id  = document.getElementById('dep-id').value;
+  const url = id ? `/api/depenses/${id}` : `/api/voyages/${voyageActuel}/depenses`;
+  await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  fermerModal('modal-depense');
+  toast(id ? '✅ Dépense modifiée' : '✅ Dépense ajoutée');
+  chargerBudget();
 }
 
-/* ═══════════════════════════════════════════════
-   INIT
-   ═══════════════════════════════════════════════ */
-charger();
+_initPartage();
 </script>
+
 </body>
 </html>
