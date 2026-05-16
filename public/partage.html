@@ -89,49 +89,50 @@
     /* ── Welcome Splash ───────────────────────────── */
     #welcome-splash {
       position: fixed; inset: 0; z-index: 3000;
-      background: var(--bg);
+      background: #1C1917;
       display: flex; align-items: center; justify-content: center;
       padding: 32px;
-      transition: opacity 0.5s ease;
+      transition: opacity 0.48s ease, transform 0.48s ease;
     }
     #welcome-splash.splash-out {
-      opacity: 0; pointer-events: none;
+      opacity: 0; transform: scale(0.96); pointer-events: none;
     }
     .ws-inner {
       display: flex; flex-direction: column; align-items: center;
       gap: 14px; text-align: center; max-width: 320px;
+      animation: splashEnter 0.7s cubic-bezier(0.34,1.56,0.64,1) both;
     }
     .ws-img {
-      width: 72px; height: 72px;
-      animation: wsPulse 1.8s ease-in-out infinite;
-    }
-    @keyframes wsPulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50%       { transform: scale(1.09); opacity: 0.82; }
+      width: 80px; height: 80px;
+      border-radius: 20px;
+      box-shadow: 0 0 40px rgba(249,115,22,0.45), 0 0 80px rgba(249,115,22,0.20);
+      animation: splashPulse 1.8s ease-in-out infinite;
     }
     .ws-wordmark {
       font-family: var(--font-display);
-      font-size: 2rem; line-height: 1;
+      font-size: 2.2rem; font-weight: 800;
+      letter-spacing: -0.04em; line-height: 1;
+      animation: splashEnter 0.7s 0.15s cubic-bezier(0.34,1.56,0.64,1) both;
     }
-    .ws-wordmark .cs-crew { color: var(--text); }
-    .ws-wordmark .cs-go   { color: var(--accent); }
+    .ws-wordmark .cs-crew { color: #FFFFFF; }
+    .ws-wordmark .cs-go   { color: #F97316; font-style: italic; }
     .ws-bienvenue {
-      font-size: 0.78rem; font-weight: 700;
-      letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--text-muted); opacity: 0;
-      transition: opacity 0.4s ease 0.3s;
+      font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.40);
+      opacity: 0; transition: opacity 0.4s ease 0.3s;
     }
     .ws-nom {
-      font-size: 1.45rem; font-weight: 800;
+      font-size: 1.5rem; font-weight: 800;
       font-family: var(--font-display);
-      color: var(--accent);
-      min-height: 1.8rem;
-      opacity: 0; transition: opacity 0.4s ease 0.5s;
+      color: #F97316;
+      min-height: 1.8rem; letter-spacing: -0.02em;
+      opacity: 0; transition: opacity 0.45s ease 0.5s;
     }
     .ws-tagline {
-      font-size: 0.85rem; color: var(--text-muted);
-      font-weight: 500; line-height: 1.45;
-      opacity: 0; transition: opacity 0.4s ease 0.7s;
+      font-size: 0.84rem; color: rgba(255,255,255,0.45);
+      font-weight: 500; line-height: 1.5;
+      opacity: 0; transition: opacity 0.4s ease 0.75s;
     }
     #welcome-splash.ws-ready .ws-bienvenue,
     #welcome-splash.ws-ready .ws-nom,
@@ -813,7 +814,7 @@ async function _initPartage() {
 
     // Attendre 2.3s puis cacher le splash
     const elapsed = performance.now(); // l'API a déjà pris du temps
-    const delay = Math.max(0, 2300 - elapsed);
+    const delay = Math.max(0, 4000 - elapsed);
     clearTimeout(_splashWelcomeT1);
     _splashWelcomeT1 = setTimeout(() => {
       _cacherWelcomeSplash(() => {
