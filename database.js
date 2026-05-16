@@ -47,6 +47,7 @@ const localDB = {
     getById: (id) => charger('voyages').find(v => v.id === +id),
     getByToken: (token) => charger('voyages').find(v => v.share_token === token),
     setToken: (id, token) => { const list = charger('voyages'); const idx = list.findIndex(v => v.id === +id); if (idx !== -1) { list[idx].share_token = token; sauvegarder('voyages', list); } return true; },
+    setStatut: (id, statut) => { const list = charger('voyages'); const idx = list.findIndex(v => v.id === +id); if (idx !== -1) { list[idx].statut = statut; sauvegarder('voyages', list); } return true; },
     create: (data) => { const list = charger('voyages'); const item = { ...data, id: nextId(list), created_at: new Date().toISOString() }; list.push(item); sauvegarder('voyages', list); return item; },
     update: (id, data) => { const list = charger('voyages'); const idx = list.findIndex(v => v.id === +id); if (idx===-1) return false; list[idx] = { ...list[idx], ...data }; sauvegarder('voyages', list); return true; },
     delete: (id) => {
@@ -278,6 +279,7 @@ if (USE_POSTGRES) {
       updated_at TIMESTAMPTZ DEFAULT now(),
       UNIQUE(voyage_id, device_id)
     );
+    ALTER TABLE voyages ADD COLUMN IF NOT EXISTS statut TEXT DEFAULT 'actif';
   `).catch(console.error);
 }
 
@@ -287,6 +289,7 @@ const pgDB = pgPool ? {
     getById: async (id) => (await pgPool.query('SELECT * FROM voyages WHERE id=$1', [id])).rows[0],
     getByToken: async (token) => (await pgPool.query('SELECT * FROM voyages WHERE share_token=$1', [token])).rows[0],
     setToken: async (id, token) => { await pgPool.query('UPDATE voyages SET share_token=$1 WHERE id=$2', [token, id]); return true; },
+    setStatut: async (id, statut) => { await pgPool.query('UPDATE voyages SET statut=$1 WHERE id=$2', [statut, id]); return true; },
     create: async (data) => (await pgPool.query('INSERT INTO voyages(nom,destination,date_debut,date_fin,description,couleur) VALUES($1,$2,$3,$4,$5,$6) RETURNING *', [data.nom,data.destination,data.date_debut,data.date_fin,data.description,data.couleur||'#3B82F6'])).rows[0],
     update: async (id, data) => { await pgPool.query('UPDATE voyages SET nom=$1,destination=$2,date_debut=$3,date_fin=$4,description=$5,couleur=$6 WHERE id=$7', [data.nom,data.destination,data.date_debut,data.date_fin,data.description,data.couleur,id]); return true; },
     delete: async (id) => {

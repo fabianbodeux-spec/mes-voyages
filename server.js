@@ -55,6 +55,17 @@ app.delete('/api/voyages/:id', async (req, res) => {
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
+app.patch('/api/voyages/:id/statut', async (req, res) => {
+  try {
+    const { statut } = req.body;
+    if (!['actif', 'terminé'].includes(statut)) return res.status(400).json({ error: 'Statut invalide' });
+    const voyage = await run(() => db.voyages.getById(req.params.id));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    await run(() => db.voyages.setStatut(req.params.id, statut));
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // ─── RÉSERVATIONS ──────────────────────────────────────────────────────────
 
 app.get('/api/voyages/:id/reservations', async (req, res) => {

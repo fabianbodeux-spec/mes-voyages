@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Mes Voyages">
-  <title>Mes Voyages</title>
-  <!-- Premium fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <meta name="apple-mobile-web-app-title" content="CrewGo">
+  <meta name="theme-color" content="#F97316">
+  <meta name="description" content="CrewGo — Planifiez vos voyages en groupe. Roam together.">
+  <title>CrewGo</title>
+  <link rel="icon" type="image/png" href="logo-icon.png">
+  <link rel="apple-touch-icon" href="logo-icon.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,32 +19,37 @@
 <div id="screen-home" class="screen active">
   <header class="app-header">
 
-    <!-- ── Decorative hero background (visual only) ── -->
+    <!-- ── Décoration brand ── -->
     <div class="home-hero-bg" aria-hidden="true"></div>
     <div class="home-hero-grad" aria-hidden="true"></div>
 
-    <!-- ── Top nav bar — IDs & onclick preserved ── -->
+    <!-- ── Top nav bar ── -->
     <div class="header-content">
-      <h1>✈️ Mes Voyages</h1>
-      <button class="btn-icon" onclick="ouvrirModalVoyage()" title="Nouveau voyage">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+      <div class="crewgo-logo">
+        <img src="logo-icon.png" class="crewgo-logo-img" alt="CrewGo">
+        <span class="logo-crew">Crew</span><span class="logo-go">Go</span>
+      </div>
+      <button class="btn-icon" onclick="ouvrirModalVoyage()" title="Nouveau trip">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
       </button>
     </div>
 
-    <!-- ── Hero tagline (DM Serif Display) ── -->
-    <div class="home-tagline" aria-hidden="true">
-      <p class="home-tagline-eyebrow">Votre carnet de voyage</p>
-      <h2 class="home-tagline-main">Planifiez votre<br><em>prochain voyage</em></h2>
+    <!-- ── Hero tagline ── -->
+    <div class="home-tagline">
+      <p class="home-tagline-eyebrow">Voyages en groupe</p>
+      <h2 class="home-tagline-main">Planifiez vos trips<br><em>avec votre crew</em></h2>
     </div>
 
-    <!-- ── Floating search bar (visual decoration, animated placeholder) ── -->
-    <div class="home-search-visual">
-      <span class="home-search-icon">📍</span>
-      <span class="home-search-anim-text" id="home-search-anim">Paris, France…</span>
-      <span class="home-search-cta">Explorer</span>
+    <!-- ── CTA ── -->
+    <div class="home-cta-row">
+      <button class="home-cta-btn" onclick="ouvrirModalVoyage()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 4v16m8-8H4" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
+        Créer un trip
+      </button>
+      <span class="home-tagline-sub">Roam together.</span>
     </div>
 
-    <!-- ── Stats pills — id="home-stats" preserved for JS ── -->
+    <!-- ── Stats pills ── -->
     <div class="home-banner">
       <div id="home-stats" class="home-stats"></div>
     </div>
@@ -86,22 +91,28 @@
   <!-- Onglets navigation -->
   <nav class="tab-nav">
     <button class="tab-btn active" data-tab="accueil" onclick="changerOnglet('accueil', this)">
-      <span class="tab-icon">🏠</span><span>Accueil</span>
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>
+      <span>Basecamp</span>
     </button>
     <button class="tab-btn" data-tab="programme" onclick="changerOnglet('programme', this)">
-      <span class="tab-icon">📆</span><span>Programme</span>
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
+      <span>Road Map</span>
     </button>
     <button class="tab-btn" data-tab="budget" onclick="changerOnglet('budget', this)">
-      <span class="tab-icon">💰</span><span>Budget</span>
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg></span>
+      <span>CrewCash</span>
     </button>
     <button class="tab-btn" data-tab="bagages" onclick="changerOnglet('bagages', this)">
-      <span class="tab-icon">🧳</span><span>Bagages</span>
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M7.5 5.6L10 7 8.6 4.5 10 2 7.5 3.4 5 2l1.4 2.5L5 7zm12 9.8L17 14l1.4 2.5L17 19l2.5-1.4L22 19l-1.4-2.5L22 14zM22 2l-2.5 1.4L17 2l1.4 2.5L17 7l2.5-1.4L22 7l-1.4-2.5zm-7.63 5.29a1 1 0 0 0-1.41 0L1.29 18.96a1 1 0 0 0 0 1.41l2.34 2.34c.39.39 1.02.39 1.41 0L16.7 11.05a1 1 0 0 0 0-1.41l-2.33-2.35z"/></svg></span>
+      <span>Trip & Tricks</span>
     </button>
     <button class="tab-btn" data-tab="admin" onclick="changerOnglet('admin', this)">
-      <span class="tab-icon">⚙️</span><span>Admin</span>
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.63-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></span>
+      <span>Admin</span>
     </button>
     <button class="tab-btn" data-tab="discussion" onclick="changerOnglet('discussion', this)">
-      <span class="tab-icon">💬</span><span>Discussion</span>
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></span>
+      <span>CrewChat</span>
     </button>
   </nav>
 
@@ -154,7 +165,7 @@
           <span id="bagages-progress-text" style="font-size:.78rem;font-weight:700;color:var(--accent)"></span>
         </div>
         <div style="background:var(--border-solid);border-radius:4px;height:6px;overflow:hidden">
-          <div id="bagages-progress-fill" style="height:100%;border-radius:4px;background:linear-gradient(90deg,#C9622F,#E8943A);transition:width .4s"></div>
+          <div id="bagages-progress-fill" style="height:100%;border-radius:4px;background:linear-gradient(90deg,#F97316,#FBBF24);transition:width .4s"></div>
         </div>
       </div>
       <div id="liste-bagages" style="padding:12px 16px;display:flex;flex-direction:column;gap:6px"></div>
@@ -673,10 +684,43 @@
 <!-- ═══ MENU OPTIONS VOYAGE ═══ -->
 <div id="menu-voyage" class="bottom-sheet hidden">
   <div class="bottom-sheet-handle"></div>
-  <button class="sheet-btn" onclick="partagerVoyage()">🔗 Partager ce voyage</button>
-  <button class="sheet-btn" onclick="modifierVoyageActuel()">✏️ Modifier le voyage</button>
-  <button class="sheet-btn danger" onclick="supprimerVoyageActuel()">🗑️ Supprimer le voyage</button>
-  <button class="sheet-btn" onclick="fermerBottomSheet()">Annuler</button>
+  <div class="sheet-header">
+    <span id="sheet-voyage-nom">Options du trip</span>
+  </div>
+  <div class="sheet-actions">
+    <button class="sheet-action-btn" onclick="partagerVoyage()">
+      <span class="sheet-action-icon" style="background:#EFF6FF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+      </span>
+      <div class="sheet-action-body">
+        <span class="sheet-action-title">Partager le trip</span>
+        <span class="sheet-action-sub">Générer un lien pour le crew</span>
+      </div>
+      <svg class="sheet-action-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <button class="sheet-action-btn" onclick="modifierVoyageActuel()">
+      <span class="sheet-action-icon" style="background:#F0FDF4">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </span>
+      <div class="sheet-action-body">
+        <span class="sheet-action-title">Modifier le voyage</span>
+        <span class="sheet-action-sub">Nom, dates, destination</span>
+      </div>
+      <svg class="sheet-action-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+    </button>
+  </div>
+  <div class="sheet-actions" style="margin-top:4px">
+    <button class="sheet-action-btn" onclick="supprimerVoyageActuel()">
+      <span class="sheet-action-icon" style="background:#FEF2F2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+      </span>
+      <div class="sheet-action-body">
+        <span class="sheet-action-title" style="color:var(--danger)">Supprimer le voyage</span>
+        <span class="sheet-action-sub">Action irréversible</span>
+      </div>
+    </button>
+  </div>
+  <button class="sheet-cancel-btn" onclick="fermerBottomSheet()">Annuler</button>
 </div>
 
 <!-- ═══ MODAL PARTAGE ═══ -->
@@ -739,6 +783,23 @@
 </div>
 
 <div id="overlay-sheet" class="overlay-sheet hidden" onclick="fermerBottomSheet()"></div>
+
+<!-- ═══ MODAL CLÔTURE TRIP ═══ -->
+<div id="modal-cloture" class="modal-overlay hidden">
+  <div class="modal" style="padding:0;overflow:hidden">
+    <div class="modal-header" style="padding:16px 16px 14px">
+      <h2>🏁 Clôture du trip</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-cloture')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="cloture-content" style="overflow-y:auto;max-height:60vh"></div>
+    <div class="modal-footer" style="padding:14px 16px;border-top:1px solid var(--border)">
+      <button class="btn-secondary" onclick="fermerModal('modal-cloture')">Fermer</button>
+      <button class="btn-primary" id="cloture-btn-action" onclick="archiverVoyage()">✅ Archiver le trip</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ TOAST NOTIFICATIONS ═══ -->
 <div id="toast" class="toast hidden"></div>

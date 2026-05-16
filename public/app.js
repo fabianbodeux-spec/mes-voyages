@@ -3,6 +3,19 @@
 // ═══════════════════════════════════════════════════════
 
 const API = '';  // même origin
+
+// ─── SÉCURITÉ : échappement HTML ──────────────────────
+// Utiliser h() pour toute donnée utilisateur injectée
+// dans innerHTML via template literals.
+function h(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 let voyageActuel = null;
 let _adminSousOnglet = 'reservations';
 let _chatPollAdmin = null;
@@ -223,7 +236,9 @@ async function chargerVoyages() {
   }
 
   liste.innerHTML = voyages.map(v => {
-    const statut = getStatut(v.date_debut, v.date_fin);
+    const statut = v.statut === 'terminé'
+      ? { label: 'Terminé', classe: 'done' }
+      : getStatut(v.date_debut, v.date_fin);
     const duree = getDuree(v.date_debut, v.date_fin);
     return `
     <div class="voyage-card" data-id="${v.id}" onclick="afficherVoyage(${v.id})">
@@ -295,6 +310,11 @@ async function sauvegarderVoyage(e) {
 }
 
 function menuVoyageActuel() {
+  const nomEl = document.getElementById('sheet-voyage-nom');
+  if (nomEl) {
+    const titreEl = document.getElementById('voyage-nom');
+    nomEl.textContent = titreEl ? titreEl.textContent : 'Options du trip';
+  }
   document.getElementById('menu-voyage').classList.remove('hidden');
   document.getElementById('overlay-sheet').classList.remove('hidden');
 }
@@ -310,6 +330,134 @@ async function supprimerVoyageActuel() {
   await fetch(`${API}/api/voyages/${voyageActuel}`, { method: 'DELETE' });
   toast('🗑️ Voyage supprimé');
   afficherAccueil();
+}
+
+// ─── CLÔTURE TRIP ─────────────────────────────────────
+
+async function ouvrirCloture() {
+  const [voyage, participants, depenses, agenda] = await Promise.all([
+    fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/participants`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/depenses`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json())
+  ]);
+
+  const totalDepenses = depenses.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
+  const nbJours = getDuree(voyage.date_debut, voyage.date_fin) || '—';
+  const depParPers = participants.length > 0 ? totalDepenses / participants.length : 0;
+  const transactions = _calculerTransactions(depenses, participants);
+  const isTermine = voyage.statut === 'terminé';
+
+  const settlementHtml = transactions.length === 0
+    ? `<div class="bilan-ok">✅ Tout est équilibré !</div>`
+    : `<div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
+        ${transactions.map(t => `
+          <div class="bilan-transaction">
+            <div class="bilan-from">
+              <div class="avatar" style="background:${h(t.from.couleur)}">${h(t.from.nom[0])}</div>
+              <span>${h(t.from.nom)}</span>
+            </div>
+            <div class="bilan-arrow">
+              <span class="bilan-amount">${t.amount.toFixed(2)} €</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+            </div>
+            <div class="bilan-to">
+              <div class="avatar" style="background:${h(t.to.couleur)}">${h(t.to.nom[0])}</div>
+              <span>${h(t.to.nom)}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
+
+  document.getElementById('cloture-content').innerHTML = `
+    ${isTermine ? `<div class="cloture-archived-banner">🏁 Ce trip est archivé</div>` : ''}
+    <div class="cloture-stats">
+      <div class="cloture-stat">
+        <div class="cloture-stat-val">${totalDepenses.toFixed(0)}€</div>
+        <div class="cloture-stat-lbl">Dépensés</div>
+      </div>
+      <div class="cloture-stat">
+        <div class="cloture-stat-val">${participants.length}</div>
+        <div class="cloture-stat-lbl">Voyageurs</div>
+      </div>
+      <div class="cloture-stat">
+        <div class="cloture-stat-val">${nbJours}</div>
+        <div class="cloture-stat-lbl">Durée</div>
+      </div>
+      <div class="cloture-stat">
+        <div class="cloture-stat-val">${depParPers > 0 ? depParPers.toFixed(0) + '€' : '—'}</div>
+        <div class="cloture-stat-lbl">Par pers.</div>
+      </div>
+    </div>
+    <div class="budget-section-header" style="padding:14px 16px 8px;border-top:1px solid var(--border)">
+      <span class="budget-section-title">⚖️ Soldes finaux — qui doit quoi</span>
+    </div>
+    ${settlementHtml}
+  `;
+
+  const btn = document.getElementById('cloture-btn-action');
+  if (isTermine) {
+    btn.textContent = '↩️ Réouvrir le trip';
+    btn.onclick = rouvrirVoyage;
+  } else {
+    btn.textContent = '✅ Archiver le trip';
+    btn.onclick = archiverVoyage;
+  }
+
+  document.getElementById('modal-cloture').classList.remove('hidden');
+}
+
+function _calculerTransactions(depenses, participants) {
+  const net = {};
+  participants.forEach(p => { net[p.id] = 0; });
+  depenses.forEach(d => {
+    const parts = JSON.parse(d.participants_ids || '[]');
+    if (!parts.length) return;
+    const share = parseFloat(d.montant) / parts.length;
+    parts.forEach(pid => {
+      if (+pid !== +d.payeur_id) {
+        net[d.payeur_id] = (net[d.payeur_id] || 0) + share;
+        net[pid] = (net[pid] || 0) - share;
+      }
+    });
+  });
+  const transactions = [];
+  const debtors   = participants.filter(p => net[p.id] < -0.01).map(p => ({ ...p, solde: net[p.id] })).sort((a,b) => a.solde - b.solde);
+  const creditors = participants.filter(p => net[p.id] > 0.01 ).map(p => ({ ...p, solde: net[p.id] })).sort((a,b) => b.solde - a.solde);
+  let i = 0, j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const d = debtors[i], c = creditors[j];
+    const amount = Math.min(-net[d.id], net[c.id]);
+    if (amount > 0.01) transactions.push({ from: d, to: c, amount: Math.round(amount * 100) / 100 });
+    net[d.id] += amount; net[c.id] -= amount;
+    if (Math.abs(net[d.id]) < 0.01) i++;
+    if (Math.abs(net[c.id]) < 0.01) j++;
+  }
+  return transactions;
+}
+
+async function archiverVoyage() {
+  await fetch(`${API}/api/voyages/${voyageActuel}/statut`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ statut: 'terminé' })
+  });
+  fermerModal('modal-cloture');
+  toast('🏁 Trip archivé !');
+  chargerVoyages();
+  // Mettre à jour le badge dans l'entête si visible
+  await afficherVoyage(voyageActuel);
+}
+
+async function rouvrirVoyage() {
+  await fetch(`${API}/api/voyages/${voyageActuel}/statut`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ statut: 'actif' })
+  });
+  fermerModal('modal-cloture');
+  toast('✅ Trip réouvert !');
+  chargerVoyages();
 }
 
 // ─── RÉSERVATIONS ─────────────────────────────────────
@@ -2123,6 +2271,21 @@ async function chargerAdmin() {
           <span class="adm-section-title">📤 Docs déposés par les participants</span>
         </div>
         ${docsPartHtml}
+      </div>
+    </div>
+
+    <!-- ── Clôture du trip ── -->
+    <div class="adm-cloture-footer">
+      <div class="adm-cloture-inner">
+        <div class="adm-cloture-icon">🏁</div>
+        <div class="adm-cloture-text">
+          <div class="adm-cloture-titre">Clôture du trip</div>
+          <div class="adm-cloture-desc">Soldes finaux & archivage</div>
+        </div>
+        <button class="adm-cloture-btn" onclick="ouvrirCloture()">
+          Clôturer
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+        </button>
       </div>
     </div>
 
