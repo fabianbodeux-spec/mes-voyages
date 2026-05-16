@@ -16,6 +16,12 @@ function h(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// JSON.parse sécurisé — retourne [] en cas de valeur corrompue
+function parseIds(str) {
+  try { return JSON.parse(str || '[]'); } catch { return []; }
+}
+
 let voyageActuel = null;
 let _adminSousOnglet = 'reservations';
 let _chatPollAdmin = null;
@@ -768,7 +774,7 @@ function _calculerTransactions(depenses, participants) {
   const net = {};
   participants.forEach(p => { net[p.id] = 0; });
   depenses.forEach(d => {
-    const parts = JSON.parse(d.participants_ids || '[]');
+    const parts = parseIds(d.participants_ids);
     if (!parts.length) return;
     const share = parseFloat(d.montant) / parts.length;
     parts.forEach(pid => {
@@ -870,14 +876,14 @@ function renderResa(r, docs = []) {
     <div class="resa-card-inner">
       <div class="resa-icon icon-${r.type}">${icones[r.type] || '📌'}</div>
       <div class="resa-body">
-        <div class="resa-titre">${r.titre}</div>
+        <div class="resa-titre">${h(r.titre)}</div>
         <div class="resa-meta">
-          ${r.heure_debut ? `<span>🕐 ${r.heure_debut}${r.heure_fin ? ' → ' + r.heure_fin : ''}</span>` : ''}
-          ${r.lieu ? `<span>📍 ${r.lieu}</span>` : ''}
+          ${r.heure_debut ? `<span>🕐 ${h(r.heure_debut)}${r.heure_fin ? ' → ' + h(r.heure_fin) : ''}</span>` : ''}
+          ${r.lieu ? `<span>📍 ${h(r.lieu)}</span>` : ''}
           ${r.date_fin && r.date_fin !== r.date_debut ? `<span>📅 jusqu'au ${formatDate(r.date_fin)}</span>` : ''}
         </div>
         <div class="resa-card-badges">
-          ${r.numero_confirmation ? `<span class="resa-badge-mini">📋 ${r.numero_confirmation}</span>` : ''}
+          ${r.numero_confirmation ? `<span class="resa-badge-mini">📋 ${h(r.numero_confirmation)}</span>` : ''}
           ${hasLink ? `<span class="resa-badge-mini resa-badge-lien">🔗 Lien</span>` : ''}
           ${docCount ? `<span class="resa-badge-mini resa-badge-doc">📎 ${docCount}</span>` : ''}
         </div>
@@ -907,31 +913,33 @@ function voirReservation(id) {
       </div>
     </div>` : '';
 
+  // Stocker le numéro de confirmation pour le bouton copier (évite injection dans onclick)
+  window._copyConfNum = r.numero_confirmation || '';
   document.getElementById('resa-detail-body').innerHTML = `
     <div class="rd-header">
       <div class="rd-icon icon-${r.type}">${icones[r.type] || '📌'}</div>
       <div class="rd-header-text">
-        <div class="rd-titre">${r.titre}</div>
+        <div class="rd-titre">${h(r.titre)}</div>
         ${r.date_debut ? `<div class="rd-date">${formatDate(r.date_debut)}</div>` : ''}
       </div>
     </div>
 
     <div class="rd-rows">
-      ${r.heure_debut ? `<div class="rd-row"><span class="rd-row-icon">🕐</span><span>${r.heure_debut}${r.heure_fin ? ' → ' + r.heure_fin : ''}</span></div>` : ''}
-      ${r.date_fin && r.date_fin !== r.date_debut ? `<div class="rd-row"><span class="rd-row-icon">📅</span><span>Jusqu'au ${formatDate(r.date_fin)}${r.heure_fin ? ' · ' + r.heure_fin : ''}</span></div>` : ''}
-      ${r.lieu    ? `<div class="rd-row"><span class="rd-row-icon">📍</span><span>${r.lieu}</span></div>` : ''}
-      ${r.adresse ? `<div class="rd-row"><span class="rd-row-icon">🏠</span><span>${r.adresse}</span></div>` : ''}
+      ${r.heure_debut ? `<div class="rd-row"><span class="rd-row-icon">🕐</span><span>${h(r.heure_debut)}${r.heure_fin ? ' → ' + h(r.heure_fin) : ''}</span></div>` : ''}
+      ${r.date_fin && r.date_fin !== r.date_debut ? `<div class="rd-row"><span class="rd-row-icon">📅</span><span>Jusqu'au ${formatDate(r.date_fin)}${r.heure_fin ? ' · ' + h(r.heure_fin) : ''}</span></div>` : ''}
+      ${r.lieu    ? `<div class="rd-row"><span class="rd-row-icon">📍</span><span>${h(r.lieu)}</span></div>` : ''}
+      ${r.adresse ? `<div class="rd-row"><span class="rd-row-icon">🏠</span><span>${h(r.adresse)}</span></div>` : ''}
       ${r.numero_confirmation ? `
         <div class="rd-row">
           <span class="rd-row-icon">📋</span>
-          <span class="rd-code">${r.numero_confirmation}</span>
-          <button class="rd-copy-btn" onclick="navigator.clipboard.writeText('${r.numero_confirmation.replace(/'/g,"\\'")}').then(()=>toast('✅ Copié !'))">Copier</button>
+          <span class="rd-code">${h(r.numero_confirmation)}</span>
+          <button class="rd-copy-btn" onclick="navigator.clipboard.writeText(window._copyConfNum).then(()=>toast('✅ Copié !'))">Copier</button>
         </div>` : ''}
     </div>
 
-    ${r.notes ? `<div class="rd-notes">${r.notes.replace(/\n/g,'<br>')}</div>` : ''}
+    ${r.notes ? `<div class="rd-notes">${h(r.notes).replace(/\n/g,'<br>')}</div>` : ''}
 
-    ${r.lien ? `<a href="${r.lien}" target="_blank" rel="noopener" class="rd-lien-btn" onclick="event.stopPropagation()">🔗 Ouvrir le lien de réservation</a>` : ''}
+    ${r.lien ? `<a href="${h(r.lien)}" target="_blank" rel="noopener noreferrer" class="rd-lien-btn" onclick="event.stopPropagation()">🔗 Ouvrir le lien de réservation</a>` : ''}
 
     ${docsHtml}
 
@@ -1081,7 +1089,7 @@ async function chargerAccueil() {
     <div class="dash-hero dash-hero-${heroClass}">
       <div class="dash-hero-eyebrow">${heroLabel}</div>
       <div class="dash-hero-days">${heroDays}</div>
-      <div class="dash-hero-dest">📍 ${voyage.destination || voyage.nom}</div>
+      <div class="dash-hero-dest">📍 ${h(voyage.destination || voyage.nom)}</div>
       ${debut ? `<div class="dash-hero-period">${formatDates(voyage.date_debut, voyage.date_fin)}</div>` : ''}
     </div>
 
@@ -1107,9 +1115,9 @@ async function chargerAccueil() {
     <div class="dash-next-card" onclick="voirReservation(${prochaine.id})">
       <div class="dash-next-icon">${resaIcons[prochaine.type] || '📌'}</div>
       <div class="dash-next-body">
-        <div class="dash-next-titre">${prochaine.titre}</div>
-        <div class="dash-next-date">${formatDate(prochaine.date_debut)}${prochaine.heure_debut ? ' · ' + prochaine.heure_debut : ''}</div>
-        ${prochaine.adresse ? `<div class="dash-next-lieu">📍 ${prochaine.adresse}</div>` : ''}
+        <div class="dash-next-titre">${h(prochaine.titre)}</div>
+        <div class="dash-next-date">${formatDate(prochaine.date_debut)}${prochaine.heure_debut ? ' · ' + h(prochaine.heure_debut) : ''}</div>
+        ${prochaine.adresse ? `<div class="dash-next-lieu">📍 ${h(prochaine.adresse)}</div>` : ''}
       </div>
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="flex-shrink:0;color:var(--text-muted)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
     </div>` : ''}
@@ -1121,7 +1129,7 @@ async function chargerAccueil() {
     <!-- Description -->
     ${voyage.description ? `
     <div class="dash-section-title">📝 Notes du voyage</div>
-    <div class="dash-notes">${voyage.description}</div>` : ''}
+    <div class="dash-notes">${h(voyage.description).replace(/\n/g,'<br>')}</div>` : ''}
 
     <div style="height:24px"></div>
   `;
@@ -1322,10 +1330,10 @@ async function chargerProgramme() {
               <div class="prog-card-top">
                 <span class="prog-icon">${icon}</span>
                 <div class="prog-card-body">
-                  <div class="prog-titre">${it.titre}</div>
-                  ${it.heure ? `<span class="prog-heure">🕐 ${it.heure}</span>` : ''}
-                  ${it.lieu ? `<div class="prog-lieu">📍 ${it.lieu}</div>` : ''}
-                  ${it.description ? `<div class="prog-desc">${it.description}</div>` : ''}
+                  <div class="prog-titre">${h(it.titre)}</div>
+                  ${it.heure ? `<span class="prog-heure">🕐 ${h(it.heure)}</span>` : ''}
+                  ${it.lieu ? `<div class="prog-lieu">📍 ${h(it.lieu)}</div>` : ''}
+                  ${it.description ? `<div class="prog-desc">${h(it.description).replace(/\n/g,'<br>')}</div>` : ''}
                   ${it.lien ? `<a href="${it.lien}" target="_blank" rel="noopener" class="prog-lien">🔗 Ouvrir</a>` : ''}
                   ${it.docs && it.docs.length ? `
                   <div class="prog-docs">
@@ -1469,13 +1477,13 @@ async function chargerDocuments() {
             const ev   = d.event_id       ? eventsById[d.event_id] : null;
             const resa = d.reservation_id ? resaById[d.reservation_id] : null;
             let lienHtml = '';
-            if (resa) lienHtml = `<div class="doc-event-link">${iconeResa[resa.type] || '📌'} ${resa.titre}</div>`;
-            else if (ev) lienHtml = `<div class="doc-event-link">📅 ${ev.titre}</div>`;
+            if (resa) lienHtml = `<div class="doc-event-link">${iconeResa[resa.type] || '📌'} ${h(resa.titre)}</div>`;
+            else if (ev) lienHtml = `<div class="doc-event-link">📅 ${h(ev.titre)}</div>`;
             return `
             <div class="doc-card">
               <span class="doc-icon">${getDocIcon(d.type_fichier)}</span>
               <div class="doc-body">
-                <div class="doc-nom">${d.nom}</div>
+                <div class="doc-nom">${h(d.nom)}</div>
                 <div class="doc-meta">${formatTaille(d.taille)} · ${formatDate(d.created_at?.split('T')[0])}</div>
                 ${lienHtml}
               </div>
@@ -2169,7 +2177,7 @@ function afficherDepenses(depenses, participants) {
     <div style="padding:0 16px 12px;display:flex;flex-direction:column;gap:8px">
       ${depenses.map(d => {
         const payeur = byId[d.payeur_id];
-        const parts = JSON.parse(d.participants_ids || '[]');
+        const parts = parseIds(d.participants_ids);
         const share = parts.length > 0 ? (parseFloat(d.montant) / parts.length).toFixed(2) : '—';
         return `
         <div class="depense-card">
@@ -2208,7 +2216,7 @@ function afficherBilan(depenses, participants) {
   participants.forEach(p => { net[p.id] = 0; });
 
   depenses.forEach(d => {
-    const parts = JSON.parse(d.participants_ids || '[]');
+    const parts = parseIds(d.participants_ids);
     if (!parts.length) return;
     const share = parseFloat(d.montant) / parts.length;
     parts.forEach(pid => {
@@ -2244,16 +2252,16 @@ function afficherBilan(depenses, participants) {
     ${transactions.map(t => `
       <div class="bilan-transaction">
         <div class="bilan-from">
-          <div class="avatar" style="background:${t.from.couleur}">${t.from.nom[0]}</div>
-          <span>${t.from.nom}</span>
+          <div class="avatar" style="background:${h(t.from.couleur)}">${h(t.from.nom[0])}</div>
+          <span>${h(t.from.nom)}</span>
         </div>
         <div class="bilan-arrow">
           <span class="bilan-amount">${t.amount.toFixed(2)} €</span>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
         </div>
         <div class="bilan-to">
-          <div class="avatar" style="background:${t.to.couleur}">${t.to.nom[0]}</div>
-          <span>${t.to.nom}</span>
+          <div class="avatar" style="background:${h(t.to.couleur)}">${h(t.to.nom[0])}</div>
+          <span>${h(t.to.nom)}</span>
         </div>
       </div>
     `).join('')}
@@ -2356,7 +2364,7 @@ async function ouvrirModalDepense(id = null) {
       document.getElementById('dep-montant').value = dep.montant;
       document.getElementById('dep-date').value = toDateStr(dep.date);
       document.getElementById('dep-categorie').value = dep.categorie || 'autre';
-      const parts = JSON.parse(dep.participants_ids || '[]').map(Number);
+      const parts = parseIds(dep.participants_ids).map(Number);
       document.querySelectorAll('[name="dep-payeur"]').forEach(el => { el.checked = +el.value === +dep.payeur_id; });
       document.querySelectorAll('[name="dep-part"]').forEach(el => { el.checked = parts.includes(+el.value); });
     }

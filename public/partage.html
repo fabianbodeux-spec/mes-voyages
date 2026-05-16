@@ -731,6 +731,14 @@
 // Désactiver le chargement de la liste de voyages (pas de screen-home ici)
 window.chargerVoyages = function() {};
 
+// ─── Échappement HTML (même logique que h() dans app.js) ──
+function _he(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
 
 const _partageToken = location.pathname.replace(/^\/(partage|share)\//, '');
 
@@ -794,12 +802,15 @@ async function _initPartage() {
     document.getElementById('id-voyage-nom').textContent = d.voyage.nom;
     const pEl = document.getElementById('id-participants');
     const parts = d.participants || [];
+    // Stocker les participants dans un Map pour accès sûr depuis les boutons
+    window._partagePartsMap = {};
+    parts.forEach(p => { window._partagePartsMap[p.id] = p; });
     pEl.innerHTML = parts.map(p =>
-      '<button class="id-part-btn" onclick=\'_idParticipant(' + JSON.stringify(p) + ')\'>' +
-        '<div class="avatar" style="background:' + (p.couleur||'#F97316') +
+      '<button class="id-part-btn" onclick="_idParticipant(window._partagePartsMap[' + p.id + '])">' +
+        '<div class="avatar" style="background:' + (p.couleur||'#F97316').replace(/[^#a-zA-Z0-9]/g,'') +
         ';width:28px;height:28px;font-size:.6rem;flex-shrink:0">' +
-        (p.nom||'?')[0].toUpperCase() + '</div>' +
-        '<span style="flex:1;text-align:left">' + p.nom + '</span>' +
+        _he(p.nom||'?')[0].toUpperCase() + '</div>' +
+        '<span style="flex:1;text-align:left">' + _he(p.nom) + '</span>' +
         (p.has_pin ? '<span style="font-size:.85rem;opacity:.6" title="Session protégée">🔒</span>' : '') +
       '</button>'
     ).join('');
@@ -1038,7 +1049,10 @@ let _geoWatchId = null;
 let _geoSSE = null;      // EventSource SSE — remplace le polling
 let _geoActive = false;
 const _geoDeviceId = localStorage.getItem('geo_device_id') || (() => {
-  const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  // Utiliser crypto.randomUUID() si disponible, sinon fallback
+  const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + Math.random().toString(36).slice(2);
   localStorage.setItem('geo_device_id', id);
   return id;
 })();

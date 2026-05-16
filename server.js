@@ -3,22 +3,67 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const webpush = require('web-push');
 const db = require('./database');
 
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL || 'mailto:admin@mes-voyages.app',
-  process.env.VAPID_PUBLIC_KEY || 'BCV64icXiouIl1g8KVeaEyGMLbhD0M5RFx_qDc5LGiAbIS49-QGP1XOeQWnLEGUnOfmMBH6dQbn20J1sekxQWF0',
-  process.env.VAPID_PRIVATE_KEY || 'oGmkLaP2ogT0DaQy1s805q2pEe-vCb-XYVRlNEJe6FU'
-);
+// En prod, les clés VAPID DOIVENT être définies en variables d'environnement
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_EMAIL || 'mailto:admin@mes-voyages.app',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+} else {
+  console.warn('⚠️  VAPID keys manquantes — push notifications désactivées');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-app.use(cors());
+// Faire confiance au proxy reverse (Railway / Nginx) pour req.protocol
+app.set('trust proxy', 1);
+
+// CORS : restreint à l'origine configurée en prod, ouvert en dev local
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+  : null;
+app.use(cors({
+  origin: allowedOrigins || true,
+  methods: ['GET','POST','PUT','PATCH','DELETE']
+}));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ─── HELPERS SÉCURITÉ ──────────────────────────────────────────────────────
+
+// Sanitise un nom de fichier pour Content-Disposition
+function safeFilename(name) {
+  return (name || 'fichier').replace(/[^\w.\- ]/g, '_').substring(0, 200);
+}
+
+// Types MIME autorisés pour les uploads
+const ALLOWED_MIMES = new Set([
+  'image/jpeg','image/png','image/webp','image/gif',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain','text/csv'
+]);
+
+// Rate-limiter en mémoire pour les tentatives PIN
+const _pinAttempts = new Map();
+function checkPinRate(key) {
+  const now = Date.now();
+  let rec = _pinAttempts.get(key);
+  if (!rec || now > rec.resetAt) rec = { count: 0, resetAt: now + 60_000 };
+  rec.count++;
+  _pinAttempts.set(key, rec);
+  return rec.count <= 5;
+}
 
 // Helper pour supporter db sync (local JSON) et async (PostgreSQL)
 const run = async (fn) => {
@@ -126,9 +171,10 @@ app.get('/api/voyages/:id/documents', async (req, res) => {
 
 app.post('/api/voyages/:id/documents', upload.single('fichier'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Fichier manquant' });
+  if (!ALLOWED_MIMES.has(req.file.mimetype)) return res.status(400).json({ error: 'Type de fichier non autorisé' });
   try {
     const item = await run(() => db.documents.create(req.params.id, {
-      nom: req.file.originalname,
+      nom: safeFilename(req.file.originalname),
       type_fichier: req.file.mimetype,
       taille: req.file.size,
       categorie: req.body.categorie || 'autre',
@@ -137,17 +183,19 @@ app.post('/api/voyages/:id/documents', upload.single('fichier'), async (req, res
       contenu: req.file.buffer.toString('base64')
     }));
     res.json({ id: item.id });
-  } catch(e) { res.status(500).json({error: e.message}); }
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 app.get('/api/documents/:id/download', async (req, res) => {
   try {
     const doc = await run(() => db.documents.getById(req.params.id));
     if (!doc) return res.status(404).json({ error: 'Document non trouvé' });
-    res.setHeader('Content-Type', doc.type_fichier || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `inline; filename="${doc.nom}"`);
+    const mime = ALLOWED_MIMES.has(doc.type_fichier) ? doc.type_fichier : 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Disposition', `inline; filename="${safeFilename(doc.nom)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(Buffer.from(doc.contenu, 'base64'));
-  } catch(e) { res.status(500).json({error: e.message}); }
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 app.put('/api/documents/:id', async (req, res) => {
@@ -184,14 +232,22 @@ app.delete('/api/participants/:id', async (req, res) => {
 
 app.post('/api/partage/:token/verify-pin', async (req, res) => {
   try {
+    const rateKey = `${req.params.token}:${req.body.participant_id}`;
+    if (!checkPinRate(rateKey)) {
+      return res.status(429).json({ ok: false, error: 'Trop de tentatives, réessaie dans 1 minute' });
+    }
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Token invalide' });
     const { participant_id, pin } = req.body;
     const parts = await run(() => db.participants.getByVoyage(voyage.id));
     const p = parts.find(x => x.id === +participant_id);
     if (!p || !p.pin) return res.json({ ok: false });
-    res.json({ ok: p.pin === String(pin) });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    // Comparaison à temps constant pour éviter les timing attacks
+    const a = Buffer.from(String(p.pin));
+    const b = Buffer.from(String(pin || ''));
+    const same = a.length === b.length && crypto.timingSafeEqual(a, b);
+    res.json({ ok: same });
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // ─── DÉPENSES ──────────────────────────────────────────────────────────────
@@ -252,10 +308,7 @@ app.delete('/api/bagages/:id', async (req, res) => {
 // ─── PARTAGE ────────────────────────────────────────────────────────────────
 
 function genererToken() {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 12; i++) token += chars[Math.floor(Math.random() * chars.length)];
-  return token;
+  return crypto.randomBytes(9).toString('base64url'); // 72 bits, URL-safe
 }
 
 app.post('/api/voyages/:id/partager', async (req, res) => {
@@ -492,9 +545,12 @@ app.delete('/api/partage/:token/commentaires/:id', async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    // Vérifier que le commentaire appartient bien à ce voyage (anti-IDOR)
+    const all = await run(() => db.commentaires.getByVoyage(voyage.id));
+    if (!all.find(c => c.id === +req.params.id)) return res.status(403).json({ error: 'Interdit' });
     await run(() => db.commentaires.delete(req.params.id));
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 app.get('/api/voyages/:id/commentaires', async (req, res) => {
@@ -539,19 +595,20 @@ app.get('/api/partage/:token/mes-docs/:participantId', async (req, res) => {
 
 app.post('/api/partage/:token/mes-docs', upload.single('fichier'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Fichier manquant' });
+  if (!ALLOWED_MIMES.has(req.file.mimetype)) return res.status(400).json({ error: 'Type de fichier non autorisé' });
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const doc = await run(() => db.docs_participants.create(voyage.id, {
       participant_id: +req.body.participant_id,
-      nom: req.file.originalname,
+      nom: safeFilename(req.file.originalname),
       type_fichier: req.file.mimetype,
       taille: req.file.size,
       categorie: req.body.categorie || 'autre',
       contenu: req.file.buffer.toString('base64')
     }));
     res.json({ id: doc.id, nom: doc.nom, type_fichier: doc.type_fichier, taille: doc.taille });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 app.get('/api/partage/:token/mes-docs/:docId/download', async (req, res) => {
@@ -560,10 +617,12 @@ app.get('/api/partage/:token/mes-docs/:docId/download', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const doc = await run(() => db.docs_participants.getById(req.params.docId));
     if (!doc || doc.voyage_id !== voyage.id) return res.status(404).json({ error: 'Document introuvable' });
-    res.setHeader('Content-Type', doc.type_fichier || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `inline; filename="${doc.nom}"`);
+    const mime = ALLOWED_MIMES.has(doc.type_fichier) ? doc.type_fichier : 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Disposition', `inline; filename="${safeFilename(doc.nom)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(Buffer.from(doc.contenu, 'base64'));
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 app.delete('/api/partage/:token/mes-docs/:docId', async (req, res) => {
@@ -586,10 +645,12 @@ app.get('/api/voyages/:id/docs-participants/:docId/download', async (req, res) =
   try {
     const doc = await run(() => db.docs_participants.getById(req.params.docId));
     if (!doc || doc.voyage_id !== +req.params.id) return res.status(404).json({ error: 'Document introuvable' });
-    res.setHeader('Content-Type', doc.type_fichier || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `inline; filename="${doc.nom}"`);
+    const mime = ALLOWED_MIMES.has(doc.type_fichier) ? doc.type_fichier : 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Disposition', `inline; filename="${safeFilename(doc.nom)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(Buffer.from(doc.contenu, 'base64'));
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // ─── GÉOLOCALISATION (SSE) ────────────────────────────────────────────────────
@@ -672,12 +733,11 @@ app.delete('/api/partage/:token/location/:device_id', async (req, res) => {
 // Anciens liens /partage/ → redirect vers /share/ même depuis bfcache
 app.get('/partage/:token', (req, res) => {
   const t = req.params.token;
+  // Valider le token avant injection dans le HTML (évite XSS via path)
+  if (!/^[a-zA-Z0-9_\-]{6,30}$/.test(t)) return res.status(400).send('Token invalide');
+  const safe = encodeURIComponent(t);
   res.set('Cache-Control', 'no-store');
-  res.send(`<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=/share/${t}">
-<script>
-location.replace('/share/${t}');
-window.addEventListener('pageshow',function(e){if(e.persisted)location.replace('/share/${t}');});
-</script></head><body></body></html>`);
+  res.redirect(301, `/share/${safe}`);
 });
 
 app.get('/share/:token', (req, res) => {
