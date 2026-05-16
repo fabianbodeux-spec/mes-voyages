@@ -58,6 +58,20 @@ let voyageInfoActuel = null;
 // ─── INIT ────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  // ── Startup splash ──────────────────────────────────────────
+  (function initAppSplash() {
+    const splash = document.getElementById('app-splash');
+    if (!splash) return;
+    let t1, t2;
+    // Total visible : 4.2s (logo allumé à 2s, texte à 2.5s, sortie à 4.2s)
+    t1 = setTimeout(() => {
+      splash.classList.add('app-splash-out');
+      const done = () => { splash.style.display = 'none'; clearTimeout(t2); };
+      splash.addEventListener('transitionend', done, { once: true });
+      t2 = setTimeout(done, 700);
+    }, 4200);
+  })();
+
   chargerVoyages();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(console.error);
