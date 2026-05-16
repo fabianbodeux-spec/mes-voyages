@@ -2876,18 +2876,32 @@ textarea { resize: vertical; line-height: 1.6; }
   .create-back-btn { background: #2A2520; }
 }
 
-/* ═══ APP STARTUP SPLASH ════════════════════════════════════════ */
+/* ═══ APP STARTUP SPLASH ════════════════════════════════════════
+   Séquence cinématique — 6 secondes :
+   0.00s  Noir absolu
+   0.10s  Logo surgit du noir, éclairé par l'arrière (halo orange)
+   1.50s  Allumage : spark → montée → flash d'ignition → settle
+   2.30s  Logo pleinement orange, stable
+   2.55s  « Crew » monte
+   2.78s  « Go » suit (cascade)
+   3.15s  Tagline se dissout
+   3.50s  Respiration légère (halo + logo)
+   5.30s  Fondu sortie → dissolve linéaire
+   ═══════════════════════════════════════════════════════════════ */
+
 #app-splash {
   position: fixed; inset: 0; z-index: 9999;
   background: #000;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: 36px;
-  transition: opacity 0.65s ease, transform 0.65s ease;
+  /* Fondu sortie : dissolve linéaire (cinéma) + micro-recul = on entre dans l'app */
+  transition: opacity 0.75s linear,
+              transform 0.75s cubic-bezier(0.4, 0, 0.2, 1);
 }
 #app-splash.app-splash-out {
   opacity: 0;
-  transform: scale(1.04);
+  transform: scale(0.96);   /* recul élégant — pas d'explosion */
   pointer-events: none;
 }
 
@@ -2895,99 +2909,183 @@ textarea { resize: vertical; line-height: 1.6; }
 .app-splash-scene {
   position: relative;
   display: flex; align-items: center; justify-content: center;
-  width: 180px; height: 180px;
+  width: 200px; height: 200px;
 }
 
-/* Halo de lumière orange derrière le logo */
-/* Halo : allumé dès 0.05s, reste visible pendant toute la phase noire */
+/* ── Halo interne : contre-jour doux → flare à l'ignition → respiration ── */
 .app-splash-halo {
   position: absolute;
   width: 160px; height: 160px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(249,115,22,0.95) 0%, rgba(249,115,22,0.45) 35%, transparent 70%);
-  filter: blur(22px);
+  background: radial-gradient(circle,
+    rgba(249,115,22,0.92) 0%,
+    rgba(249,115,22,0.40) 40%,
+    transparent 72%);
+  filter: blur(24px);
   opacity: 0;
-  animation: appHaloIn 1.3s ease 0.05s forwards;
+  /* Phase 1 : entrée + flare synchronisé avec l'allumage */
+  animation:
+    appHaloIn    2.4s cubic-bezier(0.25, 0, 0.45, 1) 0.05s forwards,
+    appHaloPulse 2.8s ease-in-out 2.6s infinite;
 }
+
+/* ── Halo distant : nappe de lumière ambiante ── */
 .app-splash-halo--far {
-  width: 280px; height: 280px;
-  background: radial-gradient(circle, rgba(249,115,22,0.32) 0%, transparent 65%);
-  filter: blur(44px);
-  animation: appHaloIn 1.6s ease 0s forwards;
+  width: 320px; height: 320px;
+  background: radial-gradient(circle,
+    rgba(249,115,22,0.26) 0%,
+    rgba(249,115,22,0.08) 50%,
+    transparent 72%);
+  filter: blur(52px);
+  animation:
+    appHaloFarIn 2.8s cubic-bezier(0.25, 0, 0.45, 1) 0s forwards,
+    appHaloPulse 3.4s ease-in-out 2.9s infinite;
 }
 
+/* Halo interne : monte doucement → stable sombre → FLARE → settle */
 @keyframes appHaloIn {
-  0%   { opacity: 0; transform: scale(0.35); }
-  45%  { opacity: 0.9; }
-  100% { opacity: 0.52; transform: scale(1); }
+  0%    { opacity: 0;    transform: scale(0.28); }
+  18%   { opacity: 0.52; transform: scale(0.88); }  /* ~0.5s : monte */
+  48%   { opacity: 0.38; transform: scale(1.00); }  /* ~1.2s : stable, sombre */
+  70%   { opacity: 1.00; transform: scale(1.20); }  /* ~1.7s : FLARE ignition */
+  86%   { opacity: 0.62; transform: scale(1.06); }  /* ~2.1s : settle */
+  100%  { opacity: 0.56; transform: scale(1.03); }  /* ~2.4s : repos */
 }
 
-/* ── Logo : croissance 0.1s → 1.5s, reste sombre ── */
+/* Halo distant : plus lent, plus doux */
+@keyframes appHaloFarIn {
+  0%    { opacity: 0;    transform: scale(0.20); }
+  20%   { opacity: 0.30; transform: scale(0.75); }
+  55%   { opacity: 0.18; transform: scale(1.00); }
+  74%   { opacity: 0.70; transform: scale(1.14); }  /* flare distant */
+  100%  { opacity: 0.35; transform: scale(1.04); }
+}
+
+/* Respiration douce pendant la phase statique */
+@keyframes appHaloPulse {
+  0%, 100% { opacity: 0.56; transform: scale(1.03); }
+  50%       { opacity: 0.38; transform: scale(0.96); }
+}
+
+/* ── Logo : surgit du noir, organique, pas de ressort agressif ── */
 .app-splash-logo-wrap {
   position: relative; z-index: 2;
-  animation: appLogoGrow 1.4s cubic-bezier(0.34, 1.52, 0.64, 1) 0.1s both;
+  animation:
+    appLogoGrow  1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both,
+    appLogoPulse 3.0s ease-in-out 3.2s infinite;
 }
 
+/* Croissance fluide avec micro-overshoot naturel */
 @keyframes appLogoGrow {
-  0%   { transform: scale(0.2); opacity: 0; }
-  15%  { opacity: 1; }
-  74%  { transform: scale(1.24); }
-  100% { transform: scale(1); }
+  0%    { transform: scale(0.12); opacity: 0; }
+  10%   { opacity: 1; }
+  72%   { transform: scale(1.09); }   /* overshoot léger */
+  88%   { transform: scale(0.97); }   /* rebond minimal */
+  100%  { transform: scale(1.00); }
 }
 
-/* Logo : noir pendant la croissance, allumage rapide 1.5s → 2.3s */
+/* Micro-respiration du logo au repos */
+@keyframes appLogoPulse {
+  0%, 100% { transform: scale(1.000); }
+  50%       { transform: scale(1.022); }
+}
+
+/* ── Image logo : noir absolu → spark → montée → FLARE → orange ── */
 .app-splash-img {
   width: 100px; height: 100px;
   border-radius: 24px;
   display: block;
+  /* Noir absolu pendant la croissance */
   filter: brightness(0.04) saturate(0) contrast(1.2);
   box-shadow: none;
-  animation: appLogoIgnite 0.8s cubic-bezier(0.4, 0, 0.2, 1) 1.5s forwards;
+  /* Allumage : 1.5s → 2.3s (0.8s) */
+  animation: appLogoIgnite 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) 1.5s forwards;
 }
 
 @keyframes appLogoIgnite {
+  /* Départ : logo noir */
   0%   {
     filter: brightness(0.04) saturate(0) contrast(1.2);
     box-shadow: none;
   }
-  35%  {
-    filter: brightness(0.5) saturate(0.4) contrast(1.1);
-    box-shadow: 0 0 24px rgba(249,115,22,0.5);
+  /* Micro-spark : frémissement avant allumage */
+  10%  {
+    filter: brightness(0.14) saturate(0.06) contrast(1.1);
+    box-shadow: 0 0 6px rgba(249,115,22,0.18);
   }
+  /* Montée progressive */
+  38%  {
+    filter: brightness(0.46) saturate(0.38) contrast(1.05);
+    box-shadow: 0 0 22px rgba(249,115,22,0.48);
+  }
+  /* FLASH D'IGNITION — surexposition brève, comme un néon qui s'allume */
+  66%  {
+    filter: brightness(1.22) saturate(1.28) contrast(0.94);
+    box-shadow:
+      0 0  45px rgba(249,115,22,0.95),
+      0 0  90px rgba(249,115,22,0.55),
+      0 0 150px rgba(249,115,22,0.22);
+  }
+  /* Settle naturel — orange pur, lumineux */
   100% {
     filter: brightness(1) saturate(1) contrast(1);
-    box-shadow: 0 0 55px rgba(249,115,22,0.60), 0 0 110px rgba(249,115,22,0.20), 0 8px 32px rgba(0,0,0,0.6);
+    box-shadow:
+      0 0  48px rgba(249,115,22,0.62),
+      0 0  96px rgba(249,115,22,0.24),
+      0 8px 28px rgba(0,0,0,0.52);
   }
 }
 
 /* ── Texte ── */
 .app-splash-copy {
   display: flex; flex-direction: column;
-  align-items: center; gap: 10px;
+  align-items: center; gap: 12px;
 }
 
 .app-splash-wordmark {
   font-family: var(--font-display);
   font-size: 3rem; font-weight: 800;
   letter-spacing: -0.05em; line-height: 1;
-  opacity: 0;
-  animation: appTextUp 0.7s cubic-bezier(0.22,1,0.36,1) 2.6s forwards;
+  /* Le wordmark lui-même n'anime pas — chaque mot cascade séparément */
 }
-.app-splash-crew { color: #FFFFFF; }
-.app-splash-go   { color: #F97316; font-style: italic; }
+
+/* « Crew » apparaît en premier */
+.app-splash-crew {
+  color: #FFFFFF;
+  display: inline-block;
+  opacity: 0;
+  animation: appWordIn 0.90s cubic-bezier(0.16, 1, 0.3, 1) 2.55s forwards;
+}
+
+/* « Go » suit 0.23s après — cascade cinématique */
+.app-splash-go {
+  color: #F97316;
+  font-style: italic;
+  display: inline-block;
+  opacity: 0;
+  animation: appWordIn 0.90s cubic-bezier(0.16, 1, 0.3, 1) 2.78s forwards;
+}
+
+/* Montée douce depuis le bas */
+@keyframes appWordIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 .app-splash-tagline {
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.42);
+  color: rgba(255,255,255,0.40);
   font-weight: 400;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-align: center;
   max-width: 240px;
   opacity: 0;
-  animation: appTextUp 0.7s cubic-bezier(0.22,1,0.36,1) 3.3s forwards;
+  /* Fondu pur — pas de mouvement, plus élégant que le translateY */
+  animation: appFadeIn 1.30s ease 3.15s forwards;
 }
 
-@keyframes appTextUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Dissolve simple — la tagline "apparaît" sans se déplacer */
+@keyframes appFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
