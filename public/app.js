@@ -195,18 +195,19 @@ async function _wpSummaryPhoto(dest) {
   } catch { return null; }
 }
 
-/** Applique la photo sur la carte voyage avec un fondu */
+/** Applique la photo comme texture sombre, cohérente avec le brand */
 function _appliquerPhoto(voyageId, photoUrl) {
   const card = document.querySelector(`.voyage-card[data-id="${voyageId}"]`);
   if (!card) return;
-  const img  = card.querySelector('.voyage-card-banner-img');
-  const band = card.querySelector('.voyage-card-banner');
+  const img = card.querySelector('.voyage-card-banner-img');
   if (!img) return;
   const tmp = new Image();
   tmp.onload = () => {
     img.src = photoUrl;
-    img.style.opacity = '1';
-    if (band) band.style.removeProperty('background');
+    // Photo très atténuée : texture sombre, ne casse pas la ligne graphique
+    img.style.opacity = '0.16';
+    img.style.filter  = 'saturate(0.3) brightness(0.55)';
+    img.style.transition = 'opacity 0.5s ease';
   };
   tmp.src = photoUrl;
 }
@@ -242,17 +243,27 @@ async function chargerVoyages() {
     const duree = getDuree(v.date_debut, v.date_fin);
     return `
     <div class="voyage-card" data-id="${v.id}" onclick="afficherVoyage(${v.id})">
-      <div class="voyage-card-banner" style="background:linear-gradient(135deg,${v.couleur}dd,${v.couleur}88)">
-        <img class="voyage-card-banner-img" src="" alt="${v.destination}" style="opacity:0">
-        <div class="voyage-card-destination">📍 ${v.destination}</div>
-      </div>
-      <div class="voyage-card-body">
-        <div class="voyage-card-header">
-          <h2>${v.nom}</h2>
+      <!-- Bande de couleur + zone visuelle sombre -->
+      <div class="voyage-card-banner">
+        <div class="voyage-card-accent" style="background:${h(v.couleur)}"></div>
+        <img class="voyage-card-banner-img" src="" alt="" style="opacity:0">
+        <div class="voyage-card-color-wash" style="background:linear-gradient(135deg,${h(v.couleur)}1A 0%,transparent 65%)"></div>
+        <div class="voyage-card-banner-row">
+          <span class="voyage-card-dest">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            ${h(v.destination)}
+          </span>
           <span class="voyage-badge badge-${statut.classe}">${statut.label}</span>
         </div>
+      </div>
+      <!-- Contenu texte -->
+      <div class="voyage-card-body">
+        <h2 class="voyage-card-title">${h(v.nom)}</h2>
         <div class="voyage-card-footer">
-          <span class="voyage-dates">📅 ${v.date_debut ? formatDates(v.date_debut, v.date_fin) : 'Dates à définir'}</span>
+          <span class="voyage-dates">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+            ${v.date_debut ? formatDates(v.date_debut, v.date_fin) : 'Dates à définir'}
+          </span>
           ${duree ? `<span class="voyage-duree">${duree}</span>` : '<span class="voyage-arrow">›</span>'}
         </div>
       </div>
@@ -262,6 +273,353 @@ async function chargerVoyages() {
   // Chargement asynchrone des photos emblématiques depuis Wikipedia
   enrichirPhotos(voyages);
 }
+
+// ═══════════════════════════════════════════════════════
+//  WIZARD CRÉER UN TRIP
+// ═══════════════════════════════════════════════════════
+
+const _P_COLORS = ['#6366F1','#F97316','#10B981','#EC4899','#F59E0B','#14B8A6','#EF4444','#8B5CF6'];
+let _createStep = 1;
+let _createSelectedColor = '#F97316';
+let _createParticipants = [];
+let _createPColorIdx = 0;
+
+// Timers splash — conservés pour pouvoir les annuler à tout moment
+let _splashT1 = null, _splashT2 = null, _splashT3 = null;
+
+function ouvrirCreateTrip() {
+  // ── Annuler toute séquence splash en cours ──────────────
+  clearTimeout(_splashT1);
+  clearTimeout(_splashT2);
+  clearTimeout(_splashT3);
+
+  _createStep = 1;
+  _createSelectedColor = '#F97316';
+  _createParticipants = [];
+  _createPColorIdx = 0;
+
+  // Afficher le screen
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-create').classList.add('active');
+
+  // Reset phases — état propre avant toute animation
+  const splash = document.getElementById('create-splash');
+  const wizard = document.getElementById('create-wizard');
+  const confirm = document.getElementById('create-confirm');
+  splash.classList.remove('hidden', 'splash-out');
+  wizard.classList.add('hidden');
+  wizard.classList.remove('wizard-in', 'wizard-out');
+  confirm.classList.add('hidden');
+
+  // Reset steps
+  document.querySelectorAll('.create-step').forEach((el, i) => {
+    el.classList.toggle('active', i === 0);
+    el.style.transform = '';
+    el.style.opacity = '';
+    el.style.transition = '';
+  });
+
+  // Reset fields
+  ['c-destination','c-nom','c-date-debut','c-date-fin','c-p-nom'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const debutVal = document.getElementById('c-date-debut-val');
+  const finVal   = document.getElementById('c-date-fin-val');
+  if (debutVal) debutVal.textContent = '—';
+  if (finVal)   finVal.textContent   = '—';
+  const duree = document.getElementById('create-duree-badge');
+  if (duree) { duree.textContent = ''; duree.style.display = 'none'; }
+  const pList = document.getElementById('create-p-list');
+  if (pList) pList.innerHTML = '';
+  const hint = document.getElementById('c-nom-hint');
+  if (hint) hint.textContent = '';
+  document.querySelectorAll('.create-chip').forEach(c => c.classList.remove('active'));
+
+  // ── Séquence splash robuste ─────────────────────────────
+  // Phase 1 : attendre 2,3s puis déclencher le fade-out CSS
+  _splashT1 = setTimeout(() => {
+    const splashEl = document.getElementById('create-splash');
+    if (!splashEl) return;
+    splashEl.classList.add('splash-out');
+
+    // Phase 2 : transitionend OU fallback à 650ms (plus large que 480ms)
+    let done = false;
+    const proceed = () => {
+      if (done) return;
+      done = true;
+      splashEl.removeEventListener('transitionend', proceed);
+      clearTimeout(_splashT2);
+
+      splashEl.classList.add('hidden');
+      splashEl.classList.remove('splash-out'); // nettoyage état
+
+      const wizardEl = document.getElementById('create-wizard');
+      if (!wizardEl) return;
+      wizardEl.classList.remove('hidden');
+
+      // Double rAF : garantit que le display:flex est appliqué
+      // avant d'ajouter l'animation d'entrée
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          wizardEl.classList.add('wizard-in');
+          _splashT3 = setTimeout(() => wizardEl.classList.remove('wizard-in'), 420);
+        });
+      });
+
+      _updateCreateUI();
+      setTimeout(() => document.getElementById('c-destination')?.focus(), 60);
+    };
+
+    splashEl.addEventListener('transitionend', proceed, { once: true });
+    _splashT2 = setTimeout(proceed, 650); // fallback si transitionend ne se déclenche pas
+  }, 2300);
+}
+
+function _renderCreateColors() {
+  const row = document.getElementById('c-color-row');
+  row.innerHTML = _CREATE_COLORS.map(c => `
+    <button class="create-color-opt ${c === _createSelectedColor ? 'active' : ''}"
+            style="background:${c}"
+            onclick="createPickColor('${c}', this)"></button>
+  `).join('');
+}
+
+function createPickColor(color, btn) {
+  _createSelectedColor = color;
+  document.querySelectorAll('.create-color-opt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function createInputChanged() {
+  _updateCreateCTA();
+}
+
+function createChip(btn, value) {
+  document.getElementById('c-destination').value = value;
+  document.querySelectorAll('.create-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  _updateCreateCTA();
+}
+
+function createUpdateDuree() {
+  const d1 = document.getElementById('c-date-debut').value;
+  const d2 = document.getElementById('c-date-fin').value;
+  const v1El = document.getElementById('c-date-debut-val');
+  const v2El = document.getElementById('c-date-fin-val');
+  const badge = document.getElementById('create-duree-badge');
+
+  v1El.textContent = d1 ? new Date(d1).toLocaleDateString('fr-BE', { day:'numeric', month:'short' }) : '—';
+  v2El.textContent = d2 ? new Date(d2).toLocaleDateString('fr-BE', { day:'numeric', month:'short' }) : '—';
+
+  if (d1 && d2) {
+    const diff = Math.round((new Date(d2) - new Date(d1)) / 86400000);
+    badge.textContent = diff > 0 ? `${diff} jour${diff > 1 ? 's' : ''} de trip` : '';
+    badge.style.display = diff > 0 ? '' : 'none';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function createAddParticipant() {
+  const input = document.getElementById('c-p-nom');
+  const nom = input.value.trim();
+  if (!nom) return;
+  const couleur = _P_COLORS[_createPColorIdx % _P_COLORS.length];
+  _createPColorIdx++;
+  const id = Date.now();
+  _createParticipants.push({ id, nom, couleur });
+  input.value = '';
+  _renderCreateParticipants();
+  input.focus();
+  _updateCreateCTA();
+}
+
+function _renderCreateParticipants() {
+  const list = document.getElementById('create-p-list');
+  if (_createParticipants.length === 0) { list.innerHTML = ''; return; }
+  list.innerHTML = _createParticipants.map(p => `
+    <div class="create-p-item">
+      <div class="create-p-avatar" style="background:${h(p.couleur)}">${h(p.nom[0].toUpperCase())}</div>
+      <span class="create-p-nom">${h(p.nom)}</span>
+      <button class="create-p-del" onclick="createRemoveP(${p.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+function createRemoveP(id) {
+  _createParticipants = _createParticipants.filter(p => p.id !== id);
+  _renderCreateParticipants();
+  _updateCreateCTA();
+}
+
+function _updateCreateUI() {
+  const total = 4;
+  const pct = (_createStep / total) * 100;
+  document.getElementById('create-progress-fill').style.width = pct + '%';
+  document.getElementById('create-step-counter').textContent = `${_createStep} · ${total}`;
+
+  // Bouton retour
+  const backBtn = document.getElementById('create-back-btn');
+  backBtn.style.visibility = _createStep === 1 ? 'hidden' : 'visible';
+
+  // Bouton passer (seulement étapes 3 et 4)
+  const skipBtn = document.getElementById('create-skip-btn');
+  skipBtn.style.visibility = _createStep >= 3 ? 'visible' : 'hidden';
+
+  // CTA label
+  const ctaLabel = document.getElementById('create-cta-label');
+  ctaLabel.textContent = _createStep === 4 ? 'Créer le trip' : 'Continuer';
+
+  // Auto-suggestion du nom
+  if (_createStep === 2) {
+    const dest = document.getElementById('c-destination').value.trim();
+    const nomInput = document.getElementById('c-nom');
+    const hint = document.getElementById('c-nom-hint');
+    if (!nomInput.value && dest) {
+      const year = new Date().getFullYear() + 1;
+      const suggestion = `${dest} ${year}`;
+      hint.textContent = `💡 Suggestion : "${suggestion}"`;
+      hint.onclick = () => { nomInput.value = suggestion; hint.textContent = ''; _updateCreateCTA(); nomInput.focus(); };
+      hint.style.cursor = 'pointer';
+    } else {
+      hint.textContent = '';
+    }
+  }
+
+  _updateCreateCTA();
+}
+
+function _updateCreateCTA() {
+  const btn = document.getElementById('create-cta-btn');
+  let enabled = true;
+  if (_createStep === 1) enabled = !!document.getElementById('c-destination').value.trim();
+  if (_createStep === 2) enabled = !!document.getElementById('c-nom').value.trim();
+  // Steps 3 & 4 : toujours activé (optionnel)
+  btn.disabled = !enabled;
+  btn.style.opacity = enabled ? '1' : '0.45';
+}
+
+function _slideStep(fromIdx, toIdx, direction) {
+  const steps = document.querySelectorAll('.create-step');
+  const fromEl = steps[fromIdx - 1];
+  const toEl   = steps[toIdx - 1];
+
+  const enterFrom = direction === 'forward' ? '100%' : '-100%';
+  const exitTo    = direction === 'forward' ? '-100%' : '100%';
+
+  toEl.style.transform = `translateX(${enterFrom})`;
+  toEl.style.opacity = '0';
+  toEl.classList.add('active');
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      fromEl.style.transform = `translateX(${exitTo})`;
+      fromEl.style.opacity = '0';
+      toEl.style.transform = 'translateX(0)';
+      toEl.style.opacity = '1';
+    });
+  });
+
+  setTimeout(() => {
+    fromEl.classList.remove('active');
+    fromEl.style.transform = '';
+    fromEl.style.opacity = '';
+  }, 360);
+}
+
+function createNext() {
+  const btn = document.getElementById('create-cta-btn');
+  if (btn.disabled) return;
+
+  if (_createStep < 4) {
+    const next = _createStep + 1;
+    _slideStep(_createStep, next, 'forward');
+    _createStep = next;
+    _updateCreateUI();
+    // Focus sur le bon input
+    const focusMap = { 2: 'c-nom', 3: 'c-date-debut', 4: 'c-p-nom' };
+    if (focusMap[_createStep]) setTimeout(() => document.getElementById(focusMap[_createStep]).focus(), 380);
+  } else {
+    _creerTrip();
+  }
+}
+
+function createBack() {
+  if (_createStep <= 1) return;
+  const prev = _createStep - 1;
+  _slideStep(_createStep, prev, 'backward');
+  _createStep = prev;
+  _updateCreateUI();
+}
+
+function createSkip() {
+  if (_createStep < 4) {
+    const next = _createStep + 1;
+    _slideStep(_createStep, next, 'forward');
+    _createStep = next;
+    _updateCreateUI();
+  } else {
+    _creerTrip();
+  }
+}
+
+async function _creerTrip() {
+  const destination = document.getElementById('c-destination').value.trim();
+  const nom         = document.getElementById('c-nom').value.trim();
+  const date_debut  = document.getElementById('c-date-debut').value;
+  const date_fin    = document.getElementById('c-date-fin').value;
+
+  if (!destination || !nom) return;
+
+  const btn = document.getElementById('create-cta-btn');
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+
+  try {
+    // Créer le voyage
+    const res  = await fetch(`${API}/api/voyages`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom, destination, date_debut: date_debut || null, date_fin: date_fin || null, couleur: _createSelectedColor })
+    });
+    const { id } = await res.json();
+
+    // Créer les participants
+    for (const p of _createParticipants) {
+      await fetch(`${API}/api/voyages/${id}/participants`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom: p.nom, couleur: p.couleur })
+      });
+    }
+
+    // Phase 3 — confirmation
+    const wizard = document.getElementById('create-wizard');
+    wizard.classList.add('wizard-out');
+
+    setTimeout(() => {
+      wizard.classList.add('hidden');
+      const conf = document.getElementById('create-confirm');
+      conf.classList.remove('hidden');
+      document.getElementById('create-confirm-sub').textContent =
+        `${h(nom)} · ${h(destination)}${_createParticipants.length ? ` · ${_createParticipants.length} voyageur${_createParticipants.length > 1 ? 's' : ''}` : ''}`;
+    }, 300);
+
+    // Aller sur le voyage après l'animation
+    setTimeout(() => {
+      chargerVoyages();
+      afficherVoyage(id);
+    }, 1800);
+
+  } catch(e) {
+    toast('⚠️ Erreur lors de la création');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
 
 function ouvrirModalVoyage(id = null) {
   const modal = document.getElementById('modal-voyage');
