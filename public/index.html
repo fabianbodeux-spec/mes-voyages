@@ -100,12 +100,22 @@
     <button class="tab-btn" data-tab="admin" onclick="changerOnglet('admin', this)">
       <span class="tab-icon">⚙️</span><span>Admin</span>
     </button>
+    <button class="tab-btn" data-tab="discussion" onclick="changerOnglet('discussion', this)">
+      <span class="tab-icon">💬</span><span>Discussion</span>
+    </button>
   </nav>
 
   <main class="main-content tabs-content">
 
     <!-- ONGLET ACCUEIL / DASHBOARD -->
     <div id="tab-accueil" class="tab-panel active">
+      <div class="budget-section">
+        <div class="budget-section-header">
+          <span class="budget-section-title">👥 Participants</span>
+          <button class="btn-mini-add" onclick="ouvrirModalParticipant()">+ Ajouter</button>
+        </div>
+        <div id="liste-participants" class="participants-list"></div>
+      </div>
       <div id="dash-content"></div>
     </div>
 
@@ -152,14 +162,6 @@
 
     <!-- ONGLET BUDGET -->
     <div id="tab-budget" class="tab-panel">
-      <!-- Participants -->
-      <div class="budget-section">
-        <div class="budget-section-header">
-          <span class="budget-section-title">👥 Participants</span>
-          <button class="btn-mini-add" onclick="ouvrirModalParticipant()">+ Ajouter</button>
-        </div>
-        <div id="liste-participants" class="participants-list"></div>
-      </div>
       <!-- Actions -->
       <div class="panel-actions" style="border-top:1px solid var(--border)">
         <button class="btn-primary" onclick="ouvrirModalDepense()">
@@ -181,6 +183,20 @@
     <!-- ONGLET ADMIN -->
     <div id="tab-admin" class="tab-panel">
       <div id="admin-content"></div>
+    </div>
+
+    <!-- ONGLET DISCUSSION -->
+    <div id="tab-discussion" class="tab-panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:5">
+        <span style="font-weight:700;font-size:.88rem;color:var(--text-muted)">💬 Discussion générale</span>
+        <button class="btn-mini-add" onclick="ouvrirMessagePrive()">📨 Message privé</button>
+      </div>
+      <div id="discussion-messages" class="chat-messages"></div>
+      <div class="chat-input-bar">
+        <textarea class="chat-input" id="discussion-input" placeholder="Écrire un message en tant qu'organisateur…" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_envoyerCommentaireAdmin();}"></textarea>
+        <button class="chat-send" id="discussion-send" onclick="_envoyerCommentaireAdmin()">➤</button>
+      </div>
     </div>
 
   </main>
@@ -346,6 +362,7 @@
           <option value="restaurant">🍽️ Restaurant</option>
           <option value="sport">🏄 Sport</option>
           <option value="libre">☀️ Temps libre</option>
+          <option value="apero">🥂 Apéro</option>
         </select>
       </div>
       <div class="form-group">
@@ -567,9 +584,37 @@
       </div>
       <input type="hidden" id="p-couleur" value="#6366F1">
     </div>
+    <div class="form-group">
+      <label>Code PIN <span style="font-weight:400;color:var(--text-muted)">(facultatif — protège l'accès à cette session)</span></label>
+      <input type="text" id="p-pin" placeholder="Ex: 1234" maxlength="8" inputmode="numeric"
+             style="letter-spacing:.15em" autocomplete="off">
+    </div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="fermerModal('modal-participant')">Annuler</button>
       <button class="btn-primary" onclick="sauvegarderParticipant()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL PIN PARTICIPANT ═══ -->
+<div id="modal-pin" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-pin-titre">Code PIN</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-pin')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <input type="hidden" id="pin-participant-id">
+    <div class="form-group">
+      <label>Nouveau code PIN <span style="font-weight:400;color:var(--text-muted)">(laisser vide pour retirer)</span></label>
+      <input type="text" id="pin-valeur" placeholder="Ex: 1234" maxlength="8" inputmode="numeric"
+             style="letter-spacing:.15em" autocomplete="off"
+             onkeydown="if(event.key==='Enter')sauvegarderPin()">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fermerModal('modal-pin')">Annuler</button>
+      <button class="btn-primary" onclick="sauvegarderPin()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -652,6 +697,41 @@
   </div>
 </div>
 
+<!-- ═══ MODAL ATTRIBUTION PRIVÉE ═══ -->
+<div id="modal-attribution" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🔒 Attribution privée</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-attribution')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>Destinataire *</label>
+      <div id="attr-participant-list" class="participants-selector"></div>
+    </div>
+    <div class="form-group">
+      <label>Titre *</label>
+      <input type="text" id="attr-titre" placeholder="Ex : Billet d'avion, Numéro de cabin, Place de ferry…">
+    </div>
+    <div class="form-group">
+      <label>Contenu (informations privées)</label>
+      <textarea id="attr-contenu" rows="3" placeholder="Ex : Siège 14A — Vol FR1234 — Embarquement porte B22…"></textarea>
+    </div>
+    <div class="form-group">
+      <label>📎 Document lié (optionnel)</label>
+      <select id="attr-document">
+        <option value="">— Aucun document —</option>
+      </select>
+    </div>
+    <input type="hidden" id="attr-participant-id">
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fermerModal('modal-attribution')">Annuler</button>
+      <button class="btn-primary" onclick="sauvegarderAttribution()">Attribuer</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ BOTTOM SHEET : DÉTAIL RÉSERVATION ═══ -->
 <div id="resa-detail-sheet" class="bottom-sheet hidden">
   <div class="bottom-sheet-handle"></div>
@@ -729,5 +809,29 @@
   });
 })();
 </script>
+
+<!-- ═══ MODAL MESSAGE PRIVÉ ══════════════════════════════════════ -->
+<div id="modal-message-prive" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📨 Message privé</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-message-prive')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>Destinataire</label>
+      <select id="mp-participant"></select>
+    </div>
+    <div class="form-group">
+      <label>Message</label>
+      <textarea id="mp-message" rows="4" placeholder="Ton message privé…" style="resize:vertical"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="fermerModal('modal-message-prive')">Annuler</button>
+      <button class="btn-primary" onclick="envoyerMessagePrive()">Envoyer</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

@@ -10,6 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     /* ── Identification overlay ─────────────────── */
     #id-overlay {
@@ -90,15 +92,32 @@
   <div class="id-card">
     <div class="id-hero">✈️</div>
     <h2 class="id-voyage-nom" id="id-voyage-nom">Voyage partagé</h2>
-    <p class="id-sous-titre">Qui êtes-vous ?</p>
+    <p class="id-sous-titre" id="id-sous-titre-main">Qui êtes-vous ?</p>
     <div id="id-participants" class="id-parts"></div>
-    <p class="id-ou">ou entrez votre prénom</p>
-    <div class="id-form">
+    <p class="id-ou" id="id-ou-text">ou entrez votre prénom</p>
+    <div class="id-form" id="id-nom-form">
       <input id="id-nom-input" class="id-input" placeholder="Votre prénom…"
              onkeydown="if(event.key==='Enter')_idParNom()">
       <button class="btn-primary" onclick="_idParNom()">Continuer →</button>
     </div>
-    <button class="id-skip" onclick="_idLectureSeule()">Accéder en lecture seule</button>
+    <button class="id-skip" id="id-skip-btn" onclick="_idLectureSeule()">Accéder en lecture seule</button>
+
+    <!-- Formulaire PIN (affiché à la place si participant protégé) -->
+    <div id="id-pin-form" style="display:none">
+      <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:12px">
+        🔒 Accès protégé pour <strong id="id-pin-nom"></strong>
+      </p>
+      <div class="id-form">
+        <input id="id-pin-input" class="id-input" type="password" maxlength="8"
+               placeholder="Code PIN…" inputmode="numeric" autocomplete="off"
+               onkeydown="if(event.key==='Enter')_verifierPin()">
+        <button class="btn-primary" onclick="_verifierPin()">OK</button>
+      </div>
+      <p id="id-pin-erreur" style="color:#EF4444;font-size:.82rem;margin-top:6px;display:none">
+        Code incorrect, réessaie.
+      </p>
+      <button class="id-skip" onclick="_annulerPin()" style="margin-top:8px">← Retour</button>
+    </div>
   </div>
 </div>
 
@@ -131,8 +150,14 @@
     <button class="tab-btn" data-tab="bagages" onclick="changerOnglet('bagages', this)">
       <span class="tab-icon">🧳</span><span>Bagages</span>
     </button>
+    <button class="tab-btn" data-tab="discussion" onclick="changerOnglet('discussion', this)">
+      <span class="tab-icon">💬</span><span id="tab-discussion-label">Discussion</span>
+    </button>
     <button class="tab-btn" data-tab="admin" onclick="changerOnglet('admin', this)">
       <span class="tab-icon">⚙️</span><span>Admin</span>
+    </button>
+    <button class="tab-btn" data-tab="mes-infos" id="tab-btn-mes-infos" onclick="changerOnglet('mes-infos', this)" style="display:none">
+      <span class="tab-icon">🔒</span><span>Mes infos</span>
     </button>
   </nav>
 
@@ -140,6 +165,22 @@
 
     <!-- ACCUEIL -->
     <div id="tab-accueil" class="tab-panel active">
+      <!-- Géolocalisation groupe -->
+      <div id="geo-section" style="padding:12px 16px 0">
+        <div style="background:var(--card);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)">
+            <span style="font-weight:700;font-size:.95rem">📍 Groupe</span>
+            <button id="geo-toggle-btn" onclick="_togglePartagerPosition()"
+              style="background:#3B82F6;color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:var(--font-body)">
+              Partager ma position
+            </button>
+          </div>
+          <div id="geo-map" style="height:200px;background:#e5e7eb"></div>
+          <div id="geo-list" style="padding:8px 14px;min-height:36px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+            <span style="font-size:.8rem;color:var(--text-muted)">Aucun participant ne partage sa position</span>
+          </div>
+        </div>
+      </div>
       <div id="dash-content"></div>
     </div>
 
@@ -213,9 +254,28 @@
       </div>
     </div>
 
+    <!-- DISCUSSION -->
+    <div id="tab-discussion" class="tab-panel">
+      <div id="notif-banner" style="display:none;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;background:#3B82F610;border-bottom:1px solid #3B82F630">
+        <span style="font-size:.82rem;color:var(--text-muted)">🔔 Recevoir les nouveaux messages</span>
+        <button onclick="_initPushPartage()" style="background:#3B82F6;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:.78rem;font-weight:700;cursor:pointer">Activer</button>
+      </div>
+      <div id="discussion-messages" class="chat-messages"></div>
+      <div class="chat-input-bar" id="discussion-input-bar">
+        <textarea class="chat-input" id="discussion-input" placeholder="Écrire un message…" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_envoyerCommentaire();}"></textarea>
+        <button class="chat-send" id="discussion-send" onclick="_envoyerCommentaire()">➤</button>
+      </div>
+    </div>
+
     <!-- ADMIN -->
     <div id="tab-admin" class="tab-panel">
       <div id="admin-content"></div>
+    </div>
+
+    <!-- MES INFOS -->
+    <div id="tab-mes-infos" class="tab-panel">
+      <div id="mes-infos-content"></div>
     </div>
 
   </main>
@@ -292,6 +352,7 @@
           <option value="restaurant">🍽️ Restaurant</option>
           <option value="sport">🏄 Sport</option>
           <option value="libre">☀️ Temps libre</option>
+          <option value="apero">🥂 Apéro</option>
         </select>
       </div>
       <div class="form-group"><label>Lieu</label><input type="text" id="a-lieu" placeholder="Ex: Ajaccio"></div>
@@ -409,8 +470,9 @@
 <!-- ═══ VISUALISEUR DOCUMENT ════════════════════════════════════ -->
 <div id="modal-doc-viewer" class="doc-viewer-overlay hidden">
   <div class="doc-viewer-header">
-    <span id="doc-viewer-nom" class="doc-viewer-titre"></span>
-    <button class="doc-viewer-close" onclick="fermerDocViewer()">✕ Fermer</button>
+    <button class="doc-viewer-close" onclick="fermerDocViewer()" style="display:flex;align-items:center;gap:6px">← Retour</button>
+    <span id="doc-viewer-nom" class="doc-viewer-titre" style="flex:1;text-align:center"></span>
+    <a id="doc-viewer-dl" href="#" target="_blank" download style="color:#fff;font-size:1.1rem;padding:4px 8px;text-decoration:none" title="Télécharger">⬇️</a>
   </div>
   <iframe id="doc-viewer-frame" class="doc-viewer-frame" src=""></iframe>
 </div>
@@ -550,6 +612,32 @@
 
 <div id="overlay-sheet" class="overlay-sheet hidden" onclick="fermerBottomSheet()"></div>
 
+<!-- ═══ MODAL DEMANDE (invités) ══════════════════════════════════ -->
+<div id="modal-demande" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📩 Demande de modification</h2>
+      <button class="btn-icon" onclick="fermerModal('modal-demande')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p id="modal-demande-desc" style="font-size:.88rem;color:var(--text-muted);margin-bottom:14px;line-height:1.5"></p>
+    <div class="form-group">
+      <label>Ton message pour l'admin *</label>
+      <textarea id="demande-message" rows="3" placeholder="Décris ta demande de modification…"
+        style="width:100%;padding:10px 12px;border:1.5px solid var(--border-solid);border-radius:12px;font-family:var(--font-body);font-size:.88rem;resize:vertical;background:var(--card);color:var(--text)"></textarea>
+    </div>
+    <input type="hidden" id="demande-onglet">
+    <input type="hidden" id="demande-element-type">
+    <input type="hidden" id="demande-element-id">
+    <input type="hidden" id="demande-element-nom">
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fermerModal('modal-demande')">Annuler</button>
+      <button class="btn-primary" onclick="_envoyerDemande()">📤 Envoyer</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ TOAST ════════════════════════════════════════════════════ -->
 <div id="toast" class="toast hidden"></div>
 
@@ -605,10 +693,11 @@ async function _initPartage() {
         '<div class="avatar" style="background:' + (p.couleur||'#C9622F') +
         ';width:28px;height:28px;font-size:.6rem;flex-shrink:0">' +
         (p.nom||'?')[0].toUpperCase() + '</div>' +
-        p.nom +
+        '<span style="flex:1;text-align:left">' + p.nom + '</span>' +
+        (p.has_pin ? '<span style="font-size:.85rem;opacity:.6" title="Session protégée">🔒</span>' : '') +
       '</button>'
     ).join('');
-    if (!parts.length) document.querySelector('.id-ou').style.display = 'none';
+    if (!parts.length) document.getElementById('id-ou-text').style.display = 'none';
 
     // Identité déjà stockée ?
     try {
@@ -622,10 +711,56 @@ async function _initPartage() {
   }
 }
 
+let _pinPendingParticipant = null;
+
+function _idMainShow(visible) {
+  document.getElementById('id-sous-titre-main').style.display = visible ? '' : 'none';
+  document.getElementById('id-participants').style.display   = visible ? '' : 'none';
+  document.getElementById('id-ou-text').style.display        = visible ? '' : 'none';
+  document.getElementById('id-nom-form').style.display       = visible ? '' : 'none';
+  document.getElementById('id-skip-btn').style.display       = visible ? '' : 'none';
+  document.getElementById('id-pin-form').style.display       = visible ? 'none' : '';
+}
+
 function _idParticipant(p) {
+  if (p.has_pin) {
+    _pinPendingParticipant = p;
+    document.getElementById('id-pin-nom').textContent = p.nom;
+    document.getElementById('id-pin-erreur').style.display = 'none';
+    document.getElementById('id-pin-input').value = '';
+    _idMainShow(false);
+    setTimeout(() => document.getElementById('id-pin-input').focus(), 100);
+    return;
+  }
   const id = { nom: p.nom, participant_id: p.id, couleur: p.couleur || '#C9622F' };
   localStorage.setItem('partage_id_' + _partageToken, JSON.stringify(id));
   _lancerPartage(id);
+}
+
+async function _verifierPin() {
+  const pin = document.getElementById('id-pin-input').value.trim();
+  if (!pin || !_pinPendingParticipant) return;
+  const resp = await fetch(`/api/partage/${_partageToken}/verify-pin`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ participant_id: _pinPendingParticipant.id, pin })
+  }).catch(() => ({ ok: false, json: () => ({ ok: false }) }));
+  const data = await resp.json().catch(() => ({ ok: false }));
+  if (data.ok) {
+    const p = _pinPendingParticipant;
+    const id = { nom: p.nom, participant_id: p.id, couleur: p.couleur || '#C9622F' };
+    localStorage.setItem('partage_id_' + _partageToken, JSON.stringify(id));
+    _annulerPin();
+    _lancerPartage(id);
+  } else {
+    document.getElementById('id-pin-erreur').style.display = '';
+    document.getElementById('id-pin-input').value = '';
+    document.getElementById('id-pin-input').focus();
+  }
+}
+
+function _annulerPin() {
+  _pinPendingParticipant = null;
+  _idMainShow(true);
 }
 
 function _idParNom() {
@@ -636,23 +771,6 @@ function _idParNom() {
 
 function _idLectureSeule() {
   _lancerPartage({ nom: null });
-}
-
-function _lancerPartage(identite) {
-  document.getElementById('id-overlay').style.display = 'none';
-  document.getElementById('screen-voyage').classList.add('active');
-
-  // Badge identité dans le header
-  const badge = document.getElementById('partage-id-badge');
-  if (badge && identite && identite.nom) {
-    badge.textContent = identite.nom;
-    badge.style.background = (identite.couleur || '#C9622F') + '22';
-    badge.style.color = identite.couleur || '#C9622F';
-    badge.style.borderColor = identite.couleur || '#C9622F';
-    badge.style.border = '1px solid ' + (identite.couleur || '#C9622F');
-  }
-
-  changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
 }
 
 // ── Override : voirReservation — alimente le cache si besoin ──
@@ -682,7 +800,7 @@ async function _depenseOuvrir(id = null) {
     if (depExistante) {
       document.getElementById('dep-titre').value = depExistante.titre || '';
       document.getElementById('dep-montant').value = depExistante.montant || '';
-      document.getElementById('dep-date').value = depExistante.date || new Date().toISOString().split('T')[0];
+      document.getElementById('dep-date').value = toDateStr(depExistante.date) || new Date().toISOString().split('T')[0];
       document.getElementById('dep-categorie').value = depExistante.categorie || 'autre';
     }
   } else {
@@ -752,6 +870,697 @@ async function _depenseSauvegarder() {
 }
 
 _initPartage();
+
+// ══════════════════════════════════════════════════════
+//  DEMANDES — Invités envoient des demandes de modif
+// ══════════════════════════════════════════════════════
+
+let _partageIdentite = null;
+
+const _origLancerPartage = window._lancerPartage || function(){};
+function _lancerPartage(identite) {
+  _partageIdentite = identite;
+  document.getElementById('id-overlay').style.display = 'none';
+  document.getElementById('screen-voyage').classList.add('active');
+  const badge = document.getElementById('partage-id-badge');
+  if (badge && identite && identite.nom) {
+    badge.textContent = identite.nom;
+    badge.style.background = (identite.couleur || '#C9622F') + '22';
+    badge.style.color = identite.couleur || '#C9622F';
+    badge.style.border = '1px solid ' + (identite.couleur || '#C9622F');
+  }
+  // Afficher l'onglet "Mes infos" uniquement si le participant est identifié avec un ID
+  const mesInfosBtn = document.getElementById('tab-btn-mes-infos');
+  if (mesInfosBtn) mesInfosBtn.style.display = identite && identite.participant_id ? '' : 'none';
+  const _targetTab = new URLSearchParams(window.location.search).get('tab');
+  if (_targetTab) {
+    const tabBtn = document.querySelector(`[data-tab="${_targetTab}"]`);
+    if (tabBtn) { setTimeout(() => changerOnglet(_targetTab, tabBtn), 80); return; }
+  }
+  changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
+}
+
+// Écoute les messages du service worker (clic sur notification)
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'navigate-tab') {
+      const tabBtn = document.querySelector(`[data-tab="${e.data.tab}"]`);
+      if (tabBtn) changerOnglet(e.data.tab, tabBtn);
+    }
+  });
+}
+
+// ── GÉOLOCALISATION GROUPE ──────────────────────────────────────────────────
+let _geoMap = null;
+let _geoMarkers = {};
+let _geoWatchId = null;
+let _geoSSE = null;      // EventSource SSE — remplace le polling
+let _geoActive = false;
+const _geoDeviceId = localStorage.getItem('geo_device_id') || (() => {
+  const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  localStorage.setItem('geo_device_id', id);
+  return id;
+})();
+
+function _geoInitMap() {
+  if (_geoMap || !window.L) return;
+  _geoMap = L.map('geo-map', { zoomControl: true, attributionControl: false });
+  // CartoDB Positron — minimaliste, parfait avec le design Notion
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    subdomains: 'abcd'
+  }).addTo(_geoMap);
+  _geoMap.setView([46.5, 2.3], 5);
+  setTimeout(() => _geoMap && _geoMap.invalidateSize(), 150);
+}
+
+function _geoMkIcon(nom, couleur) {
+  const ini = (nom || '?')[0].toUpperCase();
+  const c = couleur || '#6366F1';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44"><ellipse cx="18" cy="42" rx="6" ry="2" fill="rgba(0,0,0,.2)"/><path d="M18 0C8 0 0 8 0 18c0 14 18 26 18 26S36 32 36 18C36 8 28 0 18 0z" fill="${c}"/><text x="18" y="23" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold" font-family="sans-serif">${ini}</text></svg>`;
+  return L.divIcon({ html: svg, iconSize: [36, 44], iconAnchor: [18, 44], popupAnchor: [0, -44], className: '' });
+}
+
+function _geoAgo(ts) {
+  if (!ts) return '';
+  const diff = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (diff < 60) return 'à l\'instant';
+  if (diff < 3600) return `il y a ${Math.floor(diff / 60)} min`;
+  return `il y a ${Math.floor(diff / 3600)} h`;
+}
+
+// Applique un tableau de positions reçu (via SSE ou REST) sur la carte et la liste
+function _appliquerPositions(locs) {
+  if (!_geoMap) return;
+  const actifs = new Set(locs.map(l => l.device_id));
+  locs.forEach(loc => {
+    const lat = parseFloat(loc.lat), lng = parseFloat(loc.lng);
+    if (isNaN(lat) || isNaN(lng)) return;
+    if (_geoMarkers[loc.device_id]) {
+      _geoMarkers[loc.device_id].setLatLng([lat, lng]);
+    } else {
+      _geoMarkers[loc.device_id] = L.marker([lat, lng], { icon: _geoMkIcon(loc.nom, loc.couleur) })
+        .bindPopup(`<strong>${loc.nom}</strong>`)
+        .addTo(_geoMap);
+    }
+  });
+  Object.keys(_geoMarkers).forEach(k => {
+    if (!actifs.has(k)) { _geoMap.removeLayer(_geoMarkers[k]); delete _geoMarkers[k]; }
+  });
+  if (locs.length > 0) {
+    const bounds = L.latLngBounds(locs.map(l => [parseFloat(l.lat), parseFloat(l.lng)]));
+    if (bounds.isValid()) _geoMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+  }
+  const listEl = document.getElementById('geo-list');
+  if (!listEl) return;
+  listEl.innerHTML = locs.length === 0
+    ? '<span style="font-size:.8rem;color:var(--text-muted)">Aucun participant ne partage sa position</span>'
+    : locs.map(loc => `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.78rem;font-weight:600;background:${loc.couleur||'#6366F1'}22;color:${loc.couleur||'#6366F1'}">
+        <span style="width:8px;height:8px;border-radius:50%;background:${loc.couleur||'#6366F1'}"></span>
+        ${loc.nom} <span style="font-weight:400;opacity:.7">${_geoAgo(loc.updated_at)}</span>
+      </span>`).join('');
+}
+
+// Connexion SSE — le serveur pousse les mises à jour en temps réel
+function _geoConnectSSE() {
+  if (_geoSSE) return;
+  _geoSSE = new EventSource(`/api/partage/${_partageToken}/locations/stream`);
+  _geoSSE.onmessage = e => {
+    try { _appliquerPositions(JSON.parse(e.data)); } catch(err) {}
+  };
+  _geoSSE.onerror = () => {
+    // EventSource gère la reconnexion automatiquement
+  };
+}
+
+function _geoDisconnectSSE() {
+  if (_geoSSE) { _geoSSE.close(); _geoSSE = null; }
+}
+
+// Fallback one-shot (utilisé uniquement si SSE non disponible)
+async function _rafraichirPositions() {
+  if (!_geoMap) return;
+  const locs = await fetch(`/api/partage/${_partageToken}/locations`).then(r => r.ok ? r.json() : []).catch(() => []);
+  _appliquerPositions(locs);
+}
+
+function _togglePartagerPosition() {
+  _geoActive ? _geoArreter() : _geoDemarrer();
+}
+
+function _geoDemarrer() {
+  if (!navigator.geolocation) { alert('Géolocalisation non disponible.'); return; }
+  const btn = document.getElementById('geo-toggle-btn');
+  if (btn) { btn.textContent = 'Localisation…'; btn.style.background = '#F59E0B'; }
+  _geoWatchId = navigator.geolocation.watchPosition(async pos => {
+    _geoActive = true;
+    const { latitude: lat, longitude: lng } = pos.coords;
+    const id = _partageIdentite || {};
+    await fetch(`/api/partage/${_partageToken}/location`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: _geoDeviceId, participant_id: id.participant_id || null, nom: id.nom || 'Visiteur', couleur: id.couleur || '#6B7280', lat, lng })
+    }).catch(() => {});
+    if (!_geoMap) _geoInitMap();
+    _rafraichirPositions();
+    const b = document.getElementById('geo-toggle-btn');
+    if (b) { b.textContent = '🔴 Arrêter le partage'; b.style.background = '#EF4444'; }
+  }, err => {
+    console.warn('Geo:', err);
+    const b = document.getElementById('geo-toggle-btn');
+    if (b) { b.textContent = 'Partager ma position'; b.style.background = '#3B82F6'; }
+    _geoActive = false;
+  }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
+}
+
+function _geoArreter() {
+  if (_geoWatchId !== null) { navigator.geolocation.clearWatch(_geoWatchId); _geoWatchId = null; }
+  _geoActive = false;
+  fetch(`/api/partage/${_partageToken}/location/${_geoDeviceId}`, { method: 'DELETE' }).catch(() => {});
+  const b = document.getElementById('geo-toggle-btn');
+  if (b) { b.textContent = 'Partager ma position'; b.style.background = '#3B82F6'; }
+  _rafraichirPositions();
+}
+
+// Override changerOnglet pour gérer mes-infos + discussion + géo
+const _origChanterOnglet = window.changerOnglet;
+window.changerOnglet = function(tab, btn) {
+  _origChanterOnglet(tab, btn);
+  if (tab === 'mes-infos') chargerMesInfos();
+  if (tab === 'discussion') {
+    _majBannerNotif();
+    chargerCommentaires();
+    clearInterval(_chatPollInterval);
+    _chatPollInterval = setInterval(chargerCommentaires, 15000);
+  } else {
+    clearInterval(_chatPollInterval);
+    _chatPollInterval = null;
+  }
+  if (tab === 'accueil') {
+    if (!_geoMap && window.L) setTimeout(_geoInitMap, 80);
+    // SSE : connexion persistante, mises à jour instantanées
+    setTimeout(_geoConnectSSE, 100);
+  } else {
+    // Ferme le flux SSE quand on quitte l'onglet accueil
+    _geoDisconnectSSE();
+  }
+};
+
+async function chargerMesInfos() {
+  const container = document.getElementById('mes-infos-content');
+  if (!_partageIdentite || !_partageIdentite.participant_id) {
+    container.innerHTML = '<div class="empty-tab"><div class="empty-tab-icon">🔒</div><p>Identifie-toi pour accéder à tes infos privées.</p></div>';
+    return;
+  }
+  container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>';
+  try {
+    const [items, mesDocs, mesMessages] = await Promise.all([
+      fetch(`/api/partage/${_partageToken}/mes-infos/${_partageIdentite.participant_id}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/partage/${_partageToken}/mes-docs/${_partageIdentite.participant_id}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/partage/${_partageToken}/messages-prives/${_partageIdentite.participant_id}`).then(r => r.json()).catch(() => [])
+    ]);
+
+    const attributionsHtml = items.length === 0 ? '' : `
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 4px">
+          Informations privées destinées à <strong>${_partageIdentite.nom}</strong>
+        </p>
+        ${items.map(a => `
+        <div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);border-left:4px solid #C9622F">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="font-size:1.1rem">🔒</span>
+            <span style="font-weight:800;font-size:.95rem">${a.titre}</span>
+          </div>
+          ${a.contenu ? `<div style="font-size:.88rem;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px 12px">${a.contenu}</div>` : ''}
+          ${a.document ? `
+          <div style="margin-top:10px">
+            <a href="/api/documents/${a.document.id}/download" target="_blank"
+              style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#C9622F;color:#fff;border-radius:20px;font-size:.83rem;font-weight:700;text-decoration:none">
+              ${getDocIcon(a.document.type_fichier)} Ouvrir ${a.document.nom}
+            </a>
+          </div>` : ''}
+        </div>`).join('')}
+      </div>`;
+
+    const docsListHtml = mesDocs.length === 0
+      ? `<p style="font-size:.83rem;color:var(--text-muted);text-align:center;padding:8px 0">Aucun document. Ajoute tes billets, passeport, assurance…</p>`
+      : mesDocs.map(d => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:12px">
+          <span style="font-size:1.2rem">${getDocIcon(d.type_fichier)}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.88rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.nom}</div>
+            ${d.taille ? `<div style="font-size:.75rem;color:var(--text-muted)">${formatTaille(d.taille)}</div>` : ''}
+          </div>
+          <button onclick="_ouvrirDocPerso(${d.id}, \`${d.nom.replace(/`/g,'')}\`)"
+            style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--primary);padding:4px" title="Ouvrir">👁️</button>
+          <button onclick="_supprimerDocPerso(${d.id})"
+            style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--text-muted);padding:4px" title="Supprimer">🗑️</button>
+        </div>`).join('');
+
+    container.innerHTML = `
+      <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+        ${attributionsHtml}
+        <div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-weight:800;font-size:.95rem">📤 Mes documents</span>
+            <label style="cursor:pointer;background:#3B82F618;border:1.5px solid #3B82F6;color:#3B82F6;border-radius:20px;padding:5px 14px;font-size:.8rem;font-weight:700">
+              + Ajouter
+              <input type="file" id="input-doc-perso" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" style="display:none" onchange="_uploaderDocPerso(this)">
+            </label>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">${docsListHtml}</div>
+        </div>
+        ${mesMessages.length > 0 ? `
+        <div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);border-left:4px solid #8B5CF6">
+          <div style="font-weight:800;font-size:.95rem;margin-bottom:12px">📬 Messages de l'organisateur</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            ${mesMessages.map(m => `
+            <div style="background:var(--bg);border-radius:12px;padding:12px 14px">
+              <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:6px">${new Date(m.created_at).toLocaleString('fr-BE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+              <div style="font-size:.9rem;line-height:1.6;white-space:pre-wrap">${m.message.replace(/</g,'&lt;')}</div>
+            </div>`).join('')}
+          </div>
+        </div>` : ''}
+        ${items.length === 0 && mesDocs.length === 0 && mesMessages.length === 0 ? `<p style="font-size:.83rem;color:var(--text-muted);text-align:center;margin-top:4px">L'admin peut t'envoyer des billets, places ou notes privées.</p>` : ''}
+      </div>`;
+  } catch(e) {
+    container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Erreur de chargement.</div>';
+  }
+}
+
+async function _uploaderDocPerso(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  if (file.size > 20 * 1024 * 1024) { toast('⚠️ Fichier trop volumineux (max 20 Mo)'); return; }
+  const formData = new FormData();
+  formData.append('fichier', file);
+  formData.append('participant_id', _partageIdentite.participant_id);
+  try {
+    const r = await fetch(`/api/partage/${_partageToken}/mes-docs`, { method: 'POST', body: formData });
+    if (!r.ok) throw new Error();
+    toast('✅ Document ajouté');
+    chargerMesInfos();
+  } catch { toast('⚠️ Erreur lors de l\'upload'); }
+}
+
+async function _supprimerDocPerso(id) {
+  if (!confirm('Supprimer ce document ?')) return;
+  try {
+    await fetch(`/api/partage/${_partageToken}/mes-docs/${id}`, { method: 'DELETE' });
+    chargerMesInfos();
+  } catch { toast('⚠️ Erreur lors de la suppression'); }
+}
+
+// ── Push notifications participants ─────────────────────────────
+async function _initPushPartage() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    toast('⚠️ Notifications non supportées sur ce navigateur'); return;
+  }
+  if (Notification.permission === 'denied') {
+    toast('⚠️ Notifications bloquées — vérifie les réglages du navigateur'); return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+      const { publicKey } = await fetch('/api/push/vapid-key').then(r => r.json());
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+    }
+    const subData = JSON.parse(JSON.stringify(sub));
+    subData.participant_id = _partageIdentite?.participant_id || null;
+    await fetch(`/api/push/subscribe-partage/${_partageToken}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(subData)
+    });
+    const banner = document.getElementById('notif-banner');
+    if (banner) banner.style.display = 'none';
+    toast('🔔 Notifications activées !');
+  } catch(e) { console.error('Push partage:', e); toast('⚠️ Erreur activation notifications'); }
+}
+
+function _majBannerNotif() {
+  const banner = document.getElementById('notif-banner');
+  if (!banner) return;
+  if (!('Notification' in window) || !('PushManager' in window)) { banner.style.display = 'none'; return; }
+  if (Notification.permission === 'denied' || Notification.permission === 'granted') {
+    banner.style.display = 'none';
+  } else {
+    banner.style.display = 'flex';
+  }
+}
+
+// ── Fil de commentaires ──────────────────────────────────────────
+let _chatPollInterval = null;
+
+function _couleurChat(nom) {
+  const palette = ['#C9622F','#3B82F6','#10B981','#8B5CF6','#EC4899','#F59E0B','#6366F1','#14B8A6'];
+  let h = 0;
+  for (const c of (nom||'?')) h = (h * 31 + c.charCodeAt(0)) & 0xFFFFFF;
+  return palette[h % palette.length];
+}
+
+function _renderCommentaires(liste) {
+  const moi = _partageIdentite?.nom;
+  const container = document.getElementById('discussion-messages');
+  if (!container) return;
+  if (!liste.length) {
+    container.innerHTML = `<div class="chat-empty">
+      <div style="font-size:2rem;margin-bottom:8px">💬</div>
+      <p>Aucun message pour l'instant.</p>
+      <p style="font-size:.78rem;margin-top:4px">Soyez le premier à écrire !</p>
+    </div>`;
+    return;
+  }
+  container.innerHTML = liste.map(c => {
+    const mine = moi && c.auteur === moi;
+    const couleur = _couleurChat(c.auteur);
+    const heure = new Date(c.created_at).toLocaleString('fr-BE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    return `<div class="chat-msg${mine ? ' mine' : ''}">
+      <div class="chat-avatar" style="background:${couleur}">${(c.auteur||'?')[0].toUpperCase()}</div>
+      <div class="chat-bubble">
+        <div class="chat-meta">
+          <span class="chat-auteur">${c.auteur}</span>
+          <span>${heure}</span>
+          ${mine ? `<button class="chat-del" onclick="_supprimerCommentaire(${c.id})" title="Supprimer">✕</button>` : ''}
+        </div>
+        <div class="chat-text">${c.message.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+      </div>
+    </div>`;
+  }).join('');
+  // Scroll to bottom
+  const main = document.querySelector('.main-content');
+  if (main) main.scrollTop = main.scrollHeight;
+}
+
+async function chargerCommentaires() {
+  try {
+    const liste = await fetch(`/api/partage/${_partageToken}/commentaires`).then(r => r.json()).catch(() => []);
+    _renderCommentaires(liste);
+    // badge si nouveaux messages
+    const btn = document.querySelector('[data-tab="discussion"]');
+    if (btn) btn.querySelector('#tab-discussion-label').textContent = `Discussion`;
+  } catch {}
+}
+
+async function _envoyerCommentaire() {
+  const input = document.getElementById('discussion-input');
+  const message = input?.value.trim();
+  if (!message) return;
+  if (!_partageIdentite?.nom) { toast('⚠️ Identifie-toi d\'abord'); return; }
+  const btn = document.getElementById('discussion-send');
+  if (btn) btn.disabled = true;
+  try {
+    await fetch(`/api/partage/${_partageToken}/commentaires`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ auteur: _partageIdentite.nom, message })
+    });
+    input.value = '';
+    input.style.height = '';
+    await chargerCommentaires();
+  } catch { toast('⚠️ Erreur d\'envoi'); }
+  finally { if (btn) btn.disabled = false; }
+}
+
+async function _supprimerCommentaire(id) {
+  try {
+    await fetch(`/api/partage/${_partageToken}/commentaires/${id}`, { method: 'DELETE' });
+    chargerCommentaires();
+  } catch {}
+}
+
+function _ouvrirDocPerso(id, nom) {
+  const url = `/api/partage/${_partageToken}/mes-docs/${id}/download`;
+  document.getElementById('doc-viewer-nom').textContent = nom;
+  document.getElementById('doc-viewer-frame').src = url;
+  const dl = document.getElementById('doc-viewer-dl');
+  if (dl) dl.href = url;
+  document.getElementById('modal-doc-viewer').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function _ouvrirDemande(onglet, elementType, elementId, elementNom) {
+  document.getElementById('modal-demande-desc').textContent = `Tu souhaites modifier : ${elementNom}`;
+  document.getElementById('demande-message').value = '';
+  document.getElementById('demande-onglet').value = onglet;
+  document.getElementById('demande-element-type').value = elementType;
+  document.getElementById('demande-element-id').value = elementId;
+  document.getElementById('demande-element-nom').value = elementNom;
+  document.getElementById('modal-demande').classList.remove('hidden');
+}
+
+async function _envoyerDemande() {
+  const message = document.getElementById('demande-message').value.trim();
+  if (!message) { toast('⚠️ Écris un message pour l\'admin'); return; }
+  const data = {
+    auteur: _partageIdentite?.nom || 'Invité',
+    onglet: document.getElementById('demande-onglet').value,
+    element_type: document.getElementById('demande-element-type').value,
+    element_id: parseInt(document.getElementById('demande-element-id').value) || null,
+    element_nom: document.getElementById('demande-element-nom').value,
+    message
+  };
+  const resp = await fetch(`/api/demandes/${_partageToken}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+  });
+  if (resp.ok) {
+    fermerModal('modal-demande');
+    toast('✅ Demande envoyée à l\'admin !');
+  } else {
+    toast('❌ Erreur lors de l\'envoi');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  PROGRAMME — lecture seule + bouton Demander
+// ══════════════════════════════════════════════════════
+
+window.chargerProgramme = async function() {
+  // Désactiver le bouton "Ajouter un événement"
+  const addBtn = document.querySelector('#tab-programme .panel-actions .btn-primary');
+  if (addBtn) {
+    addBtn.disabled = true;
+    addBtn.style.opacity = '0.4';
+    addBtn.title = 'Réservé à l\'admin';
+    addBtn.onclick = e => { e.preventDefault(); toast('Seul l\'admin peut ajouter des événements'); };
+  }
+
+  const container = document.getElementById('liste-programme');
+  container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>';
+
+  const [voyage, reservations, agendaItems, documents] = await Promise.all([
+    fetch(`/api/voyages/${voyageActuel}`).then(r => r.json()),
+    fetch(`/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
+    fetch(`/api/voyages/${voyageActuel}/agenda`).then(r => r.json()),
+    fetch(`/api/voyages/${voyageActuel}/documents`).then(r => r.json())
+  ]);
+
+  const items = [];
+  agendaItems.forEach(a => {
+    if (!a.date) return;
+    items.push({ ...a, date: toDateStr(a.date), heure: a.heure || null, source: 'agenda',
+      docs: documents.filter(d => d.event_id == a.id) });
+  });
+  reservations.forEach(r => {
+    if (!r.date_debut) return;
+    items.push({ id: r.id, date: toDateStr(r.date_debut), heure: r.heure_debut || r.heure || null,
+      titre: r.titre, lieu: r.adresse || r.lieu || null, description: r.notes || null,
+      lien: r.lien || null, type: r.type, source: 'resa',
+      docs: documents.filter(d => d.reservation_id == r.id) });
+  });
+
+  if (items.length === 0) {
+    container.innerHTML = '<div class="empty-tab"><div class="empty-tab-icon">📆</div><p>Aucun élément planifié</p></div>';
+    return;
+  }
+
+  items.sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    return (a.heure||'99:99') < (b.heure||'99:99') ? -1 : 1;
+  });
+
+  const grouped = {};
+  items.forEach(it => { if (!grouped[it.date]) grouped[it.date] = []; grouped[it.date].push(it); });
+
+  const today = new Date().toISOString().split('T')[0];
+  const debut = voyage.date_debut;
+  const fin = voyage.date_fin;
+  const totalDays = (debut && fin) ? Math.round((new Date(fin) - new Date(debut)) / 86400000) + 1 : null;
+  function jourNum(d) {
+    if (!debut) return null;
+    const n = Math.round((new Date(d) - new Date(debut)) / 86400000) + 1;
+    return n >= 1 ? n : null;
+  }
+  const resaIcon = t => ({ transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' }[t] || '📌');
+
+  container.innerHTML = Object.entries(grouped).map(([date, dayItems]) => {
+    const isToday = date === today;
+    const isPast = date < today;
+    const jourLabel = jourNum(date) ? `Jour ${jourNum(date)}${totalDays ? ` / ${totalDays}` : ''}` : '';
+    return `
+    <div class="prog-day ${isToday?'prog-day-today':''} ${isPast?'prog-day-past':''}">
+      <div class="prog-day-header">
+        <div class="prog-day-label">
+          <span class="prog-day-date">${formatDateLong(date)}${isToday?' · <strong>Aujourd\'hui</strong>':''}</span>
+          ${jourLabel ? `<span class="prog-day-num">${jourLabel}</span>` : ''}
+        </div>
+      </div>
+      <div class="prog-items">
+        ${dayItems.map((it, idx) => {
+          const isLast = idx === dayItems.length - 1;
+          const color = it.source === 'resa' ? getResaColor(it.type) : getAgendaColor(it.type);
+          const icon = it.source === 'resa' ? resaIcon(it.type) : getAgendaIcon(it.type);
+          const badge = it.source === 'resa'
+            ? '<span class="prog-badge prog-badge-resa">Réservation</span>'
+            : '<span class="prog-badge prog-badge-agenda">Agenda</span>';
+          const nom = (it.titre || '').replace(/'/g, "\\'");
+          const mapId = `map-${it.source}-${it.id}`;
+          const mapSrc = it.lieu
+            ? `https://maps.google.com/maps?q=${encodeURIComponent(it.lieu)}&output=embed&z=14`
+            : null;
+          return `
+          <div class="prog-item">
+            <div class="prog-spine">
+              <div class="prog-dot" style="background:${color}"></div>
+              ${!isLast ? `<div class="prog-line" style="background:${color}22"></div>` : ''}
+            </div>
+            <div class="prog-card">
+              <div class="prog-card-top">
+                <span class="prog-icon">${icon}</span>
+                <div class="prog-card-body">
+                  <div class="prog-titre">${it.titre}</div>
+                  ${it.heure ? `<span class="prog-heure">🕐 ${it.heure}</span>` : ''}
+                  ${it.lieu ? `<div class="prog-lieu">📍 ${it.lieu}</div>` : ''}
+                  ${it.description ? `<div class="prog-desc">${it.description}</div>` : ''}
+                  ${it.lien ? `<a href="${it.lien}" target="_blank" rel="noopener" class="prog-lien">🔗 Ouvrir</a>` : ''}
+                  ${it.docs && it.docs.length ? `<div class="prog-docs">${it.docs.map(d => `<button class="prog-doc-badge" onclick="event.stopPropagation();ouvrirDocViewer(${d.id},\`${d.nom.replace(/`/g,'')}\`)">${getDocIcon(d.type_fichier)}<span>${d.nom}</span></button>`).join('')}</div>` : ''}
+                </div>
+                <div class="prog-actions">
+                  ${badge}
+                  <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+                    ${mapSrc ? `<button class="btn-mini btn-mini-map" onclick="event.stopPropagation();toggleProgMap('${mapId}', this)" title="Voir sur la carte">🗺️</button>` : ''}
+                    <button onclick="event.stopPropagation();_ouvrirDemande('programme','${it.source}',${it.id},'${nom}')"
+                      style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;border:1.5px solid #C9622F;background:#C9622F18;color:#C9622F;font-size:.78rem;font-weight:700;font-family:var(--font-body);cursor:pointer;white-space:nowrap">
+                      📩 Demander
+                    </button>
+                  </div>
+                </div>
+              </div>
+              ${mapSrc ? `
+              <div id="${mapId}" class="prog-map hidden">
+                <iframe src="" data-src="${mapSrc}" class="prog-map-frame" frameborder="0" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+              </div>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+};
+
+// ══════════════════════════════════════════════════════
+//  ADMIN — lecture seule + bouton Demander par item
+// ══════════════════════════════════════════════════════
+
+window.chargerAdmin = async function() {
+  const container = document.getElementById('admin-content');
+  container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>';
+
+  const [reservations, documents] = await Promise.all([
+    fetch(`/api/voyages/${voyageActuel}/reservations`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`/api/voyages/${voyageActuel}/documents`).then(r => r.ok ? r.json() : []).catch(() => [])
+  ]);
+
+  _resasCache = reservations;
+  _docsCache  = documents;
+
+  const catLabels = { transport:'Transport', hebergement:'Hébergement', activite:'Activité', identite:'Identité', visa:'Visa', assurance:'Assurance', autre:'Autre' };
+
+  container.innerHTML = `
+    <div class="adm-stats">
+      <div class="adm-stat"><span class="adm-stat-n">${reservations.length}</span><span class="adm-stat-l">Réservations</span></div>
+      <div class="adm-stat-sep"></div>
+      <div class="adm-stat"><span class="adm-stat-n">${documents.length}</span><span class="adm-stat-l">Documents</span></div>
+    </div>
+
+    <div class="adm-section">
+      <div class="adm-section-head">
+        <span class="adm-section-title">🎫 Réservations</span>
+      </div>
+      ${reservations.length === 0 ? '<div class="adm-empty">Aucune réservation</div>' : `
+      <div style="padding:8px 12px">
+        ${reservations.map(r => {
+          const icones = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
+          const nom = (r.titre || '').replace(/'/g, "\\'");
+          const docs = documents.filter(d => d.reservation_id == r.id);
+          return `
+          <div class="resa-card" onclick="voirReservation(${r.id})">
+            <div class="resa-card-inner">
+              <div class="resa-icon icon-${r.type}">${icones[r.type] || '📌'}</div>
+              <div class="resa-body">
+                <div class="resa-titre">${r.titre}</div>
+                <div class="resa-meta">
+                  ${r.heure_debut ? `<span>🕐 ${r.heure_debut}${r.heure_fin?' → '+r.heure_fin:''}</span>` : ''}
+                  ${r.lieu ? `<span>📍 ${r.lieu}</span>` : ''}
+                  ${r.date_fin && r.date_fin !== r.date_debut ? `<span>📅 jusqu'au ${formatDate(r.date_fin)}</span>` : ''}
+                </div>
+                <div class="resa-card-badges">
+                  ${r.numero_confirmation ? `<span class="resa-badge-mini">📋 ${r.numero_confirmation}</span>` : ''}
+                  ${r.lien ? '<span class="resa-badge-mini resa-badge-lien">🔗 Lien</span>' : ''}
+                  ${docs.length ? `<span class="resa-badge-mini resa-badge-doc">📎 ${docs.length}</span>` : ''}
+                </div>
+              </div>
+              <div class="resa-actions" onclick="event.stopPropagation()">
+                <button class="btn-mini" style="white-space:nowrap;font-size:.72rem"
+                  onclick="_ouvrirDemande('admin','reservation',${r.id},'${nom}')">
+                  📩 Demander
+                </button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`}
+    </div>
+
+    <div class="adm-section">
+      <div class="adm-section-head">
+        <span class="adm-section-title">📁 Documents</span>
+      </div>
+      ${documents.length === 0 ? '<div class="adm-empty">Aucun document</div>' : `
+      <div class="adm-table">
+        ${documents.map(doc => {
+          const icon = getDocIcon(doc.type_fichier);
+          const cat = catLabels[doc.categorie] || doc.categorie || 'Autre';
+          const nom = (doc.nom || '').replace(/'/g, "\\'");
+          return `
+          <div class="adm-row">
+            <span class="adm-row-icon">${icon}</span>
+            <div class="adm-row-body">
+              <div class="adm-row-titre">${doc.nom}</div>
+              <div class="adm-row-meta">
+                <span class="adm-row-cat">${cat}</span>
+                ${doc.taille ? `<span>${formatTaille(doc.taille)}</span>` : ''}
+              </div>
+            </div>
+            <div class="adm-row-actions">
+              <a href="/api/documents/${doc.id}/download" target="_blank" class="btn-mini adm-btn-link" title="Télécharger">⬇️</a>
+              <button class="btn-mini" style="white-space:nowrap;font-size:.72rem"
+                onclick="_ouvrirDemande('admin','document',${doc.id},'${nom}')">
+                📩 Demander
+              </button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`}
+    </div>
+
+    <div style="height:24px"></div>
+  `;
+};
 </script>
 
 </body>

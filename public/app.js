@@ -4,6 +4,8 @@
 
 const API = '';  // même origin
 let voyageActuel = null;
+let _adminSousOnglet = 'reservations';
+let _chatPollAdmin = null;
 let filtreActuel = 'tous';
 let participantsActuels = [];
 let participantBagageActuel = null;
@@ -13,21 +15,8 @@ let voyageInfoActuel = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   chargerVoyages();
-
-  // ── Animated search placeholder ────────────────────
-  const destinations = ['Paris, France…', 'Tokyo, Japon…', 'Marrakech, Maroc…', 'Corse, France…', 'Bali, Indonésie…', 'Rome, Italie…', 'Barcelone, Espagne…', 'Lisbonne, Portugal…', 'New York, USA…', 'Maldives…'];
-  let dIdx = 0;
-  const ph = document.getElementById('home-search-anim');
-  if (ph) {
-    setInterval(() => {
-      ph.style.transition = 'opacity 0.28s ease';
-      ph.style.opacity = '0';
-      setTimeout(() => {
-        dIdx = (dIdx + 1) % destinations.length;
-        ph.textContent = destinations[dIdx];
-        ph.style.opacity = '1';
-      }, 280);
-    }, 2800);
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(console.error);
   }
 
   // ── Scroll shadow on detail header ─────────────────
@@ -66,7 +55,36 @@ function afficherVoyage(id) {
 
       // Reset onglet actif
       changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
+
+      // Activer les notifications push pour l'admin
+      _initPushAdmin(id);
     });
+}
+
+function urlBase64ToUint8Array(b64) {
+  const padding = '='.repeat((4 - b64.length % 4) % 4);
+  const base64 = (b64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function _initPushAdmin(voyageId) {
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (Notification.permission === 'denied') return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+      const { publicKey } = await fetch(`${API}/api/push/vapid-key`).then(r => r.json());
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+      toast('🔔 Notifications activées');
+    }
+    await fetch(`${API}/api/push/subscribe/${voyageId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub)
+    });
+  } catch(e) { console.error('Push init:', e); }
 }
 
 function changerOnglet(tab, btn) {
@@ -80,6 +98,14 @@ function changerOnglet(tab, btn) {
   if (tab === 'budget') chargerBudget();
   if (tab === 'bagages') chargerBagages();
   if (tab === 'admin') chargerAdmin();
+  if (tab === 'discussion') {
+    chargerCommentairesAdmin();
+    clearInterval(_chatPollAdmin);
+    _chatPollAdmin = setInterval(chargerCommentairesAdmin, 15000);
+  } else {
+    clearInterval(_chatPollAdmin);
+    _chatPollAdmin = null;
+  }
 }
 
 // ─── VOYAGES ─────────────────────────────────────────
@@ -231,8 +257,8 @@ function ouvrirModalVoyage(id = null) {
     fetch(`${API}/api/voyages/${id}`).then(r => r.json()).then(v => {
       document.getElementById('v-nom').value = v.nom;
       document.getElementById('v-destination').value = v.destination;
-      document.getElementById('v-date-debut').value = v.date_debut || '';
-      document.getElementById('v-date-fin').value = v.date_fin || '';
+      document.getElementById('v-date-debut').value = toDateStr(v.date_debut);
+      document.getElementById('v-date-fin').value = toDateStr(v.date_fin);
       document.getElementById('v-description').value = v.description || '';
       document.getElementById('v-couleur').value = v.couleur || '#3B82F6';
       document.querySelectorAll('.color-opt').forEach(el => {
@@ -314,7 +340,7 @@ function afficherReservations(reservations, filtre, documents = []) {
   // Grouper par date
   const grouped = {};
   filtered.forEach(r => {
-    const key = r.date_debut || 'Sans date';
+    const key = toDateStr(r.date_debut) || 'Sans date';
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(r);
   });
@@ -432,8 +458,8 @@ function ouvrirModalReservation(id = null) {
         const r = list.find(x => x.id === id);
         if (!r) return;
         document.getElementById('r-titre').value = r.titre;
-        document.getElementById('r-date-debut').value = r.date_debut || '';
-        document.getElementById('r-date-fin').value = r.date_fin || '';
+        document.getElementById('r-date-debut').value = toDateStr(r.date_debut);
+        document.getElementById('r-date-fin').value = toDateStr(r.date_fin);
         document.getElementById('r-heure-debut').value = r.heure_debut || '';
         document.getElementById('r-heure-fin').value = r.heure_fin || '';
         document.getElementById('r-lieu').value = r.lieu || '';
@@ -442,12 +468,12 @@ function ouvrirModalReservation(id = null) {
         document.getElementById('r-notes').value = r.notes || '';
         document.getElementById('r-lien').value = r.lien || '';
         document.getElementById('r-type').value = r.type;
-        document.querySelectorAll('.type-opt').forEach(el => el.classList.toggle('active', el.dataset.type === r.type));
+        document.querySelectorAll('#modal-reservation .type-opt').forEach(el => el.classList.toggle('active', el.dataset.type === r.type));
       });
   } else {
     document.getElementById('form-reservation').reset();
     document.getElementById('r-type').value = 'transport';
-    document.querySelectorAll('.type-opt').forEach((el, i) => el.classList.toggle('active', i === 0));
+    document.querySelectorAll('#modal-reservation .type-opt').forEach((el, i) => el.classList.toggle('active', i === 0));
   }
   document.getElementById('modal-reservation').classList.remove('hidden');
 }
@@ -495,15 +521,20 @@ async function chargerAccueil() {
   const container = document.getElementById('dash-content');
   container.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>`;
 
-  const [voyage, reservations, bagages] = await Promise.all([
+  const [voyage, reservations, bagages, agenda, depenses, participants] = await Promise.all([
     fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.json()),
     fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
-    fetch(`${API}/api/voyages/${voyageActuel}/bagages`).then(r => r.json())
+    fetch(`${API}/api/voyages/${voyageActuel}/bagages`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/depenses`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/participants`).then(r => r.json())
   ]);
+  participantsActuels = participants;
+  afficherParticipants(participants);
 
   const today = new Date(); today.setHours(0,0,0,0);
-  const debut = voyage.date_debut ? new Date(voyage.date_debut + 'T00:00:00') : null;
-  const fin   = voyage.date_fin   ? new Date(voyage.date_fin   + 'T00:00:00') : null;
+  const debut = voyage.date_debut ? new Date(toDateStr(voyage.date_debut) + 'T00:00:00') : null;
+  const fin   = voyage.date_fin   ? new Date(toDateStr(voyage.date_fin)   + 'T00:00:00') : null;
 
   // ── Statut du voyage ──────────────────────────────────────────────────────
   let heroClass = 'upcoming', heroLabel = '', heroDays = '';
@@ -530,14 +561,12 @@ async function chargerAccueil() {
   // ── Prochaine réservation ─────────────────────────────────────────────────
   const todayStr = today.toISOString().split('T')[0];
   const futures = reservations
-    .filter(r => r.date_debut && r.date_debut >= todayStr)
-    .sort((a, b) => a.date_debut < b.date_debut ? -1 : 1);
+    .filter(r => r.date_debut && toDateStr(r.date_debut) >= todayStr)
+    .sort((a, b) => toDateStr(a.date_debut) < toDateStr(b.date_debut) ? -1 : 1);
   const prochaine = futures[0] || null;
 
-  // ── Statistiques bagages ──────────────────────────────────────────────────
-  const bagTotal  = bagages.length;
-  const bagCoches = bagages.filter(b => b.checked).length;
-  const bagPct    = bagTotal > 0 ? Math.round(bagCoches / bagTotal * 100) : 0;
+  // ── Total dépenses ────────────────────────────────────────────────────────
+  const totalDepenses = depenses.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
 
   // ── Rendu principal ────────────────────────────────────────────────────────
   const resaIcons = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
@@ -558,13 +587,12 @@ async function chargerAccueil() {
         <div class="dash-stat-label">Réservations</div>
       </div>
       <div class="dash-stat-card">
-        <div class="dash-stat-value">${bagPct}<span style="font-size:1rem">%</span></div>
-        <div class="dash-stat-label">Bagages prêts</div>
-        <div class="dash-stat-bar"><div class="dash-stat-bar-fill" style="width:${bagPct}%"></div></div>
+        <div class="dash-stat-value">${agenda.length}</div>
+        <div class="dash-stat-label">Événements</div>
       </div>
       <div class="dash-stat-card">
-        <div class="dash-stat-value">${bagCoches}<span style="font-size:.85rem;color:var(--text-muted)">/${bagTotal}</span></div>
-        <div class="dash-stat-label">Articles cochés</div>
+        <div class="dash-stat-value" style="font-size:1.1rem">${totalDepenses.toFixed(0)}<span style="font-size:.8rem">€</span></div>
+        <div class="dash-stat-label">Dépenses</div>
       </div>
     </div>
 
@@ -575,7 +603,7 @@ async function chargerAccueil() {
       <div class="dash-next-icon">${resaIcons[prochaine.type] || '📌'}</div>
       <div class="dash-next-body">
         <div class="dash-next-titre">${prochaine.titre}</div>
-        <div class="dash-next-date">${formatDate(prochaine.date_debut)}${prochaine.heure ? ' · ' + prochaine.heure : ''}</div>
+        <div class="dash-next-date">${formatDate(prochaine.date_debut)}${prochaine.heure_debut ? ' · ' + prochaine.heure_debut : ''}</div>
         ${prochaine.adresse ? `<div class="dash-next-lieu">📍 ${prochaine.adresse}</div>` : ''}
       </div>
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="flex-shrink:0;color:var(--text-muted)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -683,7 +711,7 @@ async function chargerProgramme() {
   evts.forEach(ev => {
     if (!ev.date) return;
     items.push({
-      date: ev.date,
+      date: toDateStr(ev.date),
       heure: ev.heure || null,
       titre: ev.titre,
       lieu: ev.lieu || null,
@@ -697,11 +725,11 @@ async function chargerProgramme() {
   });
 
   resas.forEach(r => {
-    const date = r.date_debut || r.date;
+    const date = toDateStr(r.date_debut || r.date);
     if (!date) return;
     items.push({
       date,
-      heure: r.heure || null,
+      heure: r.heure_debut || r.heure || null,
       titre: r.titre,
       lieu: r.adresse || r.lieu || null,
       description: r.notes || null,
@@ -857,7 +885,7 @@ async function modifierAgenda(id) {
   const item = items.find(x => x.id === id);
   if (!item) return;
   document.getElementById('a-id').value = id;
-  document.getElementById('a-date').value = item.date;
+  document.getElementById('a-date').value = toDateStr(item.date);
   document.getElementById('a-heure').value = item.heure || '';
   document.getElementById('a-titre').value = item.titre;
   document.getElementById('a-description').value = item.description || '';
@@ -1325,8 +1353,9 @@ function ouvrirDocViewer(docId, nom) {
   const url = `${API}/api/documents/${docId}/download`;
   document.getElementById('doc-viewer-nom').textContent = nom;
   document.getElementById('doc-viewer-frame').src = url;
+  const dl = document.getElementById('doc-viewer-dl');
+  if (dl) dl.href = url;
   document.getElementById('modal-doc-viewer').classList.remove('hidden');
-  // Bloquer le scroll derrière
   document.body.style.overflow = 'hidden';
 }
 
@@ -1538,7 +1567,7 @@ async function genererSuggestions() {
     const geoData = await geoResp.json();
     if (geoData.results && geoData.results[0]) {
       const { latitude, longitude } = geoData.results[0];
-      const dateDebut = voyage.date_debut || new Date().toISOString().split('T')[0];
+      const dateDebut = toDateStr(voyage.date_debut) || new Date().toISOString().split('T')[0];
       const meteoResp = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto&start_date=${dateDebut}&end_date=${dateDebut}`);
       const meteoData = await meteoResp.json();
       if (meteoData.daily) {
@@ -1607,6 +1636,8 @@ function afficherParticipants(participants) {
     <div class="avatar-chip">
       <div class="avatar" style="background:${p.couleur}">${p.nom[0].toUpperCase()}</div>
       <span class="avatar-nom">${p.nom}</span>
+      <button class="avatar-pin ${p.pin ? 'has-pin' : ''}" title="${p.pin ? 'Modifier le PIN' : 'Ajouter un PIN'}"
+        onclick="ouvrirModalPin(${p.id},'${p.nom.replace(/'/g,"\\'")}','${p.pin||''}')">${p.pin ? '🔒' : '🔓'}</button>
       <button class="avatar-del" onclick="supprimerParticipant(${p.id})" title="Supprimer">×</button>
     </div>
   `).join('')}</div>`;
@@ -1726,6 +1757,7 @@ function afficherBilan(depenses, participants) {
 
 function ouvrirModalParticipant() {
   document.getElementById('p-nom').value = '';
+  document.getElementById('p-pin').value = '';
   document.getElementById('p-couleur').value = '#6366F1';
   document.querySelectorAll('#modal-participant .color-opt').forEach((el,i) => el.classList.toggle('active', i === 0));
   document.getElementById('modal-participant').classList.remove('hidden');
@@ -1741,12 +1773,35 @@ function choisirCouleurParticipant(btn) {
 async function sauvegarderParticipant() {
   const nom = document.getElementById('p-nom').value.trim();
   if (!nom) { toast('⚠️ Entre un prénom'); return; }
+  const pin = document.getElementById('p-pin').value.trim() || null;
   await fetch(`${API}/api/voyages/${voyageActuel}/participants`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nom, couleur: document.getElementById('p-couleur').value })
+    body: JSON.stringify({ nom, couleur: document.getElementById('p-couleur').value, pin })
   });
   fermerModal('modal-participant');
   toast('✅ Participant ajouté');
+  chargerBudget();
+}
+
+function ouvrirModalPin(id, nom, pinActuel) {
+  document.getElementById('pin-participant-id').value = id;
+  document.getElementById('modal-pin-titre').textContent = `PIN — ${nom}`;
+  document.getElementById('pin-valeur').value = pinActuel || '';
+  document.getElementById('modal-pin').classList.remove('hidden');
+  setTimeout(() => document.getElementById('pin-valeur').focus(), 300);
+}
+
+async function sauvegarderPin() {
+  const id = document.getElementById('pin-participant-id').value;
+  const pin = document.getElementById('pin-valeur').value.trim() || null;
+  const p = participantsActuels.find(x => x.id === +id);
+  if (!p) return;
+  await fetch(`${API}/api/participants/${id}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nom: p.nom, couleur: p.couleur, pin })
+  });
+  fermerModal('modal-pin');
+  toast(pin ? '🔒 PIN enregistré' : '🔓 PIN retiré');
   chargerBudget();
 }
 
@@ -1794,7 +1849,7 @@ async function ouvrirModalDepense(id = null) {
     if (dep) {
       document.getElementById('dep-titre').value = dep.titre;
       document.getElementById('dep-montant').value = dep.montant;
-      document.getElementById('dep-date').value = dep.date || '';
+      document.getElementById('dep-date').value = toDateStr(dep.date);
       document.getElementById('dep-categorie').value = dep.categorie || 'autre';
       const parts = JSON.parse(dep.participants_ids || '[]').map(Number);
       document.querySelectorAll('[name="dep-payeur"]').forEach(el => { el.checked = +el.value === +dep.payeur_id; });
@@ -1848,10 +1903,30 @@ async function chargerAdmin() {
   const container = document.getElementById('admin-content');
   container.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>`;
 
-  const [reservations, documents] = await Promise.all([
+  const safe = url => fetch(url).then(r => r.ok ? r.json() : []).catch(() => []);
+  const [reservations, documents, demandes, attributions, participants, docsParticipants] = await Promise.all([
     fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
-    fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json())
+    fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json()),
+    safe(`${API}/api/voyages/${voyageActuel}/demandes`),
+    safe(`${API}/api/voyages/${voyageActuel}/attributions`),
+    safe(`${API}/api/voyages/${voyageActuel}/participants`),
+    safe(`${API}/api/voyages/${voyageActuel}/docs-participants`)
   ]);
+
+  // Badge sur l'onglet Admin si demandes en attente
+  const enAttente = demandes.filter(d => d.statut === 'en_attente').length;
+  const adminTab = document.querySelector('[data-tab="admin"]');
+  if (adminTab) {
+    const existing = adminTab.querySelector('.tab-badge');
+    if (existing) existing.remove();
+    if (enAttente > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'tab-badge';
+      badge.textContent = enAttente;
+      badge.style.cssText = 'background:#EF4444;color:#fff;border-radius:10px;font-size:.65rem;font-weight:800;padding:2px 6px;margin-left:4px';
+      adminTab.appendChild(badge);
+    }
+  }
 
   // Alimenter les caches pour voirReservation()
   _resasCache = reservations;
@@ -1859,61 +1934,276 @@ async function chargerAdmin() {
 
   const catLabels = { transport:'Transport', hebergement:'Hébergement', activite:'Activité', identite:'Identité', visa:'Visa', assurance:'Assurance', autre:'Autre' };
 
+  // Pré-calculer le HTML des docs participants
+  const byId = {};
+  participants.forEach(p => { byId[p.id] = p; });
+  let docsPartHtml;
+  if (!Array.isArray(docsParticipants) || docsParticipants.length === 0) {
+    docsPartHtml = `<div class="adm-empty" style="padding:14px 16px"><p style="margin:0;font-size:.83rem;color:var(--text-muted)">Aucun document déposé par les participants.</p></div>`;
+  } else {
+    const byPart2 = {};
+    docsParticipants.forEach(d => { if (!byPart2[d.participant_id]) byPart2[d.participant_id] = []; byPart2[d.participant_id].push(d); });
+    docsPartHtml = `<div style="padding:8px 12px;display:flex;flex-direction:column;gap:10px">` +
+      Object.entries(byPart2).map(([pid, docs]) => {
+        const p = byId[+pid];
+        return `<div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div class="avatar" style="background:${p?.couleur||'#6366F1'};width:26px;height:26px;font-size:.65rem;flex-shrink:0">${(p?.nom||'?')[0].toUpperCase()}</div>
+            <span style="font-weight:700;font-size:.88rem">${p?.nom||'Participant #'+pid}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;padding-left:34px">` +
+          docs.map(d => `<div class="adm-row">
+            <span class="adm-row-icon">${getDocIcon(d.type_fichier)}</span>
+            <div class="adm-row-body">
+              <div class="adm-row-titre">${d.nom}</div>
+              ${d.taille ? `<div class="adm-row-meta"><span>${formatTaille(d.taille)}</span></div>` : ''}
+            </div>
+            <div class="adm-row-actions">
+              <a href="${API}/api/voyages/${voyageActuel}/docs-participants/${d.id}/download" target="_blank" class="btn-mini adm-btn-link" title="Télécharger">⬇️</a>
+            </div>
+          </div>`).join('') +
+          `</div></div>`;
+      }).join('') + `</div>`;
+  }
+
+  // Pré-calculer le HTML des attributions (évite les IIFE instables dans template)
+  let attributionsHtml;
+  if (!Array.isArray(attributions) || attributions.length === 0) {
+    attributionsHtml = `<div class="adm-empty" style="padding:14px 16px">
+      <p style="margin:0 0 4px">Aucune attribution.</p>
+      <p style="font-size:.78rem;color:var(--text-muted);margin:0">Assignez des billets, numéros de place ou documents privés à chaque participant.</p>
+    </div>`;
+  } else {
+    const byPart = {};
+    attributions.forEach(a => { if (!byPart[a.participant_id]) byPart[a.participant_id] = []; byPart[a.participant_id].push(a); });
+    attributionsHtml = `<div style="padding:8px 12px;display:flex;flex-direction:column;gap:10px">` +
+      Object.entries(byPart).map(([pid, attrs]) => {
+        const p = byId[+pid];
+        return `<div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div class="avatar" style="background:${p?.couleur||'#C9622F'};width:26px;height:26px;font-size:.65rem;flex-shrink:0">${(p?.nom||'?')[0].toUpperCase()}</div>
+            <span style="font-weight:700;font-size:.88rem">${p?.nom||'Participant #'+pid}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;padding-left:34px">` +
+          attrs.map(a => `<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border-solid);display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:.85rem;margin-bottom:2px">${a.titre}</div>
+                ${a.contenu ? `<div style="font-size:.8rem;color:var(--text-muted);line-height:1.4;white-space:pre-wrap">${a.contenu}</div>` : ''}
+                ${a.document_id ? `<div style="margin-top:6px"><span class="resa-badge-mini resa-badge-doc">📎 Document lié</span></div>` : ''}
+              </div>
+              <button class="btn-mini btn-mini-del" onclick="supprimerAttribution(${a.id})" style="flex-shrink:0">🗑️</button>
+            </div>`).join('') +
+          `</div></div>`;
+      }).join('') + `</div>`;
+  }
+
   container.innerHTML = `
-    <!-- ── En-tête stats ── -->
-    <div class="adm-stats">
-      <div class="adm-stat"><span class="adm-stat-n">${reservations.length}</span><span class="adm-stat-l">Réservations</span></div>
-      <div class="adm-stat-sep"></div>
-      <div class="adm-stat"><span class="adm-stat-n">${documents.length}</span><span class="adm-stat-l">Documents</span></div>
-    </div>
+    <!-- ── Sous-navigation sticky ── -->
+    <nav class="adm-sub-nav">
+      <button class="adm-sub-btn" data-tab="reservations" onclick="_activerSousOngletAdmin('reservations')">
+        🎫 Réservations
+      </button>
+      <button class="adm-sub-btn" data-tab="documents" onclick="_activerSousOngletAdmin('documents')">
+        📁 Documents
+      </button>
+      <button class="adm-sub-btn" data-tab="demandes" onclick="_activerSousOngletAdmin('demandes')">
+        📩 Demandes${enAttente > 0 ? `<span class="adm-sub-badge">${enAttente}</span>` : ''}
+      </button>
+      <button class="adm-sub-btn" data-tab="attributions" onclick="_activerSousOngletAdmin('attributions')">
+        🔒 Attributions
+      </button>
+      <button class="adm-sub-btn" data-tab="docs-participants" onclick="_activerSousOngletAdmin('docs-participants')">
+        📤 Docs invités
+      </button>
+    </nav>
 
     <!-- ── Section Réservations ── -->
-    <div class="adm-section">
-      <div class="adm-section-head">
-        <span class="adm-section-title">🎫 Réservations</span>
-        <button class="btn-mini-add" onclick="ouvrirModalReservation()">+ Ajouter</button>
+    <div id="adm-sub-reservations">
+      <div class="adm-stats">
+        <div class="adm-stat"><span class="adm-stat-n">${reservations.length}</span><span class="adm-stat-l">Réservations</span></div>
       </div>
-
-      ${reservations.length === 0 ? `<div class="adm-empty">Aucune réservation</div>` : `
-      <div style="padding:8px 12px">
-        ${reservations.map(r => renderResa(r, documents.filter(d => d.reservation_id == r.id))).join('')}
-      </div>`}
+      <div class="adm-section">
+        <div class="adm-section-head">
+          <span class="adm-section-title">🎫 Réservations</span>
+          <button class="btn-mini-add" onclick="ouvrirModalReservation()">+ Ajouter</button>
+        </div>
+        ${reservations.length === 0 ? `<div class="adm-empty">Aucune réservation</div>` : `
+        <div style="padding:8px 12px">
+          ${reservations.map(r => renderResa(r, documents.filter(d => d.reservation_id == r.id))).join('')}
+        </div>`}
+      </div>
     </div>
 
     <!-- ── Section Documents ── -->
-    <div class="adm-section">
-      <div class="adm-section-head">
-        <span class="adm-section-title">📁 Documents</span>
-        <button class="btn-mini-add" onclick="ouvrirModalDocument()">+ Ajouter</button>
+    <div id="adm-sub-documents">
+      <div class="adm-stats">
+        <div class="adm-stat"><span class="adm-stat-n">${documents.length}</span><span class="adm-stat-l">Documents</span></div>
       </div>
+      <div class="adm-section">
+        <div class="adm-section-head">
+          <span class="adm-section-title">📁 Documents</span>
+          <button class="btn-mini-add" onclick="ouvrirModalDocument()">+ Ajouter</button>
+        </div>
+        ${documents.length === 0 ? `<div class="adm-empty">Aucun document</div>` : `
+        <div class="adm-table">
+          ${documents.map(doc => {
+            const icon = getDocIcon(doc.type_fichier);
+            const cat = catLabels[doc.categorie] || doc.categorie || 'Autre';
+            return `
+            <div class="adm-row">
+              <span class="adm-row-icon">${icon}</span>
+              <div class="adm-row-body">
+                <div class="adm-row-titre">${doc.nom}</div>
+                <div class="adm-row-meta">
+                  <span class="adm-row-cat">${cat}</span>
+                  ${doc.taille ? `<span>${formatTaille(doc.taille)}</span>` : ''}
+                </div>
+              </div>
+              <div class="adm-row-actions">
+                <a href="${API}/api/documents/${doc.id}/download" target="_blank" class="btn-mini adm-btn-link" title="Télécharger">⬇️</a>
+                <button class="btn-mini btn-mini-edit" onclick="modifierDocument(${doc.id})" title="Modifier">✏️</button>
+                <button class="btn-mini btn-mini-del" onclick="supprimerDocument(${doc.id})" title="Supprimer">🗑️</button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`}
+      </div>
+    </div>
 
-      ${documents.length === 0 ? `<div class="adm-empty">Aucun document</div>` : `
-      <div class="adm-table">
-        ${documents.map(doc => {
-          const icon = getDocIcon(doc.type_fichier);
-          const cat = catLabels[doc.categorie] || doc.categorie || 'Autre';
-          return `
-          <div class="adm-row">
-            <span class="adm-row-icon">${icon}</span>
-            <div class="adm-row-body">
-              <div class="adm-row-titre">${doc.nom}</div>
-              <div class="adm-row-meta">
-                <span class="adm-row-cat">${cat}</span>
-                ${doc.taille ? `<span>${formatTaille(doc.taille)}</span>` : ''}
+    <!-- ── Section Demandes invités ── -->
+    <div id="adm-sub-demandes">
+      <div class="adm-stats">
+        <div class="adm-stat">
+          <span class="adm-stat-n" style="${enAttente > 0 ? 'color:#EF4444' : ''}">${demandes.length}</span>
+          <span class="adm-stat-l">Demandes${enAttente > 0 ? ` · ${enAttente} en attente` : ''}</span>
+        </div>
+      </div>
+      <div class="adm-section">
+        <div class="adm-section-head">
+          <span class="adm-section-title">📩 Demandes des invités</span>
+        </div>
+        ${demandes.length === 0
+          ? `<div class="adm-empty">Aucune demande pour l'instant.</div>`
+          : `<div style="padding:8px 12px;display:flex;flex-direction:column;gap:8px">
+          ${demandes.map(d => `
+          <div style="background:var(--bg);border-radius:12px;padding:12px 14px;border:1px solid var(--border-solid)">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:.88rem">${d.auteur || 'Invité'} <span style="font-weight:400;color:var(--text-muted)">· ${d.onglet} · ${d.element_nom || ''}</span></div>
+                <div style="color:var(--text-muted);font-size:.82rem;margin-top:4px">${d.message}</div>
+                <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px">${new Date(d.created_at).toLocaleString('fr-BE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
+                ${d.statut === 'en_attente' ? `
+                <button class="btn-mini" style="background:#dcfce7;color:#16a34a;border:none" onclick="traiterDemande(${d.id},'traitee')">✓ Traité</button>
+                <button class="btn-mini" style="background:#fee2e2;color:#dc2626;border:none" onclick="traiterDemande(${d.id},'rejetee')">✗</button>
+                ` : `<span style="font-size:.75rem;color:var(--text-muted);padding:4px 8px;background:var(--border);border-radius:8px">${d.statut === 'traitee' ? '✓ Traité' : '✗ Rejeté'}</span>`}
               </div>
             </div>
-            <div class="adm-row-actions">
-              <a href="${API}/api/documents/${doc.id}/download" target="_blank" class="btn-mini adm-btn-link" title="Télécharger">⬇️</a>
-              <button class="btn-mini btn-mini-edit" onclick="modifierDocument(${doc.id})" title="Modifier">✏️</button>
-              <button class="btn-mini btn-mini-del" onclick="supprimerDocument(${doc.id})" title="Supprimer">🗑️</button>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>`}
+          </div>`).join('')}
+        </div>`}
+      </div>
+    </div>
+
+    <!-- ── Section Attributions privées ── -->
+    <div id="adm-sub-attributions">
+      <div class="adm-section">
+        <div class="adm-section-head">
+          <span class="adm-section-title">🔒 Attributions privées</span>
+          <button class="btn-mini-add" onclick="ouvrirModalAttribution()">+ Attribuer</button>
+        </div>
+        ${attributionsHtml}
+      </div>
+    </div>
+
+    <!-- ── Section Docs participants ── -->
+    <div id="adm-sub-docs-participants">
+      <div class="adm-section">
+        <div class="adm-section-head">
+          <span class="adm-section-title">📤 Docs déposés par les participants</span>
+        </div>
+        ${docsPartHtml}
+      </div>
     </div>
 
     <div style="height:24px"></div>
   `;
+
+  _activerSousOngletAdmin(_adminSousOnglet);
+}
+
+function _activerSousOngletAdmin(tab) {
+  _adminSousOnglet = tab;
+  ['reservations', 'documents', 'demandes', 'attributions', 'docs-participants'].forEach(s => {
+    const el = document.getElementById(`adm-sub-${s}`);
+    if (el) el.style.display = s === tab ? '' : 'none';
+  });
+  document.querySelectorAll('.adm-sub-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+}
+
+async function traiterDemande(id, statut) {
+  await fetch(`${API}/api/demandes/${id}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ statut })
+  });
+  chargerAdmin();
+}
+
+async function ouvrirModalAttribution() {
+  const [participants, documents] = await Promise.all([
+    fetch(`${API}/api/voyages/${voyageActuel}/participants`).then(r => r.json()),
+    fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json())
+  ]);
+
+  const pList = document.getElementById('attr-participant-list');
+  pList.innerHTML = participants.length === 0
+    ? '<p style="font-size:.8rem;color:var(--text-muted)">Aucun participant — ajoutez des participants dans l\'onglet Budget.</p>'
+    : participants.map(p => `
+      <label class="participant-radio">
+        <input type="radio" name="attr-part" value="${p.id}">
+        <span style="background:${p.couleur||'#C9622F'}22;color:${p.couleur||'#C9622F'};border:1px solid ${p.couleur||'#C9622F'};border-radius:20px;padding:4px 12px;font-size:.85rem">${p.nom}</span>
+      </label>`).join('');
+
+  if (pList.querySelector('input[type=radio]')) pList.querySelector('input[type=radio]').checked = true;
+
+  const docSel = document.getElementById('attr-document');
+  docSel.innerHTML = '<option value="">— Aucun document —</option>' +
+    documents.map(d => `<option value="${d.id}">${d.nom}</option>`).join('');
+
+  document.getElementById('attr-titre').value = '';
+  document.getElementById('attr-contenu').value = '';
+  document.getElementById('attr-participant-id').value = '';
+  document.getElementById('modal-attribution').classList.remove('hidden');
+}
+
+async function sauvegarderAttribution() {
+  const titre = document.getElementById('attr-titre').value.trim();
+  const radio = document.querySelector('input[name="attr-part"]:checked');
+  if (!titre) { toast('⚠️ Ajoute un titre'); return; }
+  if (!radio) { toast('⚠️ Choisis un destinataire'); return; }
+
+  const data = {
+    participant_id: parseInt(radio.value),
+    titre,
+    contenu: document.getElementById('attr-contenu').value.trim() || null,
+    document_id: parseInt(document.getElementById('attr-document').value) || null
+  };
+
+  await fetch(`${API}/api/voyages/${voyageActuel}/attributions`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+  });
+  fermerModal('modal-attribution');
+  toast('✅ Attribution créée');
+  chargerAdmin();
+}
+
+async function supprimerAttribution(id) {
+  if (!confirm('Supprimer cette attribution ?')) return;
+  await fetch(`${API}/api/attributions/${id}`, { method: 'DELETE' });
+  toast('🗑️ Attribution supprimée');
+  chargerAdmin();
 }
 
 // ─── MODALS & BOTTOM SHEET ───────────────────────────
@@ -1952,13 +2242,13 @@ function fermerBottomSheet() {
 }
 
 function choisirCouleur(btn) {
-  document.querySelectorAll('.color-opt').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('#modal-voyage .color-opt').forEach(el => el.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('v-couleur').value = btn.dataset.color;
 }
 
 function choisirType(btn) {
-  document.querySelectorAll('.type-opt').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('#modal-reservation .type-opt').forEach(el => el.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('r-type').value = btn.dataset.type;
 }
@@ -1981,15 +2271,20 @@ function toast(msg, duree = 2500) {
 
 // ─── HELPERS ─────────────────────────────────────────
 
+function toDateStr(val) {
+  if (!val) return '';
+  return typeof val === 'string' ? val.split('T')[0] : val;
+}
+
 function formatDate(str) {
   if (!str) return '';
-  const d = new Date(str + 'T00:00:00');
+  const d = new Date(toDateStr(str) + 'T00:00:00');
   return d.toLocaleDateString('fr-BE', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatDateLong(str) {
   if (!str) return '';
-  const d = new Date(str + 'T00:00:00');
+  const d = new Date(toDateStr(str) + 'T00:00:00');
   return d.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
@@ -2016,13 +2311,119 @@ function getStatut(debut, fin) {
   return { label: 'En cours', classe: 'ongoing' };
 }
 
+// ─── MESSAGES PRIVÉS (organisateur) ─────────────────────────────────────────
+
+async function ouvrirMessagePrive() {
+  const participants = await fetch(`${API}/api/voyages/${voyageActuel}/participants`).then(r => r.json()).catch(() => []);
+  const sel = document.getElementById('mp-participant');
+  sel.innerHTML = participants.length
+    ? participants.map(p => `<option value="${p.id}">${p.nom}</option>`).join('')
+    : '<option value="">Aucun participant</option>';
+  document.getElementById('mp-message').value = '';
+  document.getElementById('modal-message-prive').classList.remove('hidden');
+}
+
+async function envoyerMessagePrive() {
+  const participant_id = document.getElementById('mp-participant').value;
+  const message = document.getElementById('mp-message').value.trim();
+  if (!participant_id) { toast('⚠️ Sélectionne un participant'); return; }
+  if (!message) { toast('⚠️ Écris un message'); return; }
+  try {
+    const r = await fetch(`${API}/api/voyages/${voyageActuel}/messages-prives`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ participant_id, message })
+    });
+    if (!r.ok) throw new Error();
+    fermerModal('modal-message-prive');
+    const nom = document.getElementById('mp-participant').options[document.getElementById('mp-participant').selectedIndex]?.text;
+    toast(`✅ Message envoyé à ${nom}`);
+  } catch { toast('⚠️ Erreur lors de l\'envoi'); }
+}
+
+// ─── DISCUSSION ──────────────────────────────────────────────────────────────
+
+function _couleurChat(nom) {
+  const palette = ['#C9622F','#3B82F6','#10B981','#8B5CF6','#EC4899','#F59E0B','#6366F1','#14B8A6'];
+  let h = 0;
+  for (const c of (nom||'?')) h = (h * 31 + c.charCodeAt(0)) & 0xFFFFFF;
+  return palette[h % palette.length];
+}
+
+function _renderCommentairesAdmin(liste) {
+  const container = document.getElementById('discussion-messages');
+  if (!container) return;
+  if (!liste.length) {
+    container.innerHTML = `<div class="chat-empty"><div style="font-size:2rem;margin-bottom:8px">💬</div><p>Aucun message pour l'instant.</p></div>`;
+    return;
+  }
+  container.innerHTML = liste.map(c => {
+    const mine = c.auteur === 'Organisateur';
+    const couleur = mine ? 'var(--accent)' : _couleurChat(c.auteur);
+    const heure = new Date(c.created_at).toLocaleString('fr-BE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    return `<div class="chat-msg${mine ? ' mine' : ''}">
+      <div class="chat-avatar" style="background:${couleur}">${(c.auteur||'?')[0].toUpperCase()}</div>
+      <div class="chat-bubble">
+        <div class="chat-meta">
+          <span class="chat-auteur">${c.auteur}</span>
+          <span>${heure}</span>
+          <button class="chat-del" onclick="_supprimerCommentaireAdmin(${c.id})" title="Supprimer">✕</button>
+        </div>
+        <div class="chat-text">${c.message.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+      </div>
+    </div>`;
+  }).join('');
+  const main = document.querySelector('#screen-voyage .main-content');
+  if (main) main.scrollTop = main.scrollHeight;
+}
+
+async function chargerCommentairesAdmin() {
+  if (!voyageActuel) return;
+  const liste = await fetch(`${API}/api/voyages/${voyageActuel}/commentaires`).then(r => r.ok ? r.json() : []).catch(() => []);
+  _renderCommentairesAdmin(liste);
+  const tab = document.querySelector('[data-tab="discussion"]');
+  if (tab) {
+    const existing = tab.querySelector('.tab-badge');
+    if (existing) existing.remove();
+    if (liste.length > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'tab-badge';
+      badge.textContent = liste.length;
+      badge.style.cssText = 'background:#3B82F6;color:#fff;border-radius:10px;font-size:.65rem;font-weight:800;padding:2px 6px;margin-left:4px';
+      tab.appendChild(badge);
+    }
+  }
+}
+
+async function _envoyerCommentaireAdmin() {
+  const input = document.getElementById('discussion-input');
+  const message = input?.value.trim();
+  if (!message) return;
+  const btn = document.getElementById('discussion-send');
+  if (btn) btn.disabled = true;
+  try {
+    await fetch(`${API}/api/voyages/${voyageActuel}/commentaires`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ auteur: 'Organisateur', message })
+    });
+    input.value = '';
+    input.style.height = '';
+    await chargerCommentairesAdmin();
+  } catch { toast('⚠️ Erreur d\'envoi'); }
+  finally { if (btn) btn.disabled = false; }
+}
+
+async function _supprimerCommentaireAdmin(id) {
+  await fetch(`${API}/api/voyages/${voyageActuel}/commentaires/${id}`, { method: 'DELETE' });
+  chargerCommentairesAdmin();
+}
+
 function getAgendaColor(type) {
-  const colors = { transport: '#3B82F6', hebergement: '#10B981', activite: '#8B5CF6', restaurant: '#EC4899', sport: '#F59E0B', libre: '#64748B' };
+  const colors = { transport: '#3B82F6', hebergement: '#10B981', activite: '#8B5CF6', restaurant: '#EC4899', sport: '#F59E0B', libre: '#64748B', apero: '#F97316' };
   return colors[type] || '#3B82F6';
 }
 
 function getAgendaIcon(type) {
-  const icons = { transport: '✈️', hebergement: '🏠', activite: '🎯', restaurant: '🍽️', sport: '🏄', libre: '☀️' };
+  const icons = { transport: '✈️', hebergement: '🏠', activite: '🎯', restaurant: '🍽️', sport: '🏄', libre: '☀️', apero: '🥂' };
   return icons[type] || '📌';
 }
 
