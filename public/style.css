@@ -751,18 +751,33 @@ body {
   align-items: flex-start;
 }
 
+/* ── Système d'icônes CrewGo — gradient orange ──────────────── */
+.cgo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #FFB84D 0%, #F97316 100%);
+  box-shadow: 0 3px 10px rgba(249,115,22,.30);
+}
+.cgo-icon svg {
+  width: 55%; height: 55%;
+  filter: drop-shadow(0 1px 2px rgba(140,55,0,.22));
+}
+
 .resa-icon {
   width: 40px; height: 40px;
-  border-radius: var(--radius);
+  border-radius: 11px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem;
   flex-shrink: 0;
+  background: linear-gradient(145deg, #FFB84D 0%, #F97316 100%);
+  box-shadow: 0 3px 8px rgba(249,115,22,.28);
 }
-.icon-transport   { background: #EFF6FF; }
-.icon-hebergement { background: #F0FDF4; }
-.icon-vehicule    { background: #FEFCE8; }
-.icon-activite    { background: var(--accent-light); }
-.icon-restaurant  { background: #FDF4FF; }
+.resa-icon svg { width: 20px; height: 20px; filter: drop-shadow(0 1px 2px rgba(140,55,0,.22)); }
+/* Conserver compatibilité avec les classes spécifiques au cas où */
+.icon-transport, .icon-hebergement, .icon-vehicule,
+.icon-activite,  .icon-restaurant  { background: linear-gradient(145deg, #FFB84D 0%, #F97316 100%); }
 
 .resa-body { flex: 1; min-width: 0; }
 .resa-titre {
@@ -1292,14 +1307,16 @@ textarea { resize: vertical; line-height: 1.6; }
 }
 .sheet-action-btn:hover { background: var(--bg-alt); }
 .sheet-action-icon {
-  width: 40px; height: 40px;
-  border-radius: 10px;
+  width: 44px; height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: linear-gradient(145deg, #FFB84D 0%, #F97316 100%);
+  box-shadow: 0 3px 10px rgba(249,115,22,.28);
 }
-.sheet-action-icon svg { width: 20px; height: 20px; }
+.sheet-action-icon svg { width: 22px; height: 22px; filter: drop-shadow(0 1px 2px rgba(140,55,0,.22)); }
 .sheet-action-body { flex: 1; min-width: 0; }
 .sheet-action-title {
   display: block;
@@ -2205,11 +2222,10 @@ textarea { resize: vertical; line-height: 1.6; }
   .badge-past     { background: #333; color: var(--text-muted); }
   .badge-done     { background: #3A1800; color: #FB923C; }
 
-  .icon-transport   { background: #1A2540; }
-  .icon-hebergement { background: #0D2B1A; }
-  .icon-vehicule    { background: #2A2000; }
-  .icon-activite    { background: #3A2010; }
-  .icon-restaurant  { background: #2A1030; }
+  .icon-transport, .icon-hebergement, .icon-vehicule,
+  .icon-activite,  .icon-restaurant {
+    background: linear-gradient(145deg, #D97706 0%, #C2620A 100%);
+  }
 
   .btn-mini-view { background: #1A2540; color: #93BFFF; border-color: #1A2A50; }
   .btn-mini-edit { background: #3A2010; color: #F0956A; border-color: #4A2C16; }

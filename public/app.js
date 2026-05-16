@@ -22,6 +22,31 @@ function parseIds(str) {
   try { return JSON.parse(str || '[]'); } catch { return []; }
 }
 
+// ─── Système d'icônes CrewGo ──────────────────────────────────
+// Icônes SVG filled blancs sur fond dégradé orange
+const _CGO_PATHS = {
+  link:     '<path fill="white" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7C4.24 7 2 9.24 2 12s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zm4.1 1h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>',
+  trash:    '<path fill="white" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>',
+  send:     '<path fill="white" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>',
+  map:      '<path fill="white" d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>',
+  wallet:   '<path fill="white" d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',
+  luggage:  '<path fill="white" d="M9.5 4h5c.28 0 .5.22.5.5V6h2V4.5C17 3.12 15.88 2 14.5 2h-5C8.12 2 7 3.12 7 4.5V6h2V4.5c0-.28.22-.5.5-.5zM20 6H4C2.9 6 2 6.9 2 8v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-2 11H6V8h12v9z"/>',
+  car:      '<path fill="white" d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>',
+  document: '<path fill="white" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>',
+  home:     '<path fill="white" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>',
+  activity: '<path fill="white" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>',
+  food:     '<path fill="white" d="M18.06 22.99h1.66c.84 0 1.53-.64 1.63-1.46L23 5.05h-5V1h-1.97v4.05h-4.97l.3 2.34c1.71.47 3.31 1.32 4.27 2.26 1.44 1.42 2.43 2.89 2.43 5.29v8.05zM1 21.99V21h15.03v.99c0 .55-.45 1-1.01 1H2.01c-.56 0-1.01-.45-1.01-1zm15.03-7c0-8-15.03-8-15.03 0h15.03zM1.02 17h15v2H1z"/>',
+  edit:     '<path fill="white" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>',
+  settings: '<path fill="white" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.63-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.04.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>',
+  archive:  '<path fill="white" d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/>',
+};
+
+function cgoIcon(name, size = 40) {
+  const path = _CGO_PATHS[name] || _CGO_PATHS.activity;
+  const r = Math.round(size * 0.28);
+  return `<span class="cgo-icon" style="width:${size}px;height:${size}px;border-radius:${r}px"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">${path}</svg></span>`;
+}
+
 let voyageActuel = null;
 let _adminSousOnglet = 'reservations';
 let _chatPollAdmin = null;
@@ -867,14 +892,14 @@ function afficherReservations(reservations, filtre, documents = []) {
 }
 
 function renderResa(r, docs = []) {
-  const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
+  const icones = { transport: cgoIcon('send',32), hebergement: cgoIcon('home',32), vehicule: cgoIcon('car',32), activite: cgoIcon('activity',32), restaurant: cgoIcon('food',32) };
   // Indicateurs compacts sur la carte
   const hasLink = !!r.lien;
   const docCount = docs.length;
   return `
   <div class="resa-card" onclick="voirReservation(${r.id})">
     <div class="resa-card-inner">
-      <div class="resa-icon icon-${r.type}">${icones[r.type] || '📌'}</div>
+      ${icones[r.type] || cgoIcon('activity',32)}
       <div class="resa-body">
         <div class="resa-titre">${h(r.titre)}</div>
         <div class="resa-meta">
@@ -900,7 +925,7 @@ function voirReservation(id) {
   const r = _resasCache.find(x => x.id === id);
   if (!r) return;
   const docs = _docsCache.filter(d => d.reservation_id == id);
-  const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
+  const icones = { transport: cgoIcon('send',32), hebergement: cgoIcon('home',32), vehicule: cgoIcon('car',32), activite: cgoIcon('activity',32), restaurant: cgoIcon('food',32) };
 
   const docsHtml = docs.length ? `
     <div class="rd-section">
@@ -917,7 +942,7 @@ function voirReservation(id) {
   window._copyConfNum = r.numero_confirmation || '';
   document.getElementById('resa-detail-body').innerHTML = `
     <div class="rd-header">
-      <div class="rd-icon icon-${r.type}">${icones[r.type] || '📌'}</div>
+      ${icones[r.type] || cgoIcon('activity',40)}
       <div class="rd-header-text">
         <div class="rd-titre">${h(r.titre)}</div>
         ${r.date_debut ? `<div class="rd-date">${formatDate(r.date_debut)}</div>` : ''}
@@ -1082,7 +1107,7 @@ async function chargerAccueil() {
   const totalDepenses = depenses.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
 
   // ── Rendu principal ────────────────────────────────────────────────────────
-  const resaIcons = { transport:'✈️', hebergement:'🏠', vehicule:'🚗', activite:'🎯', restaurant:'🍽️' };
+  const resaIcons = { transport: cgoIcon('send',36), hebergement: cgoIcon('home',36), vehicule: cgoIcon('car',36), activite: cgoIcon('activity',36), restaurant: cgoIcon('food',36) };
 
   container.innerHTML = `
     <!-- Hero countdown -->
@@ -1287,8 +1312,8 @@ async function chargerProgramme() {
   }
 
   function resaIcon(type) {
-    const m = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
-    return m[type] || '📌';
+    const m = { transport: 'send', hebergement: 'home', vehicule: 'car', activite: 'activity', restaurant: 'food' };
+    return cgoIcon(m[type] || 'activity', 32);
   }
 
   container.innerHTML = Object.entries(grouped).map(([date, dayItems]) => {
@@ -1516,7 +1541,7 @@ async function ouvrirModalDocument() {
       fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json())
     ]);
 
-    const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
+    const icones = { transport: cgoIcon('send',32), hebergement: cgoIcon('home',32), vehicule: cgoIcon('car',32), activite: cgoIcon('activity',32), restaurant: cgoIcon('food',32) };
 
     if (reservations.length > 0) {
       const grp = document.createElement('optgroup');
@@ -1800,7 +1825,7 @@ async function modifierDocument(id) {
       fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
       fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json())
     ]);
-    const icones = { transport: '✈️', hebergement: '🏠', vehicule: '🚗', activite: '🎯', restaurant: '🍽️' };
+    const icones = { transport: cgoIcon('send',32), hebergement: cgoIcon('home',32), vehicule: cgoIcon('car',32), activite: cgoIcon('activity',32), restaurant: cgoIcon('food',32) };
 
     if (reservations.length > 0) {
       const grp = document.createElement('optgroup');
@@ -2951,8 +2976,8 @@ function getAgendaColor(type) {
 }
 
 function getAgendaIcon(type) {
-  const icons = { transport: '✈️', hebergement: '🏠', activite: '🎯', restaurant: '🍽️', sport: '🏄', libre: '☀️', apero: '🥂' };
-  return icons[type] || '📌';
+  const m = { transport: 'send', hebergement: 'home', vehicule: 'car', restaurant: 'food', activite: 'activity', sport: 'activity', libre: 'map', apero: 'food' };
+  return cgoIcon(m[type] || 'activity', 32);
 }
 
 function getDocIcon(mime) {
