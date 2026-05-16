@@ -2909,62 +2909,64 @@ textarea { resize: vertical; line-height: 1.6; }
 .app-splash-scene {
   position: relative;
   display: flex; align-items: center; justify-content: center;
-  width: 200px; height: 200px;
+  width: 260px; height: 260px;   /* assez grand pour ne pas clipper le halo 240px */
+  overflow: visible;
 }
 
-/* ── Halo interne : contre-jour doux → flare à l'ignition → respiration ── */
+/* ── Halo interne : contre-jour intense → flare à l'ignition → respiration ── */
 .app-splash-halo {
   position: absolute;
-  width: 160px; height: 160px;
+  width: 240px; height: 240px;   /* plus grand : déborde bien autour du carré */
   border-radius: 50%;
   background: radial-gradient(circle,
-    rgba(249,115,22,0.92) 0%,
-    rgba(249,115,22,0.40) 40%,
-    transparent 72%);
-  filter: blur(24px);
+    rgba(249,115,22,1.00)  0%,    /* cœur pur orange */
+    rgba(249,115,22,0.72) 28%,    /* corps dense */
+    rgba(249,115,22,0.32) 52%,    /* dégradé progressif */
+    transparent 75%);
+  filter: blur(20px);             /* moins de flou = halo plus net et plus intense */
   opacity: 0;
-  /* Phase 1 : entrée + flare synchronisé avec l'allumage */
   animation:
     appHaloIn    2.4s cubic-bezier(0.25, 0, 0.45, 1) 0.05s forwards,
     appHaloPulse 2.8s ease-in-out 2.6s infinite;
 }
 
-/* ── Halo distant : nappe de lumière ambiante ── */
+/* ── Halo distant : grande nappe de lumière chaude ── */
 .app-splash-halo--far {
-  width: 320px; height: 320px;
+  width: 460px; height: 460px;   /* très large pour envelopper la scène */
   background: radial-gradient(circle,
-    rgba(249,115,22,0.26) 0%,
-    rgba(249,115,22,0.08) 50%,
-    transparent 72%);
-  filter: blur(52px);
+    rgba(249,115,22,0.55)  0%,    /* cœur visible */
+    rgba(249,115,22,0.22) 40%,
+    rgba(249,115,22,0.06) 65%,
+    transparent 78%);
+  filter: blur(48px);
   animation:
     appHaloFarIn 2.8s cubic-bezier(0.25, 0, 0.45, 1) 0s forwards,
     appHaloPulse 3.4s ease-in-out 2.9s infinite;
 }
 
-/* Halo interne : monte doucement → stable sombre → FLARE → settle */
+/* Halo interne : fort dès la phase noire pour un contre-jour marqué */
 @keyframes appHaloIn {
   0%    { opacity: 0;    transform: scale(0.28); }
-  18%   { opacity: 0.52; transform: scale(0.88); }  /* ~0.5s : monte */
-  48%   { opacity: 0.38; transform: scale(1.00); }  /* ~1.2s : stable, sombre */
-  70%   { opacity: 1.00; transform: scale(1.20); }  /* ~1.7s : FLARE ignition */
-  86%   { opacity: 0.62; transform: scale(1.06); }  /* ~2.1s : settle */
-  100%  { opacity: 0.56; transform: scale(1.03); }  /* ~2.4s : repos */
+  18%   { opacity: 0.72; transform: scale(0.88); }  /* ~0.5s : monte fort */
+  48%   { opacity: 0.60; transform: scale(1.00); }  /* ~1.2s : stable, bien visible en phase noire */
+  70%   { opacity: 1.00; transform: scale(1.22); }  /* ~1.7s : FLARE ignition */
+  86%   { opacity: 0.82; transform: scale(1.08); }  /* ~2.1s : settle */
+  100%  { opacity: 0.76; transform: scale(1.04); }  /* ~2.4s : repos — fort et chaud */
 }
 
-/* Halo distant : plus lent, plus doux */
+/* Halo distant : monte progressivement, flare généreux */
 @keyframes appHaloFarIn {
   0%    { opacity: 0;    transform: scale(0.20); }
-  20%   { opacity: 0.30; transform: scale(0.75); }
-  55%   { opacity: 0.18; transform: scale(1.00); }
-  74%   { opacity: 0.70; transform: scale(1.14); }  /* flare distant */
-  100%  { opacity: 0.35; transform: scale(1.04); }
+  20%   { opacity: 0.50; transform: scale(0.72); }
+  55%   { opacity: 0.38; transform: scale(1.00); }
+  74%   { opacity: 0.90; transform: scale(1.16); }  /* flare distant ample */
+  100%  { opacity: 0.55; transform: scale(1.06); }
 }
 
-/* Respiration douce pendant la phase statique */
+/* Respiration — reste lumineux même au creux */
 @keyframes appHaloPulse {
-  0%, 100% { opacity: 0.56; transform: scale(1.03); }
-  50%       { opacity: 0.38; transform: scale(0.96); }
+  0%, 100% { opacity: 0.76; transform: scale(1.04); }
+  50%       { opacity: 0.54; transform: scale(0.97); }
 }
 
 /* ── Logo : surgit du noir, organique, pas de ressort agressif ── */
