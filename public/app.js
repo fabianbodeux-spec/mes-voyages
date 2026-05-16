@@ -63,13 +63,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const splash = document.getElementById('app-splash');
     if (!splash) return;
     let t1, t2;
-    // Total visible : 4.2s (logo allumé à 2s, texte à 2.5s, sortie à 4.2s)
+    // Total visible : 5.3s (logo dark 0.1→1.5s, allumage 1.5→2.3s, texte 2.6s, sortie 5.3s → fade 0.65s → total ~6s)
     t1 = setTimeout(() => {
       splash.classList.add('app-splash-out');
       const done = () => { splash.style.display = 'none'; clearTimeout(t2); };
       splash.addEventListener('transitionend', done, { once: true });
       t2 = setTimeout(done, 700);
-    }, 4200);
+    }, 5300);
   })();
 
   chargerVoyages();
