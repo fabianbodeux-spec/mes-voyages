@@ -814,7 +814,7 @@ async function _initPartage() {
 
     // Attendre 2.3s puis cacher le splash
     const elapsed = performance.now(); // l'API a déjà pris du temps
-    const delay = Math.max(0, 4000 - elapsed);
+    const delay = Math.max(0, 6000 - elapsed);
     clearTimeout(_splashWelcomeT1);
     _splashWelcomeT1 = setTimeout(() => {
       _cacherWelcomeSplash(() => {
