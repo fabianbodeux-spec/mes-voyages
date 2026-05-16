@@ -204,9 +204,8 @@ function _appliquerPhoto(voyageId, photoUrl) {
   const tmp = new Image();
   tmp.onload = () => {
     img.src = photoUrl;
-    // Photo très atténuée : texture sombre, ne casse pas la ligne graphique
-    img.style.opacity = '0.16';
-    img.style.filter  = 'saturate(0.3) brightness(0.55)';
+    img.style.opacity = '0.55';
+    img.style.filter  = 'saturate(0.65) brightness(0.72)';
     img.style.transition = 'opacity 0.5s ease';
   };
   tmp.src = photoUrl;

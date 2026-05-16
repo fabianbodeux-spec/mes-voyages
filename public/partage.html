@@ -85,9 +85,71 @@
       white-space: nowrap; letter-spacing: .05em;
       text-transform: uppercase; flex-shrink: 0;
     }
+
+    /* ── Welcome Splash ───────────────────────────── */
+    #welcome-splash {
+      position: fixed; inset: 0; z-index: 3000;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      padding: 32px;
+      transition: opacity 0.5s ease;
+    }
+    #welcome-splash.splash-out {
+      opacity: 0; pointer-events: none;
+    }
+    .ws-inner {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 14px; text-align: center; max-width: 320px;
+    }
+    .ws-img {
+      width: 72px; height: 72px;
+      animation: wsPulse 1.8s ease-in-out infinite;
+    }
+    @keyframes wsPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(1.09); opacity: 0.82; }
+    }
+    .ws-wordmark {
+      font-family: var(--font-display);
+      font-size: 2rem; line-height: 1;
+    }
+    .ws-wordmark .cs-crew { color: var(--text); }
+    .ws-wordmark .cs-go   { color: var(--accent); }
+    .ws-bienvenue {
+      font-size: 0.78rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-muted); opacity: 0;
+      transition: opacity 0.4s ease 0.3s;
+    }
+    .ws-nom {
+      font-size: 1.45rem; font-weight: 800;
+      font-family: var(--font-display);
+      color: var(--accent);
+      min-height: 1.8rem;
+      opacity: 0; transition: opacity 0.4s ease 0.5s;
+    }
+    .ws-tagline {
+      font-size: 0.85rem; color: var(--text-muted);
+      font-weight: 500; line-height: 1.45;
+      opacity: 0; transition: opacity 0.4s ease 0.7s;
+    }
+    #welcome-splash.ws-ready .ws-bienvenue,
+    #welcome-splash.ws-ready .ws-nom,
+    #welcome-splash.ws-ready .ws-tagline { opacity: 1; }
   </style>
 </head>
 <body>
+
+<!-- ═══ WELCOME SPLASH ════════════════════════════════════════════ -->
+<div id="welcome-splash">
+  <div class="ws-inner">
+    <img src="/logo-icon.png" alt="CrewGo" class="ws-img">
+    <div class="ws-wordmark"><span class="cs-crew">Crew</span><span class="cs-go">Go</span></div>
+    <p class="ws-bienvenue">Bienvenue sur</p>
+    <p class="ws-nom" id="ws-nom">…</p>
+    <p class="ws-tagline">C'est parti pour l'aventure&nbsp;🏕️</p>
+  </div>
+</div>
 
 <!-- ═══ IDENTIFICATION ═══════════════════════════════════════════ -->
 <div id="id-overlay">
@@ -678,14 +740,34 @@ window.afficherAccueil = function() {
   document.getElementById('id-overlay').style.display = 'flex';
 };
 
+let _splashWelcomeT1 = null, _splashWelcomeT2 = null;
+
+function _cacherWelcomeSplash(callback) {
+  clearTimeout(_splashWelcomeT2);
+  const splash = document.getElementById('welcome-splash');
+  if (!splash) { callback?.(); return; }
+  splash.classList.add('splash-out');
+  const proceed = () => {
+    splash.style.display = 'none';
+    callback?.();
+  };
+  splash.addEventListener('transitionend', proceed, { once: true });
+  _splashWelcomeT2 = setTimeout(proceed, 650); // fallback
+}
+
 async function _initPartage() {
   try {
     const resp = await fetch('/api/partage/' + _partageToken);
+
     if (!resp.ok) {
-      document.getElementById('id-overlay').innerHTML =
-        '<div class="id-card"><div class="id-hero">🔒</div>' +
-        '<h2 style="font-family:var(--font-display);margin-bottom:8px">Lien invalide</h2>' +
-        '<p style="color:var(--text-muted)">Ce lien de partage est invalide ou a expiré.</p></div>';
+      // Lien invalide : cacher le splash immédiatement et afficher l'erreur
+      _cacherWelcomeSplash(() => {
+        document.getElementById('id-overlay').innerHTML =
+          '<div class="id-card"><div class="id-hero">🔒</div>' +
+          '<h2 style="font-family:var(--font-display);margin-bottom:8px">Lien invalide</h2>' +
+          '<p style="color:var(--text-muted)">Ce lien de partage est invalide ou a expiré.</p></div>';
+        document.getElementById('id-overlay').style.display = 'flex';
+      });
       return;
     }
     const d = await resp.json();
@@ -698,7 +780,16 @@ async function _initPartage() {
     const hdr = document.getElementById('voyage-header');
     if (hdr && d.voyage.couleur) hdr.style.borderBottom = '3px solid ' + d.voyage.couleur;
 
-    // Écran d'identification
+    // Afficher le nom du voyage sur le splash + animer l'entrée
+    const wsNom = document.getElementById('ws-nom');
+    if (wsNom) wsNom.textContent = d.voyage.nom;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document.getElementById('welcome-splash')?.classList.add('ws-ready')
+      )
+    );
+
+    // Préparer l'écran d'identification
     document.getElementById('id-voyage-nom').textContent = d.voyage.nom;
     const pEl = document.getElementById('id-participants');
     const parts = d.participants || [];
@@ -714,14 +805,29 @@ async function _initPartage() {
     if (!parts.length) document.getElementById('id-ou-text').style.display = 'none';
 
     // Identité déjà stockée ?
+    let storedIdentite = null;
     try {
       const stored = localStorage.getItem('partage_id_' + _partageToken);
-      if (stored) { _lancerPartage(JSON.parse(stored)); return; }
+      if (stored) storedIdentite = JSON.parse(stored);
     } catch(e) {}
 
-    document.getElementById('id-overlay').style.display = 'flex';
+    // Attendre 2.3s puis cacher le splash
+    const elapsed = performance.now(); // l'API a déjà pris du temps
+    const delay = Math.max(0, 2300 - elapsed);
+    clearTimeout(_splashWelcomeT1);
+    _splashWelcomeT1 = setTimeout(() => {
+      _cacherWelcomeSplash(() => {
+        if (storedIdentite) {
+          _lancerPartage(storedIdentite);
+        } else {
+          document.getElementById('id-overlay').style.display = 'flex';
+        }
+      });
+    }, delay);
+
   } catch(e) {
     console.error('initPartage error:', e);
+    _cacherWelcomeSplash();
   }
 }
 
