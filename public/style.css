@@ -1,7 +1,7 @@
 @import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800,900,400i,700i,800i&display=swap');
 
 /* ═══════════════════════════════════════════════════════════════
-   CREWGO — Minimal UI
+   CREWIGO — Minimal UI
    Font : Inter  ·  Accent : Orange #F97316
    Inspiré de Notion Mobile
    ═══════════════════════════════════════════════════════════════ */
@@ -10,7 +10,7 @@
 
 /* ─── DESIGN TOKENS ─────────────────────────────────────────── */
 :root {
-  /* Accent — CrewGo Orange */
+  /* Accent — CrewiGo Orange */
   --accent:        #F97316;
   --accent-dark:   #EA6B0B;
   --accent-light:  #FFF7ED;
@@ -73,7 +73,7 @@ body {
    HOME SCREEN
    ════════════════════════════════════════════════════════════════ */
 /* ════════════════════════════════════════════════════════════════
-   HOME SCREEN — CrewGo brand header
+   HOME SCREEN — CrewiGo brand header
    ════════════════════════════════════════════════════════════════ */
 #screen-home .app-header {
   position: relative;
@@ -130,8 +130,8 @@ body {
   gap: 12px;
 }
 
-#screen-home .crewgo-logo .logo-crew { color: #FFFFFF; }
-#screen-home .crewgo-logo .logo-go   { color: #F97316; }
+#screen-home .crewigo-logo .logo-crew { color: #FFFFFF; }
+#screen-home .crewigo-logo .logo-go   { color: #F97316; }
 
 #screen-home .btn-icon {
   background: rgba(255,255,255,0.08);
@@ -289,15 +289,15 @@ body {
   letter-spacing: -.01em;
 }
 
-/* ─── CREWGO LOGO ────────────────────────────────────────────── */
-.crewgo-logo {
+/* ─── CREWIGO LOGO ───────────────────────────────────────────── */
+.crewigo-logo {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 1;
   text-decoration: none;
 }
-.crewgo-logo-icon {
+.crewigo-logo-icon {
   width: 30px;
   height: 30px;
   border-radius: 7px;
@@ -307,10 +307,10 @@ body {
   justify-content: center;
   flex-shrink: 0;
 }
-.crewgo-logo-icon svg { display: block; }
+.crewigo-logo-icon svg { display: block; }
 
 /* Vrai logo PNG */
-.crewgo-logo-img {
+.crewigo-logo-img {
   width: 30px;
   height: 30px;
   border-radius: 7px;
@@ -318,7 +318,7 @@ body {
   flex-shrink: 0;
   display: block;
 }
-.crewgo-logo-img--lg {
+.crewigo-logo-img--lg {
   width: 48px;
   height: 48px;
   border-radius: 12px;
@@ -343,8 +343,8 @@ body {
 }
 
 /* version blanche pour header sur image hero */
-.crewgo-logo--white .logo-crew { color: #fff; }
-.crewgo-logo--white .logo-go   { color: #fff; }
+.crewigo-logo--white .logo-crew { color: #fff; }
+.crewigo-logo--white .logo-go   { color: #fff; }
 
 /* ─── VOYAGE HEADER — dark brand ────────────────────────────── */
 .voyage-header {
@@ -751,7 +751,7 @@ body {
   align-items: flex-start;
 }
 
-/* ── Système d'icônes CrewGo — gradient orange ──────────────── */
+/* ── Système d'icônes CrewiGo — gradient orange ─────────────── */
 .cgo-icon {
   display: inline-flex;
   align-items: center;
