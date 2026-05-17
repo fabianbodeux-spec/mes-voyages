@@ -453,6 +453,27 @@ body {
   box-shadow: 0 6px 28px rgba(249,115,22,0.55);
 }
 .home-cta-btn:active { transform: scale(0.97); background: #EA6B0B; box-shadow: none; }
+.home-install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: rgba(255,255,255,0.55);
+  border: 1.5px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: 'Satoshi', var(--font-body);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.home-install-btn:hover {
+  color: #F97316;
+  border-color: rgba(249,115,22,0.5);
+  background: rgba(249,115,22,0.06);
+}
 .home-tagline-sub {
   font-size: 0.75rem;
   color: rgba(255,255,255,0.35);

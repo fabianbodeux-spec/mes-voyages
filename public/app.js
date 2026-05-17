@@ -241,6 +241,44 @@ document.addEventListener('DOMContentLoaded', () => {
     navigator.serviceWorker.register('/sw.js').catch(console.error);
   }
 
+  // ── PWA Install (in-app, post-auth) ──────────────────────────────────
+  (function initPWAInstallApp() {
+    const STORAGE_KEY  = 'crewigo_pwa_dismissed';
+    const DISMISS_DAYS = 30;
+    const btnApp       = document.getElementById('pwa-install-btn-app');
+    if (!btnApp) return;
+
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                      || window.navigator.standalone === true;
+    if (isStandalone) return; // déjà installée
+
+    let deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      const ts = localStorage.getItem(STORAGE_KEY);
+      const dismissed = ts && (Date.now() - parseInt(ts, 10) < DISMISS_DAYS * 86400000);
+      if (!dismissed) btnApp.style.display = 'inline-flex';
+    });
+
+    window.addEventListener('appinstalled', function() {
+      btnApp.style.display = 'none';
+    });
+
+    btnApp.addEventListener('click', async function() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const result = await deferredPrompt.userChoice;
+      if (result.outcome === 'dismissed') {
+        localStorage.setItem(STORAGE_KEY, Date.now().toString());
+      }
+      deferredPrompt = null;
+      btnApp.style.display = 'none';
+    });
+  })();
+  // ─────────────────────────────────────────────────────────────────────
+
   // ── Scroll shadow on detail header ─────────────────
   const mainContent = document.querySelector('#screen-voyage .main-content');
   const detailHeader = document.getElementById('voyage-header');

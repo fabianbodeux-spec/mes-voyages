@@ -871,6 +871,26 @@
       font-weight: 500;
     }
 
+    /* ─── PWA Install tooltip iOS ─── */
+    .pwa-ios-tooltip {
+      display: none;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(249,115,22,0.35);
+      border-radius: 14px;
+      padding: 16px 20px;
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.65;
+      max-width: 320px;
+      text-align: left;
+      margin-top: 16px;
+    }
+    .pwa-ios-tooltip.visible { display: block; }
+    .pwa-ios-tooltip p { margin: 0 0 8px; font-weight: 600; color: rgba(255,255,255,0.85); }
+    .pwa-ios-tooltip ol { padding-left: 18px; margin: 0; }
+    .pwa-ios-tooltip li { margin-bottom: 5px; }
+    .pwa-ios-tooltip strong { color: #fff; }
+
     /* ─── FOOTER ─── */
     footer {
       border-top: 1px solid var(--border);
@@ -1252,6 +1272,10 @@
           Créer mon compte — c'est gratuit
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
+        <button id="pwa-install-btn-hero" class="btn-ghost" style="display:none">
+          Installer l'app
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12M8 12l4 4 4-4"/></svg>
+        </button>
         <a href="#features" class="btn-ghost">
           Découvrir les features
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
@@ -1519,11 +1543,25 @@
         </div>
 
         <div class="install-cta reveal">
-          <a href="/app" class="btn-primary">
+          <button id="pwa-install-btn-landing" class="btn-primary" style="display:none">
+            Installer CrewiGO
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12M8 12l4 4 4-4"/></svg>
+          </button>
+          <a href="/app" class="btn-primary" id="pwa-open-btn">
             Ouvrir CrewiGO
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
           <span class="install-cta-note">Gratuit · Aucune carte bancaire requise</span>
+        </div>
+
+        <!-- Tooltip iOS install instructions -->
+        <div id="pwa-ios-tooltip" class="pwa-ios-tooltip" role="tooltip" aria-live="polite">
+          <p>Dans Safari, appuie sur :</p>
+          <ol>
+            <li>Le bouton <strong>Partager ⬆</strong> en bas de l'écran</li>
+            <li><strong>"Sur l'écran d'accueil"</strong></li>
+            <li>Confirme — c'est installé 🎉</li>
+          </ol>
         </div>
 
       </div>
@@ -1567,6 +1605,79 @@
     document.querySelectorAll('.hero .reveal').forEach(el => {
       el.classList.add('visible');
     });
+
+    // ─── PWA Install ──────────────────────────────────────────────────────
+    (function initPWAInstall() {
+      const STORAGE_KEY  = 'crewigo_pwa_dismissed';
+      const DISMISS_DAYS = 30;
+
+      const isIOS        = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                        || window.navigator.standalone === true;
+
+      // Déjà installée → rien à faire
+      if (isStandalone) return;
+
+      const btnHero    = document.getElementById('pwa-install-btn-hero');
+      const btnSection = document.getElementById('pwa-install-btn-landing');
+      const btnOpen    = document.getElementById('pwa-open-btn');
+      const iosTooltip = document.getElementById('pwa-ios-tooltip');
+
+      function wasDismissed() {
+        const ts = localStorage.getItem(STORAGE_KEY);
+        return ts && (Date.now() - parseInt(ts, 10) < DISMISS_DAYS * 86400000);
+      }
+
+      function showButtons() {
+        if (wasDismissed()) return;
+        if (btnHero)    { btnHero.style.display    = 'inline-flex'; }
+        if (btnSection) { btnSection.style.display = 'inline-flex'; btnOpen.style.display = 'none'; }
+      }
+
+      // ── iOS : instructions manuelles
+      if (isIOS) {
+        showButtons();
+        [btnHero, btnSection].forEach(function(btn) {
+          if (!btn) return;
+          btn.addEventListener('click', function() {
+            if (iosTooltip) iosTooltip.classList.toggle('visible');
+          });
+        });
+        return;
+      }
+
+      // ── Android / Chrome / Desktop : beforeinstallprompt
+      var deferredPrompt = null;
+
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        showButtons();
+      });
+
+      window.addEventListener('appinstalled', function() {
+        deferredPrompt = null;
+        if (btnHero)    btnHero.style.display    = 'none';
+        if (btnSection) btnSection.style.display = 'none';
+        if (btnOpen)    btnOpen.style.display    = 'inline-flex';
+      });
+
+      async function triggerInstall() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const result = await deferredPrompt.userChoice;
+        if (result.outcome === 'dismissed') {
+          localStorage.setItem(STORAGE_KEY, Date.now().toString());
+        }
+        deferredPrompt = null;
+        if (btnHero)    btnHero.style.display    = 'none';
+        if (btnSection) btnSection.style.display = 'none';
+        if (btnOpen)    btnOpen.style.display    = 'inline-flex';
+      }
+
+      if (btnHero)    btnHero.addEventListener('click',    triggerInstall);
+      if (btnSection) btnSection.addEventListener('click', triggerInstall);
+    })();
 
     // ─── Intro cinématique
     const introOverlay = document.getElementById('intro-overlay');
