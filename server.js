@@ -34,11 +34,12 @@ app.use(cors({
   methods: ['GET','POST','PUT','PATCH','DELETE']
 }));
 app.use(express.json({ limit: '20mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
 
-// ─── ROUTES PRINCIPALES ────────────────────────────────────────────────────
+// ─── ROUTES PRINCIPALES (avant express.static pour éviter que index.html soit servi sur /) ──
 app.get('/',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── HELPERS SÉCURITÉ ──────────────────────────────────────────────────────
 
