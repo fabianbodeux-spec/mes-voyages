@@ -1108,7 +1108,7 @@ body {
   color: var(--text-muted);
   display: flex; flex-direction: column; align-items: center; gap: 10px;
 }
-.empty-tab-icon { font-size: 2.4rem; }
+.empty-tab-icon { font-size: 2.4rem; display: flex; justify-content: center; }
 .empty-tab p { font-size: 0.84rem; line-height: 1.6; max-width: 260px; }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1562,7 +1562,7 @@ textarea { resize: vertical; line-height: 1.6; }
   transition: background 0.15s;
 }
 .depense-card:hover { background: var(--bg-alt); }
-.depense-cat { font-size: 1.3rem; flex-shrink: 0; }
+.depense-cat { flex-shrink: 0; display: flex; align-items: center; }
 .depense-body { flex: 1; min-width: 0; }
 .depense-titre {
   font-weight: 600;
@@ -1611,6 +1611,7 @@ textarea { resize: vertical; line-height: 1.6; }
   font-size: 0.90rem;
   font-weight: 600;
   color: var(--success);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 .bilan-transaction {
   display: flex; align-items: center; justify-content: space-between;

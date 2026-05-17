@@ -751,7 +751,7 @@ async function ouvrirCloture() {
   const isTermine = voyage.statut === 'terminé';
 
   const settlementHtml = transactions.length === 0
-    ? `<div class="bilan-ok">✅ Tout est équilibré !</div>`
+    ? `<div class="bilan-ok"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Tout est équilibré !</div>`
     : `<div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
         ${transactions.map(t => `
           <div class="bilan-transaction">
@@ -772,7 +772,7 @@ async function ouvrirCloture() {
       </div>`;
 
   document.getElementById('cloture-content').innerHTML = `
-    ${isTermine ? `<div class="cloture-archived-banner">🏁 Ce trip est archivé</div>` : ''}
+    ${isTermine ? `<div class="cloture-archived-banner"><svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" style="flex-shrink:0"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>Ce trip est archivé</div>` : ''}
     <div class="cloture-stats">
       <div class="cloture-stat">
         <div class="cloture-stat-val">${totalDepenses.toFixed(0)}€</div>
@@ -792,17 +792,19 @@ async function ouvrirCloture() {
       </div>
     </div>
     <div class="budget-section-header" style="padding:14px 16px 8px;border-top:1px solid var(--border)">
-      <span class="budget-section-title">⚖️ Soldes finaux — qui doit quoi</span>
+      <span class="budget-section-title">Soldes finaux — qui doit quoi</span>
     </div>
     ${settlementHtml}
   `;
 
   const btn = document.getElementById('cloture-btn-action');
   if (isTermine) {
-    btn.textContent = '↩️ Réouvrir le trip';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" style="flex-shrink:0"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>Réouvrir le trip';
+    btn.style.cssText += ';display:inline-flex;align-items:center;gap:8px';
     btn.onclick = rouvrirVoyage;
   } else {
-    btn.textContent = '✅ Archiver le trip';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" style="flex-shrink:0"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>Archiver le trip';
+    btn.style.cssText += ';display:inline-flex;align-items:center;gap:8px';
     btn.onclick = archiverVoyage;
   }
 
@@ -2205,12 +2207,19 @@ function afficherDepenses(depenses, participants) {
   participants.forEach(p => { byId[p.id] = p; });
 
   if (depenses.length === 0) {
-    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon">💸</div><p>Aucune dépense enregistrée</p></div>`;
+    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon">${cgoIcon('wallet',40)}</div><p>Aucune dépense enregistrée</p></div>`;
     return;
   }
 
   const total = depenses.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
-  const icones = { hebergement:'🏠', transport:'✈️', restauration:'🍽️', activite:'🎯', courses:'🛒', autre:'📦' };
+  const icones = {
+    hebergement: cgoIcon('home',32),
+    transport:   cgoIcon('send',32),
+    restauration:cgoIcon('food',32),
+    activite:    cgoIcon('activity',32),
+    courses:     cgoIcon('wallet',32),
+    autre:       cgoIcon('document',32)
+  };
 
   container.innerHTML = `
     <div class="budget-total-bar">
@@ -2224,7 +2233,7 @@ function afficherDepenses(depenses, participants) {
         const share = parts.length > 0 ? (parseFloat(d.montant) / parts.length).toFixed(2) : '—';
         return `
         <div class="depense-card">
-          <div class="depense-cat">${icones[d.categorie] || '📦'}</div>
+          <div class="depense-cat">${icones[d.categorie] || cgoIcon('document',32)}</div>
           <div class="depense-body">
             <div class="depense-titre">${d.titre}</div>
             <div class="depense-meta">
@@ -2236,8 +2245,8 @@ function afficherDepenses(depenses, participants) {
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
             <span class="depense-montant">${parseFloat(d.montant).toFixed(2)}€</span>
             <div style="display:flex;gap:4px">
-              <button class="btn-mini btn-mini-edit" onclick="modifierDepense(${d.id})">✏️</button>
-              <button class="btn-mini btn-mini-del" onclick="supprimerDepense(${d.id})">🗑️</button>
+              <button class="btn-mini btn-mini-edit" onclick="modifierDepense(${d.id})" title="Modifier"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+              <button class="btn-mini btn-mini-del" onclick="supprimerDepense(${d.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
             </div>
           </div>
         </div>`;
@@ -2287,7 +2296,7 @@ function afficherBilan(depenses, participants) {
   }
 
   if (transactions.length === 0) {
-    container.innerHTML = `<div class="bilan-ok">✅ Tout est équilibré !</div>`;
+    container.innerHTML = `<div class="bilan-ok"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Tout est équilibré !</div>`;
     return;
   }
 
