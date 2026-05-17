@@ -1576,11 +1576,10 @@
       if (prefersReduced) {
         // Version rapide sans animation
         setTimeout(() => {
+          introOverlay.style.pointerEvents = 'none';
           introOverlay.style.transition = 'opacity 0.35s ease';
           introOverlay.style.opacity = '0';
-          introOverlay.addEventListener('transitionend', () => {
-            introOverlay.style.display = 'none';
-          }, { once: true });
+          setTimeout(() => { introOverlay.style.display = 'none'; }, 400);
         }, 350);
 
       } else {
@@ -1600,11 +1599,10 @@
 
           // Fondu final de l'overlay, après que les barres aient commencé à bouger
           setTimeout(() => {
+            introOverlay.style.pointerEvents = 'none'; // clics passent immédiatement
             introOverlay.style.transition = 'opacity 0.65s ease';
             introOverlay.style.opacity = '0';
-            introOverlay.addEventListener('transitionend', (e) => {
-              if (e.target === introOverlay) introOverlay.style.display = 'none';
-            }, { once: true });
+            setTimeout(() => { introOverlay.style.display = 'none'; }, 700);
           }, 480);
         }, 3200);
       }
