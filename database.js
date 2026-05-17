@@ -42,6 +42,13 @@ if (voyagesInit.length === 0) {
 }
 
 const localDB = {
+  users: {
+    getByEmail: () => null,
+    getById:    () => null,
+    create: (email, hash, nom) => ({ id: 1, email, nom, created_at: new Date().toISOString() }),
+    count: () => 0,
+    claimOrphanVoyages: () => {}
+  },
   voyages: {
     getAll: () => charger('voyages').sort((a,b) => (a.date_debut||'').localeCompare(b.date_debut||'')),
     getById: (id) => charger('voyages').find(v => v.id === +id),
@@ -280,17 +287,35 @@ if (USE_POSTGRES) {
       UNIQUE(voyage_id, device_id)
     );
     ALTER TABLE voyages ADD COLUMN IF NOT EXISTS statut TEXT DEFAULT 'actif';
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      nom TEXT,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+    ALTER TABLE voyages ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES users(id);
   `).catch(console.error);
 }
 
 const pgDB = pgPool ? {
+  users: {
+    getByEmail: async (email) => (await pgPool.query('SELECT * FROM users WHERE email=$1', [email])).rows[0],
+    getById:    async (id)    => (await pgPool.query('SELECT id,email,nom,created_at FROM users WHERE id=$1', [id])).rows[0],
+    create:     async (email, passwordHash, nom) => (await pgPool.query(
+      'INSERT INTO users(email,password_hash,nom) VALUES($1,$2,$3) RETURNING id,email,nom,created_at',
+      [email, passwordHash, nom]
+    )).rows[0],
+    count: async () => parseInt((await pgPool.query('SELECT COUNT(*) FROM users')).rows[0].count, 10),
+    claimOrphanVoyages: async (userId) => pgPool.query('UPDATE voyages SET owner_id=$1 WHERE owner_id IS NULL', [userId])
+  },
   voyages: {
-    getAll: async () => (await pgPool.query('SELECT * FROM voyages ORDER BY date_debut ASC NULLS LAST')).rows,
+    getAll: async (ownerId) => (await pgPool.query('SELECT * FROM voyages WHERE owner_id=$1 ORDER BY date_debut ASC NULLS LAST', [ownerId])).rows,
     getById: async (id) => (await pgPool.query('SELECT * FROM voyages WHERE id=$1', [id])).rows[0],
     getByToken: async (token) => (await pgPool.query('SELECT * FROM voyages WHERE share_token=$1', [token])).rows[0],
     setToken: async (id, token) => { await pgPool.query('UPDATE voyages SET share_token=$1 WHERE id=$2', [token, id]); return true; },
     setStatut: async (id, statut) => { await pgPool.query('UPDATE voyages SET statut=$1 WHERE id=$2', [statut, id]); return true; },
-    create: async (data) => (await pgPool.query('INSERT INTO voyages(nom,destination,date_debut,date_fin,description,couleur) VALUES($1,$2,$3,$4,$5,$6) RETURNING *', [data.nom,data.destination,data.date_debut,data.date_fin,data.description,data.couleur||'#3B82F6'])).rows[0],
+    create: async (data) => (await pgPool.query('INSERT INTO voyages(nom,destination,date_debut,date_fin,description,couleur,owner_id) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *', [data.nom,data.destination,data.date_debut,data.date_fin,data.description,data.couleur||'#3B82F6',data.owner_id||null])).rows[0],
     update: async (id, data) => { await pgPool.query('UPDATE voyages SET nom=$1,destination=$2,date_debut=$3,date_fin=$4,description=$5,couleur=$6 WHERE id=$7', [data.nom,data.destination,data.date_debut,data.date_fin,data.description,data.couleur,id]); return true; },
     delete: async (id) => {
       await pgPool.query('DELETE FROM bagages WHERE voyage_id=$1', [id]);
@@ -434,3 +459,4 @@ const pgDB = pgPool ? {
 // Export : utilise PostgreSQL en production, JSON en local
 module.exports = USE_POSTGRES ? pgDB : localDB;
 module.exports.isAsync = USE_POSTGRES;
+module.exports.usePostgres = USE_POSTGRES;

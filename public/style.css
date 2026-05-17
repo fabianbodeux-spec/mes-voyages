@@ -70,6 +70,202 @@ body {
 .screen.active { display: flex; }
 
 /* ════════════════════════════════════════════════════════════════
+   AUTH SCREEN — Connexion / Inscription
+   ════════════════════════════════════════════════════════════════ */
+#auth-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#auth-screen.active { display: flex; }
+
+.auth-bg {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: -1;
+}
+.auth-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 100% 60% at 50% -5%, rgba(249,115,22,0.18) 0%, transparent 65%);
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* Brand */
+.auth-brand {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.auth-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  box-shadow: 0 0 32px rgba(249,115,22,0.35);
+}
+.auth-wordmark {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #fff;
+}
+.auth-crewi { color: #fff; }
+.auth-go    { color: var(--accent); }
+.auth-tagline {
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.5px;
+}
+
+/* Form panels */
+.auth-form {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 24px 20px;
+  backdrop-filter: blur(12px);
+}
+.auth-form.active { display: flex; }
+
+.auth-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.auth-error {
+  font-size: 13px;
+  color: #F87171;
+  background: rgba(248,113,113,0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: none;
+}
+.auth-error:not(:empty) { display: block; }
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.auth-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.2px;
+}
+.auth-field input {
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 15px;
+  color: #fff;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  -webkit-appearance: none;
+}
+.auth-field input::placeholder { color: rgba(255,255,255,0.25); }
+.auth-field input:focus {
+  border-color: var(--accent);
+  background: rgba(249,115,22,0.06);
+}
+
+.auth-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s, opacity 0.2s;
+  margin-top: 4px;
+  letter-spacing: 0.2px;
+}
+.auth-btn:hover  { background: var(--accent-dark); }
+.auth-btn:active { transform: scale(0.98); }
+.auth-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.auth-switch {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+}
+.auth-switch a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.auth-switch a:hover { text-decoration: underline; }
+
+/* Header user badge */
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.header-user-nom {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.65);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.header-logout-btn {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(255,255,255,0.55);
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.header-logout-btn:hover {
+  background: rgba(249,115,22,0.15);
+  color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-form, .auth-btn { transition: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════
    HOME SCREEN
    ════════════════════════════════════════════════════════════════ */
 /* ════════════════════════════════════════════════════════════════

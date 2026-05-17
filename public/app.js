@@ -4,6 +4,129 @@
 
 const API = '';  // même origin
 
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+let currentUser = null;
+let _authToken = localStorage.getItem('crewigo_token');
+
+// Intercepteur global : injecte le token JWT sur tous les appels /api/
+// et redirige vers login en cas de 401
+(function installFetchInterceptor() {
+  const _native = window.fetch.bind(window);
+  window.fetch = function(url, opts = {}) {
+    const u = typeof url === 'string' ? url : (url.url || '');
+    if (_authToken && u.startsWith('/api/') && !u.startsWith('/api/auth/')) {
+      opts = { ...opts, headers: { 'Authorization': `Bearer ${_authToken}`, ...(opts.headers || {}) } };
+    }
+    return _native(url, opts).then(r => {
+      if (r.status === 401 && u.startsWith('/api/') && !u.startsWith('/api/auth/')) {
+        _doLogout();
+      }
+      return r;
+    });
+  };
+})();
+
+async function initAuth() {
+  if (!_authToken) { _showAuthScreen(); return; }
+  try {
+    const r = await fetch('/api/auth/me');
+    if (!r.ok) { _doLogout(); return; }
+    currentUser = await r.json();
+    _hideAuthScreen();
+    _updateHeaderUser();
+  } catch { _doLogout(); }
+}
+
+function _showAuthScreen() {
+  const s = document.getElementById('auth-screen');
+  if (s) s.classList.add('active');
+  document.getElementById('screen-home')?.classList.remove('active');
+}
+
+function _hideAuthScreen() {
+  const s = document.getElementById('auth-screen');
+  if (s) s.classList.remove('active');
+  document.getElementById('screen-home')?.classList.add('active');
+}
+
+function _updateHeaderUser() {
+  const el = document.getElementById('header-user-nom');
+  if (el && currentUser) el.textContent = currentUser.nom || currentUser.email;
+}
+
+function switchAuthForm(form) {
+  document.getElementById('auth-login')?.classList.toggle('active', form === 'login');
+  document.getElementById('auth-register')?.classList.toggle('active', form === 'register');
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('register-error').textContent = '';
+}
+
+async function submitLogin() {
+  const email    = document.getElementById('login-email')?.value?.trim();
+  const password = document.getElementById('login-password')?.value;
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Email et mot de passe requis'; return; }
+  btn.disabled = true; btn.textContent = 'Connexion…';
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await r.json();
+    if (!r.ok) { errEl.textContent = data.error || 'Erreur de connexion'; return; }
+    _authToken = data.token;
+    currentUser = data.user;
+    localStorage.setItem('crewigo_token', _authToken);
+    _hideAuthScreen();
+    _updateHeaderUser();
+    chargerVoyages();
+  } catch { errEl.textContent = 'Erreur réseau'; }
+  finally { btn.disabled = false; btn.textContent = 'Se connecter'; }
+}
+
+async function submitRegister() {
+  const nom      = document.getElementById('register-nom')?.value?.trim();
+  const email    = document.getElementById('register-email')?.value?.trim();
+  const password = document.getElementById('register-password')?.value;
+  const errEl    = document.getElementById('register-error');
+  const btn      = document.getElementById('register-btn');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Email et mot de passe requis'; return; }
+  if (password.length < 6) { errEl.textContent = 'Mot de passe trop court (6 caractères minimum)'; return; }
+  btn.disabled = true; btn.textContent = 'Création…';
+  try {
+    const r = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, nom })
+    });
+    const data = await r.json();
+    if (!r.ok) { errEl.textContent = data.error || 'Erreur lors de la création'; return; }
+    _authToken = data.token;
+    currentUser = data.user;
+    localStorage.setItem('crewigo_token', _authToken);
+    _hideAuthScreen();
+    _updateHeaderUser();
+    chargerVoyages();
+  } catch { errEl.textContent = 'Erreur réseau'; }
+  finally { btn.disabled = false; btn.textContent = 'Créer mon compte'; }
+}
+
+function logout() {
+  if (!confirm('Te déconnecter de CrewiGO ?')) return;
+  _doLogout();
+}
+
+function _doLogout() {
+  _authToken = null;
+  currentUser = null;
+  localStorage.removeItem('crewigo_token');
+  _showAuthScreen();
+}
+
 // ─── SÉCURITÉ : échappement HTML ──────────────────────
 // Utiliser h() pour toute donnée utilisateur injectée
 // dans innerHTML via template literals.
@@ -100,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })();
 
-  chargerVoyages();
+  initAuth().then(() => { if (currentUser) chargerVoyages(); });
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(console.error);
   }

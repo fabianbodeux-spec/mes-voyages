@@ -4,8 +4,13 @@ const multer = require('multer');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const webpush = require('web-push');
 const db = require('./database');
+
+const IS_CLOUD = db.usePostgres;
+const JWT_SECRET = process.env.JWT_SECRET || 'crewigo-dev-secret-change-in-prod';
 
 // En prod, les clés VAPID DOIVENT être définies en variables d'environnement
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -59,6 +64,78 @@ const ALLOWED_MIMES = new Set([
   'text/plain','text/csv'
 ]);
 
+// ─── AUTH JWT ──────────────────────────────────────────────────────────────
+
+// Rate-limiter pour les tentatives de connexion (15 essais / 15 min / IP)
+const _authAttempts = new Map();
+function checkAuthRate(ip) {
+  const now = Date.now();
+  let rec = _authAttempts.get(ip);
+  if (!rec || now > rec.resetAt) rec = { count: 0, resetAt: now + 15 * 60_000 };
+  rec.count++;
+  _authAttempts.set(ip, rec);
+  return rec.count <= 15;
+}
+
+// Middleware JWT — skip en mode local (JSON files)
+function authMiddleware(req, res, next) {
+  if (!IS_CLOUD) { req.user = { id: 1, email: 'local' }; return next(); }
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Non authentifié' });
+  try {
+    req.user = jwt.verify(header.split(' ')[1], JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Session expirée, reconnecte-toi' });
+  }
+}
+
+// ─── ROUTES AUTH ────────────────────────────────────────────────────────────
+
+app.post('/api/auth/register', async (req, res) => {
+  if (!checkAuthRate(req.ip)) return res.status(429).json({ error: 'Trop de tentatives, réessaie dans 15 min' });
+  const { email, password, nom } = req.body;
+  if (!email || !password || password.length < 6)
+    return res.status(400).json({ error: 'Email et mot de passe requis (6 car. minimum)' });
+  try {
+    const existing = await db.users.getByEmail(email.toLowerCase().trim());
+    if (existing) return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+    const hash = await bcrypt.hash(password, 12);
+    const user = await db.users.create(
+      email.toLowerCase().trim(),
+      hash,
+      (nom || email.split('@')[0]).trim()
+    );
+    // Premier inscrit → hérite de tous les voyages sans propriétaire
+    const total = await db.users.count();
+    if (total <= 1) await db.users.claimOrphanVoyages(user.id);
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, user: { id: user.id, email: user.email, nom: user.nom } });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  if (!checkAuthRate(req.ip)) return res.status(429).json({ error: 'Trop de tentatives, réessaie dans 15 min' });
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email et mot de passe requis' });
+  try {
+    const user = await db.users.getByEmail(email.toLowerCase().trim());
+    if (!user) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+    const match = await bcrypt.compare(password, user.password_hash);
+    if (!match) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, user: { id: user.id, email: user.email, nom: user.nom } });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+  try {
+    const user = await db.users.getById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    res.json(user);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Rate-limiter en mémoire pour les tentatives PIN
 const _pinAttempts = new Map();
 function checkPinRate(key) {
@@ -78,11 +155,11 @@ const run = async (fn) => {
 
 // ─── VOYAGES ───────────────────────────────────────────────────────────────
 
-app.get('/api/voyages', async (req, res) => {
-  try { res.json(await run(() => db.voyages.getAll())); } catch(e) { res.status(500).json({error: e.message}); }
+app.get('/api/voyages', authMiddleware, async (req, res) => {
+  try { res.json(await run(() => db.voyages.getAll(req.user.id))); } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.get('/api/voyages/:id', async (req, res) => {
+app.get('/api/voyages/:id', authMiddleware, async (req, res) => {
   try {
     const v = await run(() => db.voyages.getById(req.params.id));
     if (!v) return res.status(404).json({ error: 'Voyage non trouvé' });
@@ -90,22 +167,22 @@ app.get('/api/voyages/:id', async (req, res) => {
   } catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.post('/api/voyages', async (req, res) => {
-  try { const item = await run(() => db.voyages.create(req.body)); res.json({ id: item.id }); }
+app.post('/api/voyages', authMiddleware, async (req, res) => {
+  try { const item = await run(() => db.voyages.create({ ...req.body, owner_id: req.user.id })); res.json({ id: item.id }); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.put('/api/voyages/:id', async (req, res) => {
+app.put('/api/voyages/:id', authMiddleware, async (req, res) => {
   try { await run(() => db.voyages.update(req.params.id, req.body)); res.json({ ok: true }); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.delete('/api/voyages/:id', async (req, res) => {
+app.delete('/api/voyages/:id', authMiddleware, async (req, res) => {
   try { await run(() => db.voyages.delete(req.params.id)); res.json({ ok: true }); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.patch('/api/voyages/:id/statut', async (req, res) => {
+app.patch('/api/voyages/:id/statut', authMiddleware, async (req, res) => {
   try {
     const { statut } = req.body;
     if (!['actif', 'terminé'].includes(statut)) return res.status(400).json({ error: 'Statut invalide' });
@@ -118,12 +195,12 @@ app.patch('/api/voyages/:id/statut', async (req, res) => {
 
 // ─── RÉSERVATIONS ──────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/reservations', async (req, res) => {
+app.get('/api/voyages/:id/reservations', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.reservations.getByVoyage(req.params.id))); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.post('/api/voyages/:id/reservations', async (req, res) => {
+app.post('/api/voyages/:id/reservations', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.reservations.create(req.params.id, req.body)); res.json({ id: item.id }); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
@@ -140,12 +217,12 @@ app.delete('/api/reservations/:id', async (req, res) => {
 
 // ─── AGENDA ────────────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/agenda', async (req, res) => {
+app.get('/api/voyages/:id/agenda', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.agenda.getByVoyage(req.params.id))); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.post('/api/voyages/:id/agenda', async (req, res) => {
+app.post('/api/voyages/:id/agenda', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.agenda.create(req.params.id, req.body)); res.json({ id: item.id }); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
@@ -169,12 +246,12 @@ app.delete('/api/agenda/:id', async (req, res) => {
 
 // ─── DOCUMENTS ─────────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/documents', async (req, res) => {
+app.get('/api/voyages/:id/documents', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.documents.getByVoyage(req.params.id))); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.post('/api/voyages/:id/documents', upload.single('fichier'), async (req, res) => {
+app.post('/api/voyages/:id/documents', authMiddleware, upload.single('fichier'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Fichier manquant' });
   if (!ALLOWED_MIMES.has(req.file.mimetype)) return res.status(400).json({ error: 'Type de fichier non autorisé' });
   try {
@@ -215,12 +292,12 @@ app.delete('/api/documents/:id', async (req, res) => {
 
 // ─── PARTICIPANTS ──────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/participants', async (req, res) => {
+app.get('/api/voyages/:id/participants', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.participants.getByVoyage(req.params.id))); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.post('/api/voyages/:id/participants', async (req, res) => {
+app.post('/api/voyages/:id/participants', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.participants.create(req.params.id, req.body)); res.json({ id: item.id }); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
@@ -257,12 +334,12 @@ app.post('/api/partage/:token/verify-pin', async (req, res) => {
 
 // ─── DÉPENSES ──────────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/depenses', async (req, res) => {
+app.get('/api/voyages/:id/depenses', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.depenses.getByVoyage(req.params.id))); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.post('/api/voyages/:id/depenses', async (req, res) => {
+app.post('/api/voyages/:id/depenses', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.depenses.create(req.params.id, req.body)); res.json({ id: item.id }); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
@@ -279,17 +356,17 @@ app.delete('/api/depenses/:id', async (req, res) => {
 
 // ─── BAGAGES ───────────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/bagages', async (req, res) => {
+app.get('/api/voyages/:id/bagages', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.bagages.getByVoyage(req.params.id))); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.post('/api/voyages/:id/bagages', async (req, res) => {
+app.post('/api/voyages/:id/bagages', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.bagages.create(req.params.id, req.body)); res.json({ id: item.id }); }
   catch(e) { res.status(500).json({error: e.message}); }
 });
 
-app.post('/api/voyages/:vid/bagages/bulk', async (req, res) => {
+app.post('/api/voyages/:vid/bagages/bulk', authMiddleware, async (req, res) => {
   try {
     const { participant_id, items } = req.body;
     await run(() => db.bagages.deleteByVoyageParticipant(req.params.vid, participant_id));
@@ -316,7 +393,7 @@ function genererToken() {
   return crypto.randomBytes(9).toString('base64url'); // 72 bits, URL-safe
 }
 
-app.post('/api/voyages/:id/partager', async (req, res) => {
+app.post('/api/voyages/:id/partager', authMiddleware, async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getById(req.params.id));
     if (!voyage) return res.status(404).json({ error: 'Voyage non trouvé' });
@@ -371,7 +448,7 @@ app.get('/api/push/vapid-key', (req, res) => {
   res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || 'BCV64icXiouIl1g8KVeaEyGMLbhD0M5RFx_qDc5LGiAbIS49-QGP1XOeQWnLEGUnOfmMBH6dQbn20J1sekxQWF0' });
 });
 
-app.post('/api/push/subscribe/:voyageId', async (req, res) => {
+app.post('/api/push/subscribe/:voyageId', authMiddleware, async (req, res) => {
   try {
     await run(() => db.push_subscriptions.upsert(req.params.voyageId, req.body));
     res.json({ ok: true });
@@ -419,7 +496,7 @@ app.post('/api/demandes/:token', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/voyages/:id/demandes', async (req, res) => {
+app.get('/api/voyages/:id/demandes', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.demandes.getByVoyage(req.params.id))); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -431,12 +508,12 @@ app.put('/api/demandes/:id', async (req, res) => {
 
 // ─── ATTRIBUTIONS PRIVÉES ────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/attributions', async (req, res) => {
+app.get('/api/voyages/:id/attributions', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.attributions.getByVoyage(req.params.id))); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/voyages/:id/attributions', async (req, res) => {
+app.post('/api/voyages/:id/attributions', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.attributions.create(req.params.id, req.body)); res.json({ id: item.id }); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -463,12 +540,12 @@ app.get('/api/partage/:token/mes-infos/:participantId', async (req, res) => {
 
 // ─── MESSAGES PRIVÉS ───────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/messages-prives', async (req, res) => {
+app.get('/api/voyages/:id/messages-prives', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.messages_prives.getByVoyage(req.params.id))); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/voyages/:id/messages-prives', async (req, res) => {
+app.post('/api/voyages/:id/messages-prives', authMiddleware, async (req, res) => {
   try {
     const { participant_id, message } = req.body;
     if (!participant_id || !message?.trim()) return res.status(400).json({ error: 'Données manquantes' });
@@ -558,12 +635,12 @@ app.delete('/api/partage/:token/commentaires/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
-app.get('/api/voyages/:id/commentaires', async (req, res) => {
+app.get('/api/voyages/:id/commentaires', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.commentaires.getByVoyage(req.params.id))); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/voyages/:id/commentaires', async (req, res) => {
+app.post('/api/voyages/:id/commentaires', authMiddleware, async (req, res) => {
   try {
     const { auteur, message } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
@@ -641,7 +718,7 @@ app.delete('/api/partage/:token/mes-docs/:docId', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/voyages/:id/docs-participants', async (req, res) => {
+app.get('/api/voyages/:id/docs-participants', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.docs_participants.getByVoyage(req.params.id))); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CrewGo — Logo Preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #F7F7F5;
+      min-height: 100vh;
+      padding: 40px 24px;
+      color: #1C1917;
+    }
+
+    h1 {
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #787774;
+      margin-bottom: 32px;
+    }
+
+    .cards {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #E9E9E7;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .card-label {
+      padding: 10px 16px;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #787774;
+      border-bottom: 1px solid #E9E9E7;
+      background: #FAFAF9;
+    }
+
+    .card-body {
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .variant {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .variant-label {
+      font-size: .65rem;
+      font-weight: 500;
+      color: #ACABA8;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .logo-display {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* ── Option A — Wordmark split ── */
+    .logo-a .crew {
+      font-weight: 600;
+      font-size: 32px;
+      color: #1C1917;
+      letter-spacing: -0.03em;
+    }
+    .logo-a .go {
+      font-weight: 800;
+      font-size: 32px;
+      color: #F97316;
+      letter-spacing: -0.03em;
+    }
+
+    .logo-a-sm .crew {
+      font-weight: 600;
+      font-size: 18px;
+      color: #1C1917;
+      letter-spacing: -0.02em;
+    }
+    .logo-a-sm .go {
+      font-weight: 800;
+      font-size: 18px;
+      color: #F97316;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── Option B — Monogramme + wordmark ── */
+    .logo-b {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .mono {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: #F97316;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 20px;
+      color: white;
+      letter-spacing: -0.02em;
+      flex-shrink: 0;
+    }
+    .mono-sm {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      background: #F97316;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+      color: white;
+      flex-shrink: 0;
+    }
+    .logo-b .crew {
+      font-weight: 600;
+      font-size: 26px;
+      color: #1C1917;
+      letter-spacing: -0.03em;
+    }
+    .logo-b .go {
+      font-weight: 800;
+      font-size: 26px;
+      color: #F97316;
+      letter-spacing: -0.03em;
+    }
+    .logo-b-sm .crew {
+      font-weight: 600;
+      font-size: 16px;
+      color: #1C1917;
+      letter-spacing: -0.02em;
+    }
+    .logo-b-sm .go {
+      font-weight: 800;
+      font-size: 16px;
+      color: #F97316;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── Option C — lowercase + dot ── */
+    .logo-c {
+      display: flex;
+      align-items: flex-start;
+      gap: 2px;
+    }
+    .logo-c .word {
+      font-weight: 700;
+      font-size: 30px;
+      color: #1C1917;
+      letter-spacing: -0.04em;
+    }
+    .logo-c .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #F97316;
+      margin-top: 6px;
+    }
+    .logo-c-sm .word {
+      font-weight: 700;
+      font-size: 17px;
+      color: #1C1917;
+      letter-spacing: -0.04em;
+    }
+    .logo-c-sm .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #F97316;
+      margin-top: 3px;
+    }
+
+    /* Dark previews */
+    .dark-bg {
+      background: #1C1917;
+      border-radius: 8px;
+      padding: 16px 20px;
+    }
+    .dark-bg .crew { color: #ffffff !important; }
+    .dark-bg .word { color: #ffffff !important; }
+
+    .divider {
+      height: 1px;
+      background: #E9E9E7;
+      margin: 4px 0;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .tagline {
+      font-size: .7rem;
+      color: #787774;
+      margin-top: 4px;
+      font-weight: 500;
+      letter-spacing: .02em;
+    }
+
+    /* Favicons row */
+    .favicons {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .fav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .fav-label { font-size: .6rem; color: #ACABA8; font-weight: 500; }
+    .fav-48 { width:48px;height:48px;border-radius:12px;background:#F97316;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;color:white; }
+    .fav-32 { width:32px;height:32px;border-radius:8px;background:#F97316;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:white; }
+    .fav-16 { width:16px;height:16px;border-radius:4px;background:#F97316;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:9px;color:white; }
+  </style>
+</head>
+<body>
+
+<h1>CrewGo — Concepts logo</h1>
+
+<div class="cards">
+
+  <!-- OPTION A -->
+  <div class="card">
+    <div class="card-label">A — Wordmark split</div>
+    <div class="card-body">
+      <div class="variant">
+        <div class="variant-label">Grand</div>
+        <div class="logo-display logo-a">
+          <span class="crew">Crew</span><span class="go">Go</span>
+        </div>
+        <div class="tagline">Roam together.</div>
+      </div>
+      <div class="divider"></div>
+      <div class="variant">
+        <div class="variant-label">Header app (taille réelle)</div>
+        <div class="row">
+          <div class="logo-display logo-a-sm">
+            <span class="crew">Crew</span><span class="go">Go</span>
+          </div>
+          <div class="dark-bg logo-display logo-a-sm">
+            <span class="crew">Crew</span><span class="go">Go</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="card">
+    <div class="card-label">B — Monogramme + wordmark</div>
+    <div class="card-body">
+      <div class="variant">
+        <div class="variant-label">Grand</div>
+        <div class="logo-b">
+          <div class="mono">G</div>
+          <div class="logo-display">
+            <span class="crew">Crew</span><span class="go">Go</span>
+          </div>
+        </div>
+        <div class="tagline">Roam together.</div>
+      </div>
+      <div class="divider"></div>
+      <div class="variant">
+        <div class="variant-label">Header app (taille réelle)</div>
+        <div class="row">
+          <div class="logo-b logo-b-sm" style="gap:7px">
+            <div class="mono-sm">G</div>
+            <div class="logo-display">
+              <span class="crew">Crew</span><span class="go">Go</span>
+            </div>
+          </div>
+          <div class="dark-bg logo-b logo-b-sm" style="gap:7px">
+            <div class="mono-sm">G</div>
+            <div class="logo-display">
+              <span class="crew">Crew</span><span class="go">Go</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="variant">
+        <div class="variant-label">Favicon / icône</div>
+        <div class="favicons">
+          <div class="fav-item">
+            <div class="fav-48">G</div>
+            <div class="fav-label">48px</div>
+          </div>
+          <div class="fav-item">
+            <div class="fav-32">G</div>
+            <div class="fav-label">32px</div>
+          </div>
+          <div class="fav-item">
+            <div class="fav-16">G</div>
+            <div class="fav-label">16px</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION C -->
+  <div class="card">
+    <div class="card-label">C — Lowercase + dot</div>
+    <div class="card-body">
+      <div class="variant">
+        <div class="variant-label">Grand</div>
+        <div class="logo-c">
+          <span class="word">crewgo</span>
+          <div class="dot"></div>
+        </div>
+        <div class="tagline">Roam together.</div>
+      </div>
+      <div class="divider"></div>
+      <div class="variant">
+        <div class="variant-label">Header app (taille réelle)</div>
+        <div class="row">
+          <div class="logo-c logo-c-sm">
+            <span class="word">crewgo</span>
+            <div class="dot"></div>
+          </div>
+          <div class="dark-bg logo-c logo-c-sm">
+            <span class="word">crewgo</span>
+            <div class="dot"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
