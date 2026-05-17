@@ -46,6 +46,20 @@
   </script>
 
   <link rel="stylesheet" href="style.css">
+  <style>
+    .auth-back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(255,255,255,0.5);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      margin-bottom: 20px;
+      transition: color 0.2s;
+    }
+    .auth-back-link:hover { color: rgba(255,255,255,0.85); }
+  </style>
 </head>
 <body>
 
@@ -58,6 +72,10 @@
     <div class="auth-hero-grid"></div>
   </div>
   <div class="auth-brand">
+    <a href="/" class="auth-back-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Retour
+    </a>
     <img src="logo-icon.png" alt="CrewiGO" class="auth-logo" width="72" height="72" draggable="false">
     <div class="auth-wordmark"><span class="auth-crewi">Crewi</span><span class="auth-go">GO</span></div>
     <p class="auth-tagline">Roam together.</p>

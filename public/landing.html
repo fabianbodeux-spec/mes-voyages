@@ -91,6 +91,28 @@
       line-height: 1;
     }
 
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 600;
+      padding: 9px 14px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: color 0.2s;
+      white-space: nowrap;
+    }
+    .nav-link:hover { color: var(--text); }
+
     .nav-cta {
       display: inline-flex;
       align-items: center;
@@ -1195,10 +1217,13 @@
         <b style="color:#fff">Crewi</b><b style="color:#F97316;font-style:italic">GO</b>
       </span>
     </a>
-    <a href="/app" class="nav-cta">
-      Lancer l'app
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-    </a>
+    <div class="nav-actions">
+      <a href="/app?auth=login" class="nav-link">Se connecter</a>
+      <a href="/app?auth=register" class="nav-cta">
+        Commencer
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
   </nav>
 
   <!-- ─── HERO ─── -->
@@ -1223,8 +1248,8 @@
       </p>
 
       <div class="hero-ctas reveal reveal-delay-3">
-        <a href="/app" class="btn-primary">
-          Commencer maintenant
+        <a href="/app?auth=register" class="btn-primary">
+          Créer mon compte — c'est gratuit
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
         <a href="#features" class="btn-ghost">
@@ -1409,24 +1434,24 @@
         <div class="step-card reveal">
           <div class="step-number">1</div>
           <div>
-            <div class="step-title">Crée ton voyage</div>
-            <p class="step-desc">Donne un nom, des dates, invite ton équipage. En 30 secondes, l'espace de voyage est créé et partagé. Create your trip, name your crew.</p>
+            <div class="step-title">Crée ton compte (30 sec)</div>
+            <p class="step-desc">Un email, un mot de passe — c'est tout. Ton profil est prêt en quelques secondes, gratuit et sans carte bancaire. Just sign up and GO.</p>
           </div>
         </div>
 
         <div class="step-card reveal reveal-delay-1">
           <div class="step-number">2</div>
           <div>
-            <div class="step-title">Planifiez ensemble</div>
-            <p class="step-desc">Chaque membre peut ajouter des étapes, voter pour des activités, déposer des dépenses via <strong style="color:var(--accent)">CrewiCash</strong>. Discutez en direct dans <strong style="color:var(--accent)">CrewiChat</strong>. Tout se synchronise live. Everyone adds, votes, splits — live.</p>
+            <div class="step-title">Crée ton voyage</div>
+            <p class="step-desc">Donne un nom, des dates, invite ton équipage. En quelques clics, l'espace de voyage est créé et partagé avec tout le crew. Create your trip, name your crew.</p>
           </div>
         </div>
 
         <div class="step-card reveal reveal-delay-2">
           <div class="step-number">3</div>
           <div>
-            <div class="step-title">Partez. Roam together.</div>
-            <p class="step-desc">L'app vous suit sur le terrain : programme du jour, chat du groupe, solde du budget. Tout en poche, sans connexion parfois. Your whole trip in your pocket.</p>
+            <div class="step-title">Planifiez &amp; Partez.</div>
+            <p class="step-desc">Chaque membre ajoute des étapes, vote, dépose des dépenses via <strong style="color:var(--accent)">CrewiCash</strong>, discute dans <strong style="color:var(--accent)">CrewiChat</strong>. Tout en poche — Roam together.</p>
           </div>
         </div>
       </div>
@@ -1498,7 +1523,7 @@
             Ouvrir CrewiGO
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
-          <span class="install-cta-note">Aucun compte requis pour commencer · Gratuit</span>
+          <span class="install-cta-note">Gratuit · Aucune carte bancaire requise</span>
         </div>
 
       </div>
@@ -1518,7 +1543,8 @@
       <a href="#features">Features</a>
       <a href="#how">Comment ça marche</a>
       <a href="#install">Installer</a>
-      <a href="/app">Lancer l'app</a>
+      <a href="/app?auth=login">Se connecter</a>
+      <a href="/app?auth=register">Créer un compte</a>
     </nav>
     <p class="footer-copy">© 2026 CrewiGO — Made with ❤️ for adventurous crews</p>
   </footer>

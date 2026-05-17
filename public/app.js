@@ -27,7 +27,20 @@ let _authToken = localStorage.getItem('crewigo_token');
 })();
 
 async function initAuth() {
-  if (!_authToken) { _showAuthScreen(); return; }
+  if (!_authToken) {
+    _showAuthScreen();
+    // Lire le paramètre ?auth= pour pré-sélectionner le bon formulaire
+    const authParam = new URLSearchParams(window.location.search).get('auth');
+    if (authParam === 'register' || authParam === 'login') {
+      switchAuthForm(authParam);
+    }
+    // Nettoyer l'URL sans recharger la page
+    if (authParam) {
+      const cleanUrl = window.location.pathname + window.location.hash;
+      history.replaceState(null, '', cleanUrl);
+    }
+    return;
+  }
   try {
     const r = await fetch('/api/auth/me');
     if (!r.ok) { _doLogout(); return; }
