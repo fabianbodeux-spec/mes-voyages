@@ -885,7 +885,7 @@ function afficherReservations(reservations, filtre, documents = []) {
   const filtered = filtre === 'tous' ? reservations : reservations.filter(r => r.type === filtre);
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon">🎫</div><p>Aucune réservation${filtre !== 'tous' ? ' dans cette catégorie' : ''}</p></div>`;
+    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon"><svg viewBox="0 0 24 24" fill="currentColor" width="36" height="36" style="opacity:.35"><path d="M20 12c0-1.1.9-2 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v4c1.1 0 2 .9 2 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2zm-5 5.5H9v-3h6v3zm0-6H9v-3h6v3zm0-6H9v-3h6v3z"/></svg></div><p>Aucune réservation${filtre !== 'tous' ? ' dans cette catégorie' : ''}</p></div>`;
     return;
   }
 
@@ -924,9 +924,9 @@ function renderResa(r, docs = []) {
           ${r.date_fin && r.date_fin !== r.date_debut ? `<span>📅 jusqu'au ${formatDate(r.date_fin)}</span>` : ''}
         </div>
         <div class="resa-card-badges">
-          ${r.numero_confirmation ? `<span class="resa-badge-mini">📋 ${h(r.numero_confirmation)}</span>` : ''}
+          ${r.numero_confirmation ? `<span class="resa-badge-mini" style="display:inline-flex;align-items:center;gap:3px"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V6h10v2z"/></svg>${h(r.numero_confirmation)}</span>` : ''}
           ${hasLink ? `<span class="resa-badge-mini resa-badge-lien">🔗 Lien</span>` : ''}
-          ${docCount ? `<span class="resa-badge-mini resa-badge-doc">📎 ${docCount}</span>` : ''}
+          ${docCount ? `<span class="resa-badge-mini resa-badge-doc" style="display:inline-flex;align-items:center;gap:3px"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>${docCount}</span>` : ''}
         </div>
       </div>
       <div class="resa-actions" onclick="event.stopPropagation()">
@@ -945,7 +945,7 @@ function voirReservation(id) {
 
   const docsHtml = docs.length ? `
     <div class="rd-section">
-      <div class="rd-section-label">📎 Documents liés</div>
+      <div class="rd-section-label" style="display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" style="opacity:.7"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>Documents liés</div>
       <div class="resa-docs">
         ${docs.map(d => `
           <button class="resa-doc-badge" onclick="ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g,'')}\`)">
@@ -985,8 +985,8 @@ function voirReservation(id) {
     ${docsHtml}
 
     <div class="rd-actions">
-      <button class="sheet-btn" onclick="fermerBottomSheet(); modifierReservation(${id})">✏️ Modifier</button>
-      <button class="sheet-btn danger" onclick="fermerBottomSheet(); supprimerReservation(${id})">🗑️ Supprimer</button>
+      <button class="sheet-btn" onclick="fermerBottomSheet(); modifierReservation(${id})" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Modifier</button>
+      <button class="sheet-btn danger" onclick="fermerBottomSheet(); supprimerReservation(${id})" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Supprimer</button>
     </div>
   `;
 
@@ -1490,7 +1490,7 @@ async function chargerDocuments() {
   const container = document.getElementById('liste-documents');
 
   if (docs.length === 0) {
-    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon">📁</div><p>Aucun document ajouté</p></div>`;
+    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon"><svg viewBox="0 0 24 24" fill="currentColor" width="36" height="36" style="opacity:.35"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div><p>Aucun document ajouté</p></div>`;
     return;
   }
 
@@ -1530,8 +1530,8 @@ async function chargerDocuments() {
               </div>
               <div class="doc-actions">
                 <button class="btn-mini btn-mini-view" onclick="ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g, '')}\`)" title="Ouvrir">👁️</button>
-                <button class="btn-mini btn-mini-edit" onclick="modifierDocument(${d.id})" title="Modifier">✏️</button>
-                <button class="btn-mini btn-mini-del" onclick="supprimerDocument(${d.id})" title="Supprimer">🗑️</button>
+                <button class="btn-mini btn-mini-edit" onclick="modifierDocument(${d.id})" title="Modifier"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+                <button class="btn-mini btn-mini-del" onclick="supprimerDocument(${d.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
               </div>
             </div>`;
           }).join('')}
@@ -1784,7 +1784,7 @@ async function uploaderDocument(input) {
   const file = input.files[0];
   if (!file) return;
 
-  document.getElementById('doc-filename').textContent = `📎 ${file.name}`;
+  document.getElementById('doc-filename').innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" style="flex-shrink:0;vertical-align:middle;margin-right:3px"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>${file.name}`;
 
   const formData = new FormData();
   formData.append('fichier', file);
@@ -2524,7 +2524,7 @@ async function chargerAdmin() {
               ${d.taille ? `<div class="adm-row-meta"><span>${formatTaille(d.taille)}</span></div>` : ''}
             </div>
             <div class="adm-row-actions">
-              <a href="${API}/api/voyages/${voyageActuel}/docs-participants/${d.id}/download" target="_blank" class="btn-mini adm-btn-link" title="Télécharger">⬇️</a>
+              <a href="${API}/api/voyages/${voyageActuel}/docs-participants/${d.id}/download" target="_blank" class="btn-mini adm-btn-link" title="Télécharger"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></a>
             </div>
           </div>`).join('') +
           `</div></div>`;
@@ -2554,9 +2554,9 @@ async function chargerAdmin() {
               <div style="flex:1;min-width:0">
                 <div style="font-weight:700;font-size:.85rem;margin-bottom:2px">${a.titre}</div>
                 ${a.contenu ? `<div style="font-size:.8rem;color:var(--text-muted);line-height:1.4;white-space:pre-wrap">${a.contenu}</div>` : ''}
-                ${a.document_id ? `<div style="margin-top:6px"><span class="resa-badge-mini resa-badge-doc">📎 Document lié</span></div>` : ''}
+                ${a.document_id ? `<div style="margin-top:6px"><span class="resa-badge-mini resa-badge-doc" style="display:inline-flex;align-items:center;gap:3px"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>Document lié</span></div>` : ''}
               </div>
-              <button class="btn-mini btn-mini-del" onclick="supprimerAttribution(${a.id})" style="flex-shrink:0">🗑️</button>
+              <button class="btn-mini btn-mini-del" onclick="supprimerAttribution(${a.id})" title="Supprimer" style="flex-shrink:0"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
             </div>`).join('') +
           `</div></div>`;
       }).join('') + `</div>`;
@@ -2566,19 +2566,19 @@ async function chargerAdmin() {
     <!-- ── Sous-navigation sticky ── -->
     <nav class="adm-sub-nav">
       <button class="adm-sub-btn" data-tab="reservations" onclick="_activerSousOngletAdmin('reservations')">
-        🎫 Réservations
+        <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M20 12c0-1.1.9-2 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v4c1.1 0 2 .9 2 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2zm-5 5.5H9v-3h6v3zm0-6H9v-3h6v3zm0-6H9v-3h6v3z"/></svg>Réservations
       </button>
       <button class="adm-sub-btn" data-tab="documents" onclick="_activerSousOngletAdmin('documents')">
-        📁 Documents
+        <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>Documents
       </button>
       <button class="adm-sub-btn" data-tab="demandes" onclick="_activerSousOngletAdmin('demandes')">
-        📩 Demandes${enAttente > 0 ? `<span class="adm-sub-badge">${enAttente}</span>` : ''}
+        <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>Demandes${enAttente > 0 ? `<span class="adm-sub-badge">${enAttente}</span>` : ''}
       </button>
       <button class="adm-sub-btn" data-tab="attributions" onclick="_activerSousOngletAdmin('attributions')">
-        🔒 Attributions
+        <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>Attributions
       </button>
       <button class="adm-sub-btn" data-tab="docs-participants" onclick="_activerSousOngletAdmin('docs-participants')">
-        📤 Docs invités
+        <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>Docs invités
       </button>
     </nav>
 
@@ -2589,7 +2589,7 @@ async function chargerAdmin() {
       </div>
       <div class="adm-section">
         <div class="adm-section-head">
-          <span class="adm-section-title">🎫 Réservations</span>
+          <span class="adm-section-title">Réservations</span>
           <button class="btn-mini-add" onclick="ouvrirModalReservation()">+ Ajouter</button>
         </div>
         ${reservations.length === 0 ? `<div class="adm-empty">Aucune réservation</div>` : `
@@ -2606,7 +2606,7 @@ async function chargerAdmin() {
       </div>
       <div class="adm-section">
         <div class="adm-section-head">
-          <span class="adm-section-title">📁 Documents</span>
+          <span class="adm-section-title">Documents</span>
           <button class="btn-mini-add" onclick="ouvrirModalDocument()">+ Ajouter</button>
         </div>
         ${documents.length === 0 ? `<div class="adm-empty">Aucun document</div>` : `
@@ -2625,9 +2625,9 @@ async function chargerAdmin() {
                 </div>
               </div>
               <div class="adm-row-actions">
-                <a href="${API}/api/documents/${doc.id}/download" target="_blank" class="btn-mini adm-btn-link" title="Télécharger">⬇️</a>
-                <button class="btn-mini btn-mini-edit" onclick="modifierDocument(${doc.id})" title="Modifier">✏️</button>
-                <button class="btn-mini btn-mini-del" onclick="supprimerDocument(${doc.id})" title="Supprimer">🗑️</button>
+                <a href="${API}/api/documents/${doc.id}/download" target="_blank" class="btn-mini adm-btn-link" title="Télécharger"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></a>
+                <button class="btn-mini btn-mini-edit" onclick="modifierDocument(${doc.id})" title="Modifier"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+                <button class="btn-mini btn-mini-del" onclick="supprimerDocument(${doc.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
               </div>
             </div>`;
           }).join('')}
@@ -2645,7 +2645,7 @@ async function chargerAdmin() {
       </div>
       <div class="adm-section">
         <div class="adm-section-head">
-          <span class="adm-section-title">📩 Demandes des invités</span>
+          <span class="adm-section-title">Demandes des invités</span>
         </div>
         ${demandes.length === 0
           ? `<div class="adm-empty">Aucune demande pour l'instant.</div>`
@@ -2660,9 +2660,9 @@ async function chargerAdmin() {
               </div>
               <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
                 ${d.statut === 'en_attente' ? `
-                <button class="btn-mini" style="background:#dcfce7;color:#16a34a;border:none" onclick="traiterDemande(${d.id},'traitee')">✓ Traité</button>
-                <button class="btn-mini" style="background:#fee2e2;color:#dc2626;border:none" onclick="traiterDemande(${d.id},'rejetee')">✗</button>
-                ` : `<span style="font-size:.75rem;color:var(--text-muted);padding:4px 8px;background:var(--border);border-radius:8px">${d.statut === 'traitee' ? '✓ Traité' : '✗ Rejeté'}</span>`}
+                <button class="btn-mini" style="background:#dcfce7;color:#16a34a;border:none;display:inline-flex;align-items:center;gap:4px" onclick="traiterDemande(${d.id},'traitee')"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Traité</button>
+                <button class="btn-mini" style="background:#fee2e2;color:#dc2626;border:none;display:inline-flex;align-items:center;gap:4px" onclick="traiterDemande(${d.id},'rejetee')"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+                ` : `<span style="font-size:.75rem;color:var(--text-muted);padding:4px 8px;background:var(--border);border-radius:8px;display:inline-flex;align-items:center;gap:4px">${d.statut === 'traitee' ? '<svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Traité' : '<svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Rejeté'}</span>`}
               </div>
             </div>
           </div>`).join('')}
@@ -2674,7 +2674,7 @@ async function chargerAdmin() {
     <div id="adm-sub-attributions">
       <div class="adm-section">
         <div class="adm-section-head">
-          <span class="adm-section-title">🔒 Attributions privées</span>
+          <span class="adm-section-title">Attributions privées</span>
           <button class="btn-mini-add" onclick="ouvrirModalAttribution()">+ Attribuer</button>
         </div>
         ${attributionsHtml}
@@ -2685,7 +2685,7 @@ async function chargerAdmin() {
     <div id="adm-sub-docs-participants">
       <div class="adm-section">
         <div class="adm-section-head">
-          <span class="adm-section-title">📤 Docs déposés par les participants</span>
+          <span class="adm-section-title">Docs déposés par les participants</span>
         </div>
         ${docsPartHtml}
       </div>
@@ -2694,7 +2694,7 @@ async function chargerAdmin() {
     <!-- ── Clôture du trip ── -->
     <div class="adm-cloture-footer">
       <div class="adm-cloture-inner">
-        <div class="adm-cloture-icon">🏁</div>
+        <div class="adm-cloture-icon"><svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg></div>
         <div class="adm-cloture-text">
           <div class="adm-cloture-titre">Clôture du trip</div>
           <div class="adm-cloture-desc">Soldes finaux & archivage</div>
@@ -2933,7 +2933,7 @@ function _renderCommentairesAdmin(liste) {
   const container = document.getElementById('discussion-messages');
   if (!container) return;
   if (!liste.length) {
-    container.innerHTML = `<div class="chat-empty"><div style="font-size:2rem;margin-bottom:8px">💬</div><p>Aucun message pour l'instant.</p></div>`;
+    container.innerHTML = `<div class="chat-empty"><div style="margin-bottom:8px;display:flex;justify-content:center;opacity:.35"><svg viewBox="0 0 24 24" fill="currentColor" width="36" height="36"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></div><p>Aucun message pour l'instant.</p></div>`;
     return;
   }
   container.innerHTML = liste.map(c => {

@@ -162,13 +162,13 @@
     <div id="tab-bagages" class="tab-panel">
       <div class="budget-section">
         <div class="budget-section-header">
-          <span class="budget-section-title">🧳 Ma liste de bagages</span>
+          <span class="budget-section-title">Ma liste de bagages</span>
         </div>
         <div style="padding:0 16px 14px">
           <div id="bagages-participant-selector" class="avatars-row" style="margin-bottom:12px"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn-primary" onclick="genererSuggestions()" style="flex:1;justify-content:center">
-              ✨ Suggestions intelligentes
+            <button class="btn-primary" onclick="genererSuggestions()" style="flex:1;justify-content:center;gap:6px">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M7.5 5.6L10 7 8.6 4.5 10 2 7.5 3.4 5 2l1.4 2.5L5 7zm12 9.8L17 14l1.4 2.5L17 19l2.5-1.4L22 19l-1.4-2.5L22 14zM22 2l-2.5 1.4L17 2l1.4 2.5L17 7l2.5-1.4L22 7l-1.4-2.5zm-7.63 5.29a1 1 0 0 0-1.41 0L1.29 18.96a1 1 0 0 0 0 1.41l2.34 2.34c.39.39 1.02.39 1.41 0L16.7 11.05a1 1 0 0 0 0-1.41l-2.33-2.35z"/></svg>Suggestions intelligentes
             </button>
             <button class="btn-secondary" onclick="ouvrirModalAjoutArticle()" style="flex:1">
               + Article
@@ -216,14 +216,14 @@
     <!-- ONGLET DISCUSSION -->
     <div id="tab-discussion" class="tab-panel">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:5">
-        <span style="font-weight:700;font-size:.88rem;color:var(--text-muted)">💬 Discussion générale</span>
-        <button class="btn-mini-add" onclick="ouvrirMessagePrive()">📨 Message privé</button>
+        <span style="font-weight:700;font-size:.88rem;color:var(--text-muted);display:inline-flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>Discussion générale</span>
+        <button class="btn-mini-add" onclick="ouvrirMessagePrive()" style="display:inline-flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Message privé</button>
       </div>
       <div id="discussion-messages" class="chat-messages"></div>
       <div class="chat-input-bar">
         <textarea class="chat-input" id="discussion-input" placeholder="Écrire un message en tant qu'organisateur…" rows="1"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_envoyerCommentaireAdmin();}"></textarea>
-        <button class="chat-send" id="discussion-send" onclick="_envoyerCommentaireAdmin()">➤</button>
+        <button class="chat-send" id="discussion-send" onclick="_envoyerCommentaireAdmin()"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
       </div>
     </div>
 
@@ -891,7 +891,7 @@
 <div id="modal-attribution" class="modal-overlay hidden">
   <div class="modal">
     <div class="modal-header">
-      <h2>🔒 Attribution privée</h2>
+      <h2 style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="color:var(--accent);flex-shrink:0"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>Attribution privée</h2>
       <button class="btn-icon" onclick="fermerModal('modal-attribution')">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
@@ -909,7 +909,7 @@
       <textarea id="attr-contenu" rows="3" placeholder="Ex : Siège 14A — Vol FR1234 — Embarquement porte B22…"></textarea>
     </div>
     <div class="form-group">
-      <label>📎 Document lié (optionnel)</label>
+      <label style="display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="opacity:.6"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>Document lié (optionnel)</label>
       <select id="attr-document">
         <option value="">— Aucun document —</option>
       </select>
@@ -934,7 +934,7 @@
 <div id="modal-cloture" class="modal-overlay hidden">
   <div class="modal" style="padding:0;overflow:hidden">
     <div class="modal-header" style="padding:16px 16px 14px">
-      <h2>🏁 Clôture du trip</h2>
+      <h2 style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="color:var(--accent);flex-shrink:0"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>Clôture du trip</h2>
       <button class="btn-icon" onclick="fermerModal('modal-cloture')">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
@@ -1021,7 +1021,7 @@
 <div id="modal-message-prive" class="modal-overlay hidden">
   <div class="modal">
     <div class="modal-header">
-      <h2>📨 Message privé</h2>
+      <h2 style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="color:var(--accent);flex-shrink:0"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Message privé</h2>
       <button class="btn-icon" onclick="fermerModal('modal-message-prive')">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>

@@ -2123,7 +2123,7 @@ textarea { resize: vertical; line-height: 1.6; }
   border-radius: 6px;
   background: var(--accent);
   border: none; color: #fff;
-  font-size: 1rem; cursor: pointer;
+  cursor: pointer;
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   transition: background .15s;
@@ -2173,11 +2173,9 @@ textarea { resize: vertical; line-height: 1.6; }
   font-size: .74rem;
   font-weight: 500;
   cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px;
   white-space: nowrap;
   transition: background .15s, color .15s, border-color .15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 .adm-sub-btn.active {
   background: var(--text);
@@ -2355,9 +2353,9 @@ textarea { resize: vertical; line-height: 1.6; }
   padding: 14px 16px;
 }
 .adm-cloture-icon {
-  font-size: 1.5rem;
   flex-shrink: 0;
-  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent-dark);
 }
 .adm-cloture-text { flex: 1; min-width: 0; }
 .adm-cloture-titre {
