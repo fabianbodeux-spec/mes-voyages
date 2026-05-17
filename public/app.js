@@ -1097,7 +1097,7 @@ async function chargerAccueil() {
   } else if (debut > today) {
     const diff = Math.ceil((debut - today) / 86400000);
     heroClass = 'upcoming';
-    heroLabel = '🗓️ Départ dans';
+    heroLabel = 'Départ dans';
     heroDays  = `${diff} jour${diff > 1 ? 's' : ''}`;
   } else if (fin && fin < today) {
     const diff = Math.ceil((today - fin) / 86400000);
@@ -1108,7 +1108,7 @@ async function chargerAccueil() {
     const totalDays = fin ? Math.round((fin - debut) / 86400000) + 1 : null;
     const jourN = Math.round((today - debut) / 86400000) + 1;
     heroClass = 'ongoing';
-    heroLabel = '🌍 En cours';
+    heroLabel = 'En cours';
     heroDays  = totalDays ? `Jour ${jourN} / ${totalDays}` : `Jour ${jourN}`;
   }
 
