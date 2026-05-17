@@ -8,8 +8,17 @@ const API = '';  // même origin
 let currentUser = null;
 let _authToken = localStorage.getItem('crewigo_token');
 
+// Cache utilisateur local — évite l'écran de login à chaque ouverture
+const _USER_CACHE_KEY = 'crewigo_user';
+function _cacheUser(user) {
+  try { localStorage.setItem(_USER_CACHE_KEY, JSON.stringify(user)); } catch {}
+}
+function _getCachedUser() {
+  try { return JSON.parse(localStorage.getItem(_USER_CACHE_KEY) || 'null'); } catch { return null; }
+}
+
 // Intercepteur global : injecte le token JWT sur tous les appels /api/
-// et redirige vers login en cas de 401
+// et redirige vers login uniquement sur 401 explicite du serveur
 (function installFetchInterceptor() {
   const _native = window.fetch.bind(window);
   window.fetch = function(url, opts = {}) {
@@ -27,27 +36,65 @@ let _authToken = localStorage.getItem('crewigo_token');
 })();
 
 async function initAuth() {
+  // Lire le paramètre ?auth= (register / login)
+  const authParam = new URLSearchParams(window.location.search).get('auth');
+  if (authParam) {
+    const cleanUrl = window.location.pathname + window.location.hash;
+    history.replaceState(null, '', cleanUrl);
+  }
+
+  // Aucun token → écran de connexion
   if (!_authToken) {
     _showAuthScreen();
-    // Lire le paramètre ?auth= pour pré-sélectionner le bon formulaire
-    const authParam = new URLSearchParams(window.location.search).get('auth');
-    if (authParam === 'register' || authParam === 'login') {
-      switchAuthForm(authParam);
-    }
-    // Nettoyer l'URL sans recharger la page
-    if (authParam) {
-      const cleanUrl = window.location.pathname + window.location.hash;
-      history.replaceState(null, '', cleanUrl);
-    }
+    if (authParam === 'register' || authParam === 'login') switchAuthForm(authParam);
     return;
   }
-  try {
-    const r = await fetch('/api/auth/me');
-    if (!r.ok) { _doLogout(); return; }
-    currentUser = await r.json();
+
+  // ── Stratégie "offline-first" ──────────────────────────────────────────
+  // 1. Si un user est en cache : afficher l'app immédiatement
+  const cached = _getCachedUser();
+  if (cached) {
+    currentUser = cached;
     _hideAuthScreen();
     _updateHeaderUser();
-  } catch { _doLogout(); }
+    // Valider silencieusement en arrière-plan (sans bloquer l'UI)
+    _validateTokenSilently();
+    return;
+  }
+
+  // 2. Premier lancement avec token mais sans cache : vérifier le serveur
+  try {
+    const r = await fetch('/api/auth/me');
+    if (r.status === 401) { _doLogout(); return; }   // token invalide côté serveur
+    if (!r.ok) {
+      // Erreur serveur ou réseau → ne pas déconnecter, juste afficher l'app
+      _showAuthScreen();
+      if (authParam === 'register' || authParam === 'login') switchAuthForm(authParam);
+      return;
+    }
+    currentUser = await r.json();
+    _cacheUser(currentUser);
+    _hideAuthScreen();
+    _updateHeaderUser();
+  } catch {
+    // Pas de réseau au démarrage → afficher l'écran auth plutôt que déconnecter
+    _showAuthScreen();
+  }
+}
+
+// Vérifie le token en arrière-plan sans bloquer ni déconnecter sur erreur réseau
+async function _validateTokenSilently() {
+  try {
+    const r = await fetch('/api/auth/me');
+    if (r.status === 401) { _doLogout(); return; }   // token expiré ou révoqué
+    if (!r.ok) return;                                // erreur serveur → ignorer
+    const fresh = await r.json();
+    currentUser = fresh;
+    _cacheUser(fresh);
+    _updateHeaderUser();
+  } catch {
+    // Pas de réseau → session locale maintenue, aucune action
+  }
 }
 
 function _showAuthScreen() {
@@ -93,6 +140,7 @@ async function submitLogin() {
     _authToken = data.token;
     currentUser = data.user;
     localStorage.setItem('crewigo_token', _authToken);
+    _cacheUser(currentUser);
     _hideAuthScreen();
     _updateHeaderUser();
     chargerVoyages();
@@ -121,6 +169,7 @@ async function submitRegister() {
     _authToken = data.token;
     currentUser = data.user;
     localStorage.setItem('crewigo_token', _authToken);
+    _cacheUser(currentUser);
     _hideAuthScreen();
     _updateHeaderUser();
     chargerVoyages();
@@ -137,6 +186,7 @@ function _doLogout() {
   _authToken = null;
   currentUser = null;
   localStorage.removeItem('crewigo_token');
+  localStorage.removeItem(_USER_CACHE_KEY);
   _showAuthScreen();
 }
 
