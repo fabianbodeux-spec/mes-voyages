@@ -313,6 +313,8 @@ body {
 .crewigo-logo-img {
   width: 30px;
   height: 30px;
+  max-width: 30px;
+  max-height: 30px;
   border-radius: 7px;
   object-fit: cover;
   flex-shrink: 0;
