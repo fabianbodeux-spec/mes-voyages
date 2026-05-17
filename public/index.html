@@ -368,49 +368,70 @@
       <button class="create-back-btn" id="create-back-btn" onclick="createBack()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
       </button>
-      <span class="create-step-counter" id="create-step-counter">1 · 4</span>
+      <span class="create-step-counter" id="create-step-counter">1 · 5</span>
       <button class="create-skip-btn" id="create-skip-btn" onclick="createSkip()">Passer</button>
     </div>
 
     <!-- Zone des steps -->
     <div class="create-steps-wrap" id="create-steps-wrap">
 
-      <!-- STEP 1 — Destination -->
+      <!-- STEP 1 — Pays + Ville -->
       <div class="create-step active" id="create-step-1">
-        <div class="create-eyebrow">Étape 1</div>
+        <div class="create-eyebrow">Étape 1 · 5</div>
         <h2 class="create-title">Où file<br><em>le crew ?</em></h2>
-        <input type="text" id="c-destination" class="create-big-input"
-               placeholder="Tokyo, Corse, New York…"
-               oninput="createInputChanged()"
-               onkeydown="if(event.key==='Enter')createNext()">
-        <div class="create-chips" id="create-dest-chips">
-          <button class="create-chip" onclick="createChip(this,'🏖️ Plage')">🏖️ Plage</button>
-          <button class="create-chip" onclick="createChip(this,'🏔️ Montagne')">🏔️ Montagne</button>
-          <button class="create-chip" onclick="createChip(this,'🌆 City trip')">🌆 City trip</button>
-          <button class="create-chip" onclick="createChip(this,'🌿 Nature')">🌿 Nature</button>
-          <button class="create-chip" onclick="createChip(this,'🏝️ Île')">🏝️ Île</button>
-          <button class="create-chip" onclick="createChip(this,'🚗 Road trip')">🚗 Road trip</button>
-          <button class="create-chip" onclick="createChip(this,'🤿 Plongée')">🤿 Plongée</button>
-          <button class="create-chip" onclick="createChip(this,'🎉 EVG')">🎉 EVG</button>
-          <button class="create-chip" onclick="createChip(this,'🎊 EVF')">🎊 EVF</button>
-          <button class="create-chip" onclick="createChip(this,'🍻 Entre potes')">🍻 Entre potes</button>
+        <div class="create-dest-fields">
+          <div class="create-dest-field">
+            <span class="create-dest-label">Pays</span>
+            <input type="text" id="c-pays" class="create-big-input"
+                   placeholder="France, Espagne, Japon…"
+                   oninput="createInputChanged()"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('c-ville').focus()}">
+          </div>
+          <div class="create-dest-field">
+            <span class="create-dest-label">Ville</span>
+            <input type="text" id="c-ville" class="create-big-input"
+                   placeholder="Paris, Barcelone, Tokyo…"
+                   oninput="createInputChanged()"
+                   onkeydown="if(event.key==='Enter')createNext()">
+          </div>
         </div>
       </div>
 
-      <!-- STEP 2 — Nom + couleur -->
+      <!-- STEP 2 — Type de trip -->
       <div class="create-step" id="create-step-2">
-        <div class="create-eyebrow">Étape 2</div>
-        <h2 class="create-title">Le nom<br><em>de l'aventure</em></h2>
-        <input type="text" id="c-nom" class="create-big-input"
-               placeholder="Corse Été 2026…"
-               oninput="createInputChanged()"
-               onkeydown="if(event.key==='Enter')createNext()">
-        <p class="create-hint" id="c-nom-hint"></p>
+        <div class="create-eyebrow">Étape 2 · 5</div>
+        <h2 class="create-title">Quel type<br><em>de trip ?</em></h2>
+        <div class="create-type-grid">
+          <button class="create-type-card" onclick="createSelectType('ski', this)"><span class="type-emoji">🎿</span>Ski</button>
+          <button class="create-type-card" onclick="createSelectType('city', this)"><span class="type-emoji">🏙️</span>City Trip</button>
+          <button class="create-type-card" onclick="createSelectType('plage', this)"><span class="type-emoji">🏖️</span>Plage</button>
+          <button class="create-type-card" onclick="createSelectType('ile', this)"><span class="type-emoji">🏝️</span>Île</button>
+          <button class="create-type-card" onclick="createSelectType('road', this)"><span class="type-emoji">🚗</span>Road Trip</button>
+          <button class="create-type-card" onclick="createSelectType('evg', this)"><span class="type-emoji">🎉</span>EVG</button>
+          <button class="create-type-card" onclick="createSelectType('evf', this)"><span class="type-emoji">💍</span>EVF</button>
+          <button class="create-type-card" onclick="createSelectType('camping', this)"><span class="type-emoji">🏕️</span>Camping</button>
+          <button class="create-type-card" onclick="createSelectType('rando', this)"><span class="type-emoji">🌿</span>Rando</button>
+          <button class="create-type-card" onclick="createSelectType('plongee', this)"><span class="type-emoji">🤿</span>Plongée</button>
+          <button class="create-type-card" onclick="createSelectType('potes', this)"><span class="type-emoji">🍻</span>Entre potes</button>
+          <button class="create-type-card" onclick="createSelectType('autre', this)"><span class="type-emoji">✈️</span>Autre</button>
+        </div>
       </div>
 
-      <!-- STEP 3 — Dates -->
+      <!-- STEP 3 — Nom du voyage -->
       <div class="create-step" id="create-step-3">
-        <div class="create-eyebrow">Étape 3</div>
+        <div class="create-eyebrow">Étape 3 · 5</div>
+        <h2 class="create-title">Comment<br><em>on l'appelle ?</em></h2>
+        <input type="text" id="c-nom" class="create-big-input"
+               placeholder="Mon Trip 2026…"
+               oninput="createInputChanged()"
+               onkeydown="if(event.key==='Enter')createNext()">
+        <p class="create-suggestions-label">Suggestions pour toi</p>
+        <div class="create-suggestions" id="create-suggestions"></div>
+      </div>
+
+      <!-- STEP 4 — Dates -->
+      <div class="create-step" id="create-step-4">
+        <div class="create-eyebrow">Étape 4 · 5</div>
         <h2 class="create-title">Quand on<br><em>décolle ?</em></h2>
         <div class="create-dates-row">
           <div class="create-date-card">
@@ -431,10 +452,19 @@
         <p class="create-hint" style="margin-top:16px">Optionnel — tu pourras modifier ça plus tard</p>
       </div>
 
-      <!-- STEP 4 — Participants -->
-      <div class="create-step" id="create-step-4">
-        <div class="create-eyebrow">Étape 4</div>
-        <h2 class="create-title">Qui part<br><em>avec toi ?</em></h2>
+      <!-- STEP 5 — Organisateur + Crew -->
+      <div class="create-step" id="create-step-5">
+        <div class="create-eyebrow">Étape 5 · 5</div>
+        <h2 class="create-title">L'orga,<br><em>c'est toi.</em></h2>
+        <div class="create-orga-block">
+          <div class="create-orga-avatar" id="create-orga-avatar">?</div>
+          <div class="create-orga-info">
+            <span class="create-orga-label">Organisateur</span>
+            <input type="text" id="c-orga-nom" placeholder="Ton prénom"
+                   oninput="createInputChanged(); (function(v){var a=document.getElementById('create-orga-avatar');if(a)a.textContent=v?v[0].toUpperCase():'?';})(this.value)">
+          </div>
+        </div>
+        <div class="create-crew-sep"><span>Ajouter des membres</span></div>
         <div class="create-p-add-row">
           <input type="text" id="c-p-nom" class="create-participant-input"
                  placeholder="Prénom du voyageur…"

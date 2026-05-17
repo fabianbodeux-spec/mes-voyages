@@ -3145,18 +3145,79 @@ textarea { resize: vertical; line-height: 1.6; }
   animation: fadeInUp 0.4s 0.2s ease both;
 }
 
+/* Step 1 — deux inputs destination */
+.create-dest-fields { display: flex; flex-direction: column; gap: 16px; margin-top: 8px; }
+.create-dest-field { display: flex; flex-direction: column; gap: 6px; }
+.create-dest-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.create-dest-field .create-big-input { margin-bottom: 0; }
+
+/* Step 2 — grille types */
+.create-type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.create-type-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px; border: 1.5px solid var(--border-solid); border-radius: 12px;
+  background: var(--bg); cursor: pointer; transition: all 0.15s;
+  font-size: 0.75rem; font-weight: 600; color: var(--text-muted);
+  font-family: 'Satoshi', var(--font-body);
+}
+.create-type-card .type-emoji { font-size: 1.6rem; line-height: 1; }
+.create-type-card:hover { border-color: var(--accent); color: var(--text); }
+.create-type-card.active {
+  border-color: var(--accent); background: var(--accent-light);
+  color: var(--accent);
+}
+
+/* Step 3 — suggestions */
+.create-suggestions-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 20px 0 10px; }
+.create-suggestions { display: flex; flex-wrap: wrap; gap: 8px; }
+.create-suggestion-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 999px;
+  background: var(--accent-glow); border: 1px solid rgba(249,115,22,0.25);
+  color: var(--accent); font-size: 0.82rem; font-weight: 600;
+  font-family: 'Satoshi', var(--font-body);
+  cursor: pointer; transition: background 0.15s, transform 0.1s;
+}
+.create-suggestion-pill:hover { background: rgba(249,115,22,0.18); transform: translateY(-1px); }
+.create-suggestion-pill::before { content: '✨'; font-size: 0.75rem; }
+
+/* Step 5 — organisateur */
+.create-orga-block {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; border: 1.5px solid var(--accent); border-radius: 12px;
+  background: var(--accent-light); margin-bottom: 24px;
+}
+.create-orga-avatar {
+  width: 44px; height: 44px; border-radius: 50%; background: var(--accent);
+  color: #fff; font-size: 1.1rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.create-orga-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.create-orga-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
+.create-orga-info input {
+  background: transparent; border: none; padding: 0;
+  font-size: 1rem; font-weight: 700; color: var(--text); outline: none;
+  font-family: 'Satoshi', var(--font-body);
+}
+.create-crew-sep { display: flex; align-items: center; gap: 10px; margin: 8px 0 16px; }
+.create-crew-sep::before, .create-crew-sep::after { content: ''; flex: 1; height: 1px; background: var(--border-solid); }
+.create-crew-sep span { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+
 /* ── Dark mode ────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   .create-wizard { background: #1A1917; }
   .create-big-input { background: #2A2520; border-color: #3A3530; color: #F5F5F4; }
   .create-big-input:focus { background: #2A2520; }
   .create-participant-input { background: #2A2520; border-color: #3A3530; color: #F5F5F4; }
-  .create-chip { background: #2A2520; border-color: #3A3530; }
+  .create-type-card { background: #2A2520; border-color: #3A3530; color: rgba(245,245,244,0.5); }
+  .create-type-card.active { background: rgba(249,115,22,0.15); }
   .create-date-card { background: #2A2520; border-color: #3A3530; }
   .create-p-item { background: #2A2520; }
   .create-footer { background: #1A1917; border-color: #3A3530; }
   .create-confirm { background: #1A1917; }
   .create-back-btn { background: #2A2520; }
+  .create-orga-block { background: rgba(249,115,22,0.10); }
+  .create-orga-info input { color: #F5F5F4; }
 }
 
 /* ═══ APP STARTUP SPLASH ════════════════════════════════════════

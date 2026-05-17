@@ -491,6 +491,7 @@ let _createStep = 1;
 let _createSelectedColor = '#F97316';
 let _createParticipants = [];
 let _createPColorIdx = 0;
+let _createTripType = null;
 
 // Timers splash — conservés pour pouvoir les annuler à tout moment
 let _splashT1 = null, _splashT2 = null, _splashT3 = null;
@@ -528,10 +529,18 @@ function ouvrirCreateTrip() {
   });
 
   // Reset fields
-  ['c-destination','c-nom','c-date-debut','c-date-fin','c-p-nom'].forEach(id => {
+  ['c-pays','c-ville','c-nom','c-date-debut','c-date-fin','c-p-nom','c-orga-nom'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  // Pré-remplir l'organisateur
+  const orgaInput = document.getElementById('c-orga-nom');
+  if (orgaInput && currentUser?.nom) orgaInput.value = currentUser.nom;
+  const orgaAvatar = document.getElementById('create-orga-avatar');
+  if (orgaAvatar) orgaAvatar.textContent = currentUser?.nom ? currentUser.nom[0].toUpperCase() : '?';
+  _createTripType = null;
+  // Reset type cards
+  document.querySelectorAll('.create-type-card').forEach(c => c.classList.remove('active'));
   const debutVal = document.getElementById('c-date-debut-val');
   const finVal   = document.getElementById('c-date-fin-val');
   if (debutVal) debutVal.textContent = '—';
@@ -540,9 +549,8 @@ function ouvrirCreateTrip() {
   if (duree) { duree.textContent = ''; duree.style.display = 'none'; }
   const pList = document.getElementById('create-p-list');
   if (pList) pList.innerHTML = '';
-  const hint = document.getElementById('c-nom-hint');
-  if (hint) hint.textContent = '';
-  document.querySelectorAll('.create-chip').forEach(c => c.classList.remove('active'));
+  const suggestions = document.getElementById('create-suggestions');
+  if (suggestions) suggestions.innerHTML = '';
 
   // ── Séquence splash robuste ─────────────────────────────
   // Phase 1 : attendre 2,3s puis déclencher le fade-out CSS
@@ -576,7 +584,7 @@ function ouvrirCreateTrip() {
       });
 
       _updateCreateUI();
-      setTimeout(() => document.getElementById('c-destination')?.focus(), 60);
+      setTimeout(() => document.getElementById('c-pays')?.focus(), 60);
     };
 
     splashEl.addEventListener('transitionend', proceed, { once: true });
@@ -584,31 +592,42 @@ function ouvrirCreateTrip() {
   }, 2300);
 }
 
-function _renderCreateColors() {
-  const row = document.getElementById('c-color-row');
-  row.innerHTML = _CREATE_COLORS.map(c => `
-    <button class="create-color-opt ${c === _createSelectedColor ? 'active' : ''}"
-            style="background:${c}"
-            onclick="createPickColor('${c}', this)"></button>
-  `).join('');
+function createSelectType(type, btn) {
+  _createTripType = type;
+  document.querySelectorAll('.create-type-card').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
 }
 
-function createPickColor(color, btn) {
-  _createSelectedColor = color;
-  document.querySelectorAll('.create-color-opt').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+function _generateNameSuggestions(ville, pays, type) {
+  const year = new Date().getFullYear() + 1;
+  const dest = ville || pays || 'Trip';
+  if (type === 'evg')   return ['EVG ' + dest + ' ' + year, 'Last Night in ' + dest, 'Adios Liberté ' + year];
+  if (type === 'evf')   return ['EVF ' + dest + ' ' + year, 'Girls Just Wanna GO', 'Last Dance ' + dest];
+  if (type === 'ski')   return ['Ski Squad ' + dest + ' ' + year, 'On the Slopes ' + year, dest + ' Snow Trip'];
+  if (type === 'city')  return [dest + ' City Trip ' + year, 'Weekend ' + dest, 'Crew x ' + dest];
+  if (type === 'road')  return ['Road Trip ' + year, dest + ' x ' + year, 'On the Road'];
+  return [dest + ' ' + year, 'Le Trip de ' + dest, 'Crew ' + dest + ' ' + year];
+}
+
+function _renderNameSuggestions() {
+  const container = document.getElementById('create-suggestions');
+  if (!container) return;
+  const ville = (document.getElementById('c-ville')?.value || '').trim();
+  const pays  = (document.getElementById('c-pays')?.value  || '').trim();
+  const suggestions = _generateNameSuggestions(ville, pays, _createTripType);
+  container.innerHTML = suggestions.map(s => `
+    <button class="create-suggestion-pill" onclick="(function(){
+      var el=document.getElementById('c-nom');
+      if(el){el.value=${JSON.stringify(s)};el.focus();}
+      _updateCreateCTA();
+    })()">${h(s)}</button>
+  `).join('');
 }
 
 function createInputChanged() {
   _updateCreateCTA();
 }
 
-function createChip(btn, value) {
-  document.getElementById('c-destination').value = value;
-  document.querySelectorAll('.create-chip').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active');
-  _updateCreateCTA();
-}
 
 function createUpdateDuree() {
   const d1 = document.getElementById('c-date-debut').value;
@@ -664,7 +683,7 @@ function createRemoveP(id) {
 }
 
 function _updateCreateUI() {
-  const total = 4;
+  const total = 5;
   const pct = (_createStep / total) * 100;
   document.getElementById('create-progress-fill').style.width = pct + '%';
   document.getElementById('create-step-counter').textContent = `${_createStep} · ${total}`;
@@ -673,28 +692,17 @@ function _updateCreateUI() {
   const backBtn = document.getElementById('create-back-btn');
   backBtn.style.visibility = _createStep === 1 ? 'hidden' : 'visible';
 
-  // Bouton passer (seulement étapes 3 et 4)
+  // Bouton passer (seulement étapes 4 et 5)
   const skipBtn = document.getElementById('create-skip-btn');
-  skipBtn.style.visibility = _createStep >= 3 ? 'visible' : 'hidden';
+  skipBtn.style.visibility = _createStep >= 4 ? 'visible' : 'hidden';
 
   // CTA label
   const ctaLabel = document.getElementById('create-cta-label');
-  ctaLabel.textContent = _createStep === 4 ? 'Créer le trip' : 'Continuer';
+  ctaLabel.textContent = _createStep === 5 ? 'Créer le trip 🚀' : 'Continuer';
 
-  // Auto-suggestion du nom
-  if (_createStep === 2) {
-    const dest = document.getElementById('c-destination').value.trim();
-    const nomInput = document.getElementById('c-nom');
-    const hint = document.getElementById('c-nom-hint');
-    if (!nomInput.value && dest) {
-      const year = new Date().getFullYear() + 1;
-      const suggestion = `${dest} ${year}`;
-      hint.textContent = `💡 Suggestion : "${suggestion}"`;
-      hint.onclick = () => { nomInput.value = suggestion; hint.textContent = ''; _updateCreateCTA(); nomInput.focus(); };
-      hint.style.cursor = 'pointer';
-    } else {
-      hint.textContent = '';
-    }
+  // Suggestions de nom au step 3
+  if (_createStep === 3) {
+    _renderNameSuggestions();
   }
 
   _updateCreateCTA();
@@ -703,9 +711,11 @@ function _updateCreateUI() {
 function _updateCreateCTA() {
   const btn = document.getElementById('create-cta-btn');
   let enabled = true;
-  if (_createStep === 1) enabled = !!document.getElementById('c-destination').value.trim();
-  if (_createStep === 2) enabled = !!document.getElementById('c-nom').value.trim();
-  // Steps 3 & 4 : toujours activé (optionnel)
+  if (_createStep === 1) enabled = !!(document.getElementById('c-ville')?.value.trim());
+  if (_createStep === 2) enabled = true; // toujours activé (optionnel)
+  if (_createStep === 3) enabled = !!(document.getElementById('c-nom')?.value.trim());
+  if (_createStep === 4) enabled = true; // toujours activé (optionnel)
+  if (_createStep === 5) enabled = !!(document.getElementById('c-orga-nom')?.value.trim());
   btn.disabled = !enabled;
   btn.style.opacity = enabled ? '1' : '0.45';
 }
@@ -742,14 +752,14 @@ function createNext() {
   const btn = document.getElementById('create-cta-btn');
   if (btn.disabled) return;
 
-  if (_createStep < 4) {
+  if (_createStep < 5) {
     const next = _createStep + 1;
     _slideStep(_createStep, next, 'forward');
     _createStep = next;
     _updateCreateUI();
     // Focus sur le bon input
-    const focusMap = { 2: 'c-nom', 3: 'c-date-debut', 4: 'c-p-nom' };
-    if (focusMap[_createStep]) setTimeout(() => document.getElementById(focusMap[_createStep]).focus(), 380);
+    const focusMap = { 2: null, 3: 'c-nom', 4: 'c-date-debut', 5: 'c-orga-nom' };
+    if (focusMap[_createStep]) setTimeout(() => document.getElementById(focusMap[_createStep])?.focus(), 380);
   } else {
     _creerTrip();
   }
@@ -764,7 +774,7 @@ function createBack() {
 }
 
 function createSkip() {
-  if (_createStep < 4) {
+  if (_createStep < 5) {
     const next = _createStep + 1;
     _slideStep(_createStep, next, 'forward');
     _createStep = next;
@@ -775,12 +785,15 @@ function createSkip() {
 }
 
 async function _creerTrip() {
-  const destination = document.getElementById('c-destination').value.trim();
+  const ville       = (document.getElementById('c-ville')?.value || '').trim();
+  const pays        = (document.getElementById('c-pays')?.value  || '').trim();
+  const destination = [ville, pays].filter(Boolean).join(', ');
   const nom         = document.getElementById('c-nom').value.trim();
   const date_debut  = document.getElementById('c-date-debut').value;
   const date_fin    = document.getElementById('c-date-fin').value;
+  const orgaNom     = (document.getElementById('c-orga-nom')?.value || '').trim();
 
-  if (!destination || !nom) return;
+  if (!nom) return;
 
   const btn = document.getElementById('create-cta-btn');
   btn.disabled = true;
@@ -794,7 +807,15 @@ async function _creerTrip() {
     });
     const { id } = await res.json();
 
-    // Créer les participants
+    // Créer l'organisateur en premier
+    if (orgaNom) {
+      await fetch(`${API}/api/voyages/${id}/participants`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom: orgaNom, couleur: _createSelectedColor })
+      });
+    }
+
+    // Créer les participants supplémentaires
     for (const p of _createParticipants) {
       await fetch(`${API}/api/voyages/${id}/participants`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -810,8 +831,9 @@ async function _creerTrip() {
       wizard.classList.add('hidden');
       const conf = document.getElementById('create-confirm');
       conf.classList.remove('hidden');
+      const totalPax = _createParticipants.length + (orgaNom ? 1 : 0);
       document.getElementById('create-confirm-sub').textContent =
-        `${h(nom)} · ${h(destination)}${_createParticipants.length ? ` · ${_createParticipants.length} voyageur${_createParticipants.length > 1 ? 's' : ''}` : ''}`;
+        `${h(nom)}${destination ? ' · ' + h(destination) : ''}${totalPax ? ` · ${totalPax} voyageur${totalPax > 1 ? 's' : ''}` : ''}`;
     }, 300);
 
     // Aller sur le voyage après l'animation
