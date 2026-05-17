@@ -77,7 +77,7 @@ body {
    ════════════════════════════════════════════════════════════════ */
 #screen-home .app-header {
   position: relative;
-  background: #1C1917;
+  background: #000;
   border-bottom: none;
   padding: 0;
   padding-top: env(safe-area-inset-top);
@@ -86,37 +86,37 @@ body {
   flex-direction: column;
 }
 
-/* Bande orange décorative en bas du header */
+/* Liseré bas — gradient orange subtil (à la place de la barre 3px) */
 #screen-home .app-header::after {
   content: '';
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #F97316, #FBBF24);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(249,115,22,0.45), transparent);
 }
 
-/* Cercles décoratifs flottants */
+/* Grand halo orange — comme le hero de la landing */
 .home-hero-bg {
   position: absolute;
   inset: 0;
-  overflow: hidden;
   pointer-events: none;
+  background: radial-gradient(ellipse 110% 75% at 50% -10%,
+    rgba(249,115,22,0.15) 0%, transparent 65%);
 }
-.home-hero-bg::before {
-  content: '';
+.home-hero-bg::before,
+.home-hero-bg::after { display: none; }
+
+/* Grille subtile — même esprit que la landing */
+.home-hero-grid {
   position: absolute;
-  top: -60px; right: -60px;
-  width: 220px; height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(249,115,22,0.18) 0%, transparent 70%);
-}
-.home-hero-bg::after {
-  content: '';
-  position: absolute;
-  bottom: -40px; left: -40px;
-  width: 160px; height: 160px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 70%);
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 25%, #000 15%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 25%, #000 15%, transparent 100%);
+  pointer-events: none;
 }
 
 .home-hero-grad { display: none; }
@@ -134,68 +134,102 @@ body {
 #screen-home .crewigo-logo .logo-go   { color: #F97316; }
 
 #screen-home .btn-icon {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.13);
   color: white;
 }
-#screen-home .btn-icon:hover { background: rgba(255,255,255,0.16); }
+#screen-home .btn-icon:hover { background: rgba(255,255,255,0.14); }
 
 .home-tagline {
   position: relative;
   z-index: 10;
-  padding: 20px 24px 0;
-}
-.home-tagline-eyebrow {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #F97316;
-  margin-bottom: 8px;
-}
-.home-tagline-main {
-  font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 800;
-  line-height: 1.15;
-  color: #FFFFFF;
-  letter-spacing: -.03em;
-}
-.home-tagline-main em {
-  font-style: italic;
-  color: #F97316;
+  padding: 22px 24px 0;
 }
 
-/* CTA principal */
+/* Eyebrow "crew we GO" — style brand, pas uppercase générique */
+.home-tagline-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(249,115,22,0.75);
+  margin-bottom: 12px;
+  padding: 4px 12px 4px 10px;
+  background: rgba(249,115,22,0.10);
+  border: 1px solid rgba(249,115,22,0.25);
+  border-radius: 999px;
+}
+.home-tagline-eyebrow::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #F97316;
+  box-shadow: 0 0 6px rgba(249,115,22,0.7);
+  flex-shrink: 0;
+}
+.home-tagline-eyebrow em {
+  font-style: italic;
+  color: rgba(255,255,255,0.65);
+}
+
+/* Headline — gradient blanc + "et GO." en orange italic */
+.home-tagline-main {
+  font-family: var(--font-display);
+  font-size: 2.15rem;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  background: linear-gradient(175deg, #fff 50%, rgba(255,255,255,0.5));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.home-tagline-go {
+  -webkit-text-fill-color: #F97316;
+  color: #F97316;
+  font-style: italic;
+}
+
+/* CTA principal — premium, avec glow */
 .home-cta-row {
   position: relative;
   z-index: 10;
   padding: 20px 20px 0;
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
 .home-cta-btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   background: #F97316;
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 11px 20px;
-  font-size: 0.85rem;
+  border-radius: 12px;
+  padding: 12px 22px;
+  font-size: 0.88rem;
   font-weight: 700;
   font-family: 'Satoshi', var(--font-body);
   cursor: pointer;
-  letter-spacing: -.01em;
-  transition: background 0.15s, transform 0.1s;
+  letter-spacing: -0.01em;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 4px 20px rgba(249,115,22,0.38);
 }
-.home-cta-btn:active { transform: scale(0.97); background: #EA6B0B; }
+.home-cta-btn:hover {
+  background: #fb923c;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 28px rgba(249,115,22,0.55);
+}
+.home-cta-btn:active { transform: scale(0.97); background: #EA6B0B; box-shadow: none; }
 .home-tagline-sub {
   font-size: 0.75rem;
-  color: rgba(255,255,255,0.45);
-  font-weight: 400;
+  color: rgba(255,255,255,0.35);
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: 0.02em;
 }
 
 .home-banner {
@@ -1707,8 +1741,8 @@ textarea { resize: vertical; line-height: 1.6; }
   .modal::before { display: none; }
   .bottom-sheet { max-width: 480px; left: 50%; transform: translateX(-50%); border-radius: 14px 14px 0 0; }
   .carte-frame { height: 500px; }
-  #screen-home .app-header { min-height: 320px; }
-  .home-tagline-main { font-size: 2.4rem; }
+  #screen-home .app-header { min-height: 300px; }
+  .home-tagline-main { font-size: 2.5rem; }
 }
 
 @media (min-width: 1024px) {
