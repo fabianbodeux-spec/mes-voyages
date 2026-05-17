@@ -616,12 +616,15 @@ function _renderNameSuggestions() {
   const pays  = (document.getElementById('c-pays')?.value  || '').trim();
   const suggestions = _generateNameSuggestions(ville, pays, _createTripType);
   container.innerHTML = suggestions.map(s => `
-    <button class="create-suggestion-pill" onclick="(function(){
-      var el=document.getElementById('c-nom');
-      if(el){el.value=${JSON.stringify(s)};el.focus();}
-      _updateCreateCTA();
-    })()">${h(s)}</button>
+    <button class="create-suggestion-pill" data-sug="${h(s)}">${h(s)}</button>
   `).join('');
+  container.querySelectorAll('.create-suggestion-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const el = document.getElementById('c-nom');
+      if (el) { el.value = btn.dataset.sug; el.focus(); }
+      _updateCreateCTA();
+    });
+  });
 }
 
 function createInputChanged() {
