@@ -3,7 +3,7 @@
   "name": "CrewiGo — Voyages entre amis",
   "short_name": "CrewiGo",
   "description": "Planifiez et gérez vos voyages entre amis : programme, budget partagé, documents et notifications.",
-  "start_url": "/app?source=pwa",
+  "start_url": "/app",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#F97316",

@@ -1211,6 +1211,22 @@
     .intro-wordmark { letter-spacing: -0.04em; }
   }
   </style>
+  <!-- Capture beforeinstallprompt le plus tôt possible + enregistrement SW -->
+  <script>
+    // 1. Stocker l'événement dès qu'il arrive, même avant que le reste du JS soit prêt
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window._pwaPrompt = e;
+      // Si le handler principal est déjà prêt, le notifier
+      if (typeof window._pwaPromptReady === 'function') window._pwaPromptReady(e);
+    });
+    // 2. Enregistrer le service worker dès le chargement de la landing
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').catch(function() {});
+      });
+    }
+  </script>
 </head>
 <body>
 
@@ -1649,11 +1665,19 @@
       // ── Android / Chrome / Desktop : beforeinstallprompt
       var deferredPrompt = null;
 
-      window.addEventListener('beforeinstallprompt', function(e) {
-        e.preventDefault();
+      function onPrompt(e) {
         deferredPrompt = e;
         showButtons();
-      });
+      }
+
+      // Récupérer l'événement s'il a été capturé en avance (dans <head>)
+      if (window._pwaPrompt) {
+        onPrompt(window._pwaPrompt);
+      } else {
+        // Sinon s'abonner pour le recevoir quand il arrive
+        window._pwaPromptReady = onPrompt;
+        window.addEventListener('beforeinstallprompt', onPrompt);
+      }
 
       window.addEventListener('appinstalled', function() {
         deferredPrompt = null;
