@@ -1128,7 +1128,7 @@ async function chargerAccueil() {
     <div class="dash-hero dash-hero-${heroClass}">
       <div class="dash-hero-eyebrow">${heroLabel}</div>
       <div class="dash-hero-days">${heroDays}</div>
-      <div class="dash-hero-dest">📍 ${h(voyage.destination || voyage.nom)}</div>
+      <div class="dash-hero-dest"><svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" style="opacity:.75;flex-shrink:0;vertical-align:middle;margin-right:4px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>${h(voyage.destination || voyage.nom)}</div>
       ${debut ? `<div class="dash-hero-period">${formatDates(voyage.date_debut, voyage.date_fin)}</div>` : ''}
     </div>
 
@@ -1150,24 +1150,24 @@ async function chargerAccueil() {
 
     <!-- Prochaine réservation -->
     ${prochaine ? `
-    <div class="dash-section-title">🎫 Prochaine réservation</div>
+    <div class="dash-section-title"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M20 12c0-1.1.9-2 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v4c1.1 0 2 .9 2 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2zm-5 5.5H9v-3h6v3zm0-6H9v-3h6v3zm0-6H9v-3h6v3z"/></svg>Prochaine réservation</div>
     <div class="dash-next-card" onclick="voirReservation(${prochaine.id})">
       <div class="dash-next-icon">${resaIcons[prochaine.type] || '📌'}</div>
       <div class="dash-next-body">
         <div class="dash-next-titre">${h(prochaine.titre)}</div>
         <div class="dash-next-date">${formatDate(prochaine.date_debut)}${prochaine.heure_debut ? ' · ' + h(prochaine.heure_debut) : ''}</div>
-        ${prochaine.adresse ? `<div class="dash-next-lieu">📍 ${h(prochaine.adresse)}</div>` : ''}
+        ${prochaine.adresse ? `<div class="dash-next-lieu"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="flex-shrink:0;opacity:.7"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>${h(prochaine.adresse)}</div>` : ''}
       </div>
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="flex-shrink:0;color:var(--text-muted)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
     </div>` : ''}
 
     <!-- Météo -->
-    <div class="dash-section-title">🌤️ Météo à destination</div>
+    <div class="dash-section-title"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"/></svg>Météo à destination</div>
     <div id="dash-meteo"><div style="padding:16px;text-align:center;color:var(--text-muted);font-size:.88rem">Chargement de la météo…</div></div>
 
     <!-- Description -->
     ${voyage.description ? `
-    <div class="dash-section-title">📝 Notes du voyage</div>
+    <div class="dash-section-title"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>Notes du voyage</div>
     <div class="dash-notes">${h(voyage.description).replace(/\n/g,'<br>')}</div>` : ''}
 
     <div style="height:24px"></div>
@@ -1209,7 +1209,7 @@ async function chargerMeteo(destination) {
 
     el.innerHTML = `
       <div class="dash-weather-card">
-        <div class="dash-weather-loc">📍 ${name}, ${country}</div>
+        <div class="dash-weather-loc"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="flex-shrink:0;opacity:.7"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>${name}, ${country}</div>
         <div class="dash-weather-row">
           ${days.map((day, i) => {
             const dn = new Date(day.date + 'T00:00:00');
@@ -1294,7 +1294,7 @@ async function chargerProgramme() {
   });
 
   if (items.length === 0) {
-    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon">📆</div><p>Aucun élément planifié</p><p style="font-size:.83rem;margin-top:6px;color:var(--text-muted)">Ajoutez des réservations ou des événements avec une date</p></div>`;
+    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon"><svg viewBox="0 0 24 24" fill="currentColor" width="36" height="36" style="opacity:.35"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></div><p>Aucun élément planifié</p><p style="font-size:.83rem;margin-top:6px;color:var(--text-muted)">Ajoutez des réservations ou des événements avec une date</p></div>`;
     return;
   }
 
@@ -1370,10 +1370,10 @@ async function chargerProgramme() {
                 <span class="prog-icon">${icon}</span>
                 <div class="prog-card-body">
                   <div class="prog-titre">${h(it.titre)}</div>
-                  ${it.heure ? `<span class="prog-heure">🕐 ${h(it.heure)}</span>` : ''}
-                  ${it.lieu ? `<div class="prog-lieu">📍 ${h(it.lieu)}</div>` : ''}
+                  ${it.heure ? `<span class="prog-heure"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="flex-shrink:0;opacity:.7"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L11 13.18V7h1.5v5.52l4.72 2.71-.99 1.77z"/></svg>${h(it.heure)}</span>` : ''}
+                  ${it.lieu ? `<div class="prog-lieu"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="flex-shrink:0;opacity:.6"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>${h(it.lieu)}</div>` : ''}
                   ${it.description ? `<div class="prog-desc">${h(it.description).replace(/\n/g,'<br>')}</div>` : ''}
-                  ${it.lien ? `<a href="${it.lien}" target="_blank" rel="noopener" class="prog-lien">🔗 Ouvrir</a>` : ''}
+                  ${it.lien ? `<a href="${it.lien}" target="_blank" rel="noopener" class="prog-lien"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="flex-shrink:0"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7C4.24 7 2 9.24 2 12s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zm4.1 1h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>Ouvrir</a>` : ''}
                   ${it.docs && it.docs.length ? `
                   <div class="prog-docs">
                     ${it.docs.map(d => `
@@ -1385,9 +1385,9 @@ async function chargerProgramme() {
                 <div class="prog-actions">
                   ${badge}
                   <div style="display:flex;gap:4px;margin-top:6px">
-                    ${mapSrc ? `<button class="btn-mini btn-mini-map" onclick="event.stopPropagation();toggleProgMap('${mapId}', this)" title="Voir sur la carte">🗺️</button>` : ''}
-                    <button class="btn-mini btn-mini-edit" onclick="event.stopPropagation();${editFn}">✏️</button>
-                    <button class="btn-mini btn-mini-del" onclick="event.stopPropagation();${delFn}">🗑️</button>
+                    ${mapSrc ? `<button class="btn-mini btn-mini-map" onclick="event.stopPropagation();toggleProgMap('${mapId}', this)" title="Voir sur la carte"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg></button>` : ''}
+                    <button class="btn-mini btn-mini-edit" onclick="event.stopPropagation();${editFn}" title="Modifier"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+                    <button class="btn-mini btn-mini-del" onclick="event.stopPropagation();${delFn}" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
                   </div>
                 </div>
               </div>
@@ -2189,7 +2189,11 @@ function afficherParticipants(participants) {
       <div class="avatar" style="background:${p.couleur}">${p.nom[0].toUpperCase()}</div>
       <span class="avatar-nom">${p.nom}</span>
       <button class="avatar-pin ${p.pin ? 'has-pin' : ''}" title="${p.pin ? 'Modifier le PIN' : 'Ajouter un PIN'}"
-        onclick="ouvrirModalPin(${p.id},'${p.nom.replace(/'/g,"\\'")}','${p.pin||''}')">${p.pin ? '🔒' : '🔓'}</button>
+        onclick="ouvrirModalPin(${p.id},'${p.nom.replace(/'/g,"\\'")}','${p.pin||''}')">
+        ${p.pin
+          ? `<svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`
+          : `<svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5C9.25 1 7.13 2.97 7 5.5h1.9c.14-1.47 1.36-2.6 2.85-2.6C13.27 2.9 14.5 4.13 14.5 5.5H8c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/></svg>`}
+      </button>
       <button class="avatar-del" onclick="supprimerParticipant(${p.id})" title="Supprimer">×</button>
     </div>
   `).join('')}</div>`;
