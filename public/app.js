@@ -274,9 +274,9 @@ async function chargerVoyages() {
   const statsEl = document.getElementById('home-stats');
   if (statsEl) {
     const pills = [];
-    if (enCours > 0) pills.push(`<span class="stat-pill">🟢 ${enCours} en cours</span>`);
-    if (aVenir > 0) pills.push(`<span class="stat-pill">📅 ${aVenir} à venir</span>`);
-    pills.push(`<span class="stat-pill">✈️ ${voyages.length} voyage${voyages.length > 1 ? 's' : ''}</span>`);
+    if (enCours > 0) pills.push(`<span class="stat-pill stat-pill--ongoing"><svg viewBox="0 0 24 24" fill="currentColor" width="8" height="8"><circle cx="12" cy="12" r="6"/></svg>${enCours} en cours</span>`);
+    if (aVenir > 0) pills.push(`<span class="stat-pill stat-pill--upcoming"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="11" height="11"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>${aVenir} à venir</span>`);
+    pills.push(`<span class="stat-pill stat-pill--total"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>${voyages.length} voyage${voyages.length > 1 ? 's' : ''}</span>`);
     statsEl.innerHTML = pills.join('');
   }
 

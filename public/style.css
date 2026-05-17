@@ -205,13 +205,32 @@ body {
 }
 .home-stats { display: flex; gap: 8px; flex-wrap: wrap; }
 .stat-pill {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   border-radius: 20px;
-  padding: 5px 14px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: rgba(255,255,255,0.80);
+  padding: 6px 13px;
+  font-size: 0.71rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.stat-pill--ongoing {
+  background: rgba(16,185,129,0.14);
+  border-color: rgba(16,185,129,0.28);
+  color: #6EE7B7;
+}
+.stat-pill--upcoming {
+  background: rgba(99,102,241,0.14);
+  border-color: rgba(99,102,241,0.28);
+  color: #A5B4FC;
+}
+.stat-pill--total {
+  background: rgba(249,115,22,0.12);
+  border-color: rgba(249,115,22,0.26);
+  color: #FDBA74;
 }
 
 #screen-home .main-content {
@@ -2234,11 +2253,9 @@ textarea { resize: vertical; line-height: 1.6; }
   .btn-mini-edit { background: #3A2010; color: #F0956A; border-color: #4A2C16; }
   .btn-mini-del  { background: #3A0A0A; color: #FCA5A5; border-color: #4A1010; }
 
-  .stat-pill {
-    background: rgba(38,38,38,0.92);
-    border: none;
-    color: var(--text);
-  }
+  .stat-pill--ongoing  { background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.32); color: #6EE7B7; }
+  .stat-pill--upcoming { background: rgba(99,102,241,0.18); border-color: rgba(99,102,241,0.32); color: #A5B4FC; }
+  .stat-pill--total    { background: rgba(249,115,22,0.16); border-color: rgba(249,115,22,0.30); color: #FDBA74; }
 
   input[type="text"], input[type="date"], input[type="time"],
   input[type="url"], input[type="number"], input[type="password"],
