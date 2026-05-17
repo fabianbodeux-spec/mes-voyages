@@ -76,6 +76,7 @@ const localDB = {
   },
   agenda: {
     getByVoyage: (vid) => charger('agenda').filter(a => a.voyage_id === +vid).sort((a,b) => (a.date+(a.heure||'')).localeCompare(b.date+(b.heure||''))),
+    getById: (id) => charger('agenda').find(a => a.id === +id),
     create: (vid, data) => { const list = charger('agenda'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('agenda', list); return item; },
     update: (id, data) => { const list = charger('agenda'); const idx = list.findIndex(a => a.id === +id); if (idx===-1) return false; list[idx] = { ...list[idx], ...data }; sauvegarder('agenda', list); return true; },
     delete: (id) => sauvegarder('agenda', charger('agenda').filter(a => a.id !== +id))
@@ -89,6 +90,7 @@ const localDB = {
   },
   participants: {
     getByVoyage: (vid) => charger('participants').filter(p => p.voyage_id === +vid),
+    getById: (id) => charger('participants').find(p => p.id === +id),
     create: (vid, data) => { const list = charger('participants'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('participants', list); return item; },
     update: (id, data) => { const list = charger('participants'); const idx = list.findIndex(p => p.id === +id); if (idx === -1) return false; list[idx] = { ...list[idx], ...data }; sauvegarder('participants', list); return true; },
     delete: (id) => {
@@ -98,6 +100,7 @@ const localDB = {
   },
   depenses: {
     getByVoyage: (vid) => charger('depenses').filter(d => d.voyage_id === +vid).sort((a,b) => (b.date||'').localeCompare(a.date||'')),
+    getById: (id) => charger('depenses').find(d => d.id === +id),
     create: (vid, data) => { const list = charger('depenses'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('depenses', list); return item; },
     update: (id, data) => { const list = charger('depenses'); const idx = list.findIndex(d => d.id === +id); if (idx===-1) return false; list[idx] = { ...list[idx], ...data }; sauvegarder('depenses', list); return true; },
     delete: (id) => sauvegarder('depenses', charger('depenses').filter(d => d.id !== +id))
@@ -105,6 +108,7 @@ const localDB = {
   bagages: {
     getByVoyage: (vid) => charger('bagages').filter(b => b.voyage_id === +vid),
     getByParticipant: (vid, pid) => charger('bagages').filter(b => b.voyage_id === +vid && b.participant_id === +pid),
+    getById: (id) => charger('bagages').find(b => b.id === +id),
     create: (vid, data) => { const list = charger('bagages'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('bagages', list); return item; },
     update: (id, data) => { const list = charger('bagages'); const idx = list.findIndex(b => b.id === +id); if (idx===-1) return false; list[idx] = { ...list[idx], ...data }; sauvegarder('bagages', list); return true; },
     delete: (id) => sauvegarder('bagages', charger('bagages').filter(b => b.id !== +id)),
@@ -125,12 +129,14 @@ const localDB = {
   messages_prives: {
     getByVoyage: (vid) => charger('messages_prives').filter(m => m.voyage_id === +vid).sort((a,b) => b.created_at.localeCompare(a.created_at)),
     getByParticipant: (vid, pid) => charger('messages_prives').filter(m => m.voyage_id === +vid && m.participant_id === +pid).sort((a,b) => a.created_at.localeCompare(b.created_at)),
+    getById: (id) => charger('messages_prives').find(m => m.id === +id),
     create: (vid, data) => { const list = charger('messages_prives'); const item = { ...data, id: nextId(list), voyage_id: +vid, lu: false, created_at: new Date().toISOString() }; list.push(item); sauvegarder('messages_prives', list); return item; },
     marquerLu: (id) => { const list = charger('messages_prives'); const idx = list.findIndex(m => m.id === +id); if (idx !== -1) { list[idx].lu = true; sauvegarder('messages_prives', list); } },
     delete: (id) => sauvegarder('messages_prives', charger('messages_prives').filter(m => m.id !== +id))
   },
   demandes: {
     getByVoyage: (vid) => charger('demandes').filter(d => d.voyage_id === +vid).sort((a,b) => b.created_at.localeCompare(a.created_at)),
+    getById: (id) => charger('demandes').find(d => d.id === +id),
     create: (vid, data) => {
       const list = charger('demandes');
       const item = { ...data, id: nextId(list), voyage_id: +vid, statut: 'en_attente', created_at: new Date().toISOString() };
@@ -141,11 +147,13 @@ const localDB = {
       const idx = list.findIndex(d => d.id === +id);
       if (idx === -1) return false;
       list[idx] = { ...list[idx], ...data }; sauvegarder('demandes', list); return true;
-    }
+    },
+    delete: (id) => sauvegarder('demandes', charger('demandes').filter(d => d.id !== +id))
   },
   attributions: {
     getByVoyage: (vid) => charger('attributions').filter(a => a.voyage_id === +vid).sort((a,b) => a.participant_id - b.participant_id),
     getByParticipant: (vid, pid) => charger('attributions').filter(a => a.voyage_id === +vid && a.participant_id === +pid),
+    getById: (id) => charger('attributions').find(a => a.id === +id),
     create: (vid, data) => {
       const list = charger('attributions');
       const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() };
@@ -336,6 +344,7 @@ const pgDB = pgPool ? {
   },
   agenda: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM agenda WHERE voyage_id=$1 ORDER BY date ASC, heure ASC NULLS LAST', [vid])).rows,
+    getById: async (id) => (await pgPool.query('SELECT * FROM agenda WHERE id=$1', [id])).rows[0],
     create: async (vid, data) => (await pgPool.query('INSERT INTO agenda(voyage_id,date,heure,titre,description,lieu,type,lien) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *', [vid,data.date,data.heure,data.titre,data.description,data.lieu,data.type||'activite',data.lien||null])).rows[0],
     update: async (id, data) => { await pgPool.query('UPDATE agenda SET date=$1,heure=$2,titre=$3,description=$4,lieu=$5,type=$6,lien=$7 WHERE id=$8', [data.date,data.heure,data.titre,data.description,data.lieu,data.type,data.lien||null,id]); return true; },
     delete: async (id) => pgPool.query('DELETE FROM agenda WHERE id=$1', [id])
@@ -349,6 +358,7 @@ const pgDB = pgPool ? {
   },
   participants: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM participants WHERE voyage_id=$1 ORDER BY created_at ASC', [vid])).rows,
+    getById: async (id) => (await pgPool.query('SELECT * FROM participants WHERE id=$1', [id])).rows[0],
     create: async (vid, data) => (await pgPool.query('INSERT INTO participants(voyage_id,nom,couleur,pin) VALUES($1,$2,$3,$4) RETURNING *', [vid,data.nom,data.couleur||'#6366F1',data.pin||null])).rows[0],
     update: async (id, data) => { await pgPool.query('UPDATE participants SET nom=$1,couleur=$2,pin=$3 WHERE id=$4', [data.nom,data.couleur,data.pin??null,id]); return true; },
     delete: async (id) => {
@@ -358,6 +368,7 @@ const pgDB = pgPool ? {
   },
   depenses: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM depenses WHERE voyage_id=$1 ORDER BY date DESC NULLS LAST, created_at DESC', [vid])).rows,
+    getById: async (id) => (await pgPool.query('SELECT * FROM depenses WHERE id=$1', [id])).rows[0],
     create: async (vid, data) => (await pgPool.query('INSERT INTO depenses(voyage_id,titre,montant,payeur_id,participants_ids,date,categorie) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *', [vid,data.titre,data.montant,data.payeur_id,data.participants_ids,data.date,data.categorie||'autre'])).rows[0],
     update: async (id, data) => { await pgPool.query('UPDATE depenses SET titre=$1,montant=$2,payeur_id=$3,participants_ids=$4,date=$5,categorie=$6 WHERE id=$7', [data.titre,data.montant,data.payeur_id,data.participants_ids,data.date,data.categorie,id]); return true; },
     delete: async (id) => pgPool.query('DELETE FROM depenses WHERE id=$1', [id])
@@ -365,6 +376,7 @@ const pgDB = pgPool ? {
   bagages: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM bagages WHERE voyage_id=$1 ORDER BY participant_id, categorie, created_at ASC', [vid])).rows,
     getByParticipant: async (vid, pid) => (await pgPool.query('SELECT * FROM bagages WHERE voyage_id=$1 AND participant_id=$2 ORDER BY categorie, created_at ASC', [vid, pid])).rows,
+    getById: async (id) => (await pgPool.query('SELECT * FROM bagages WHERE id=$1', [id])).rows[0],
     create: async (vid, data) => (await pgPool.query('INSERT INTO bagages(voyage_id,participant_id,nom,categorie,checked) VALUES($1,$2,$3,$4,$5) RETURNING *', [vid,data.participant_id,data.nom,data.categorie||'divers',false])).rows[0],
     update: async (id, data) => {
       if ('checked' in data && Object.keys(data).length === 1) {
@@ -392,6 +404,7 @@ const pgDB = pgPool ? {
   messages_prives: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM messages_prives WHERE voyage_id=$1 ORDER BY created_at DESC', [vid])).rows,
     getByParticipant: async (vid, pid) => (await pgPool.query('SELECT * FROM messages_prives WHERE voyage_id=$1 AND participant_id=$2 ORDER BY created_at ASC', [vid, pid])).rows,
+    getById: async (id) => (await pgPool.query('SELECT * FROM messages_prives WHERE id=$1', [id])).rows[0],
     create: async (vid, data) => (await pgPool.query(
       'INSERT INTO messages_prives(voyage_id,participant_id,auteur,message) VALUES($1,$2,$3,$4) RETURNING *',
       [vid, data.participant_id, data.auteur || 'Organisateur', data.message]
@@ -401,15 +414,18 @@ const pgDB = pgPool ? {
   },
   demandes: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM demandes WHERE voyage_id=$1 ORDER BY created_at DESC', [vid])).rows,
+    getById: async (id) => (await pgPool.query('SELECT * FROM demandes WHERE id=$1', [id])).rows[0],
     create: async (vid, data) => (await pgPool.query(
       'INSERT INTO demandes(voyage_id,auteur,onglet,element_type,element_id,element_nom,message) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *',
       [vid, data.auteur, data.onglet, data.element_type, data.element_id||null, data.element_nom, data.message]
     )).rows[0],
-    update: async (id, data) => { await pgPool.query('UPDATE demandes SET statut=$1 WHERE id=$2', [data.statut, id]); return true; }
+    update: async (id, data) => { await pgPool.query('UPDATE demandes SET statut=$1 WHERE id=$2', [data.statut, id]); return true; },
+    delete: async (id) => pgPool.query('DELETE FROM demandes WHERE id=$1', [id])
   },
   attributions: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM attributions WHERE voyage_id=$1 ORDER BY participant_id, created_at ASC', [vid])).rows,
     getByParticipant: async (vid, pid) => (await pgPool.query('SELECT * FROM attributions WHERE voyage_id=$1 AND participant_id=$2 ORDER BY created_at ASC', [vid, pid])).rows,
+    getById: async (id) => (await pgPool.query('SELECT * FROM attributions WHERE id=$1', [id])).rows[0],
     create: async (vid, data) => (await pgPool.query(
       'INSERT INTO attributions(voyage_id,participant_id,titre,contenu,document_id) VALUES($1,$2,$3,$4,$5) RETURNING *',
       [vid, data.participant_id, data.titre, data.contenu||null, data.document_id||null]

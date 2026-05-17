@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const multer = require('multer');
 const path = require('path');
 const os = require('os');
@@ -10,7 +11,11 @@ const webpush = require('web-push');
 const db = require('./database');
 
 const IS_CLOUD = db.usePostgres;
-const JWT_SECRET = process.env.JWT_SECRET || 'crewigo-dev-secret-change-in-prod';
+if (!process.env.JWT_SECRET && IS_CLOUD) {
+  console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'crewigo-dev-secret-local';
 
 // En prod, les clés VAPID DOIVENT être définies en variables d'environnement
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -37,6 +42,23 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 app.use(cors({
   origin: allowedOrigins || true,
   methods: ['GET','POST','PUT','PATCH','DELETE']
+}));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "cdn.jsdelivr.net", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "api.fontshare.com", "https://api.fontshare.com"],
+      fontSrc: ["'self'", "api.fontshare.com", "https://api.fontshare.com"],
+      imgSrc: ["'self'", "data:", "blob:", "upload.wikimedia.org", "commons.wikimedia.org", "api.qrserver.com", "*.tile.openstreetmap.org", "*.wikimedia.org"],
+      connectSrc: ["'self'", "api.fontshare.com", "fr.wikipedia.org", "commons.wikimedia.org", "geocoding-api.open-meteo.com", "api.open-meteo.com", "nominatim.openstreetmap.org", "api.open-meteo.com"],
+      workerSrc: ["'self'", "blob:", "cdn.jsdelivr.net"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+    }
+  },
+  crossOriginEmbedderPolicy: false,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 app.use(express.json({ limit: '20mb' }));
 
@@ -111,7 +133,7 @@ app.post('/api/auth/register', async (req, res) => {
     if (total <= 1) await db.users.claimOrphanVoyages(user.id);
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, email: user.email, nom: user.nom } });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -125,7 +147,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!match) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, email: user.email, nom: user.nom } });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
@@ -133,7 +155,7 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
     const user = await db.users.getById(req.user.id);
     if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
     res.json(user);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // Rate-limiter en mémoire pour les tentatives PIN
@@ -153,33 +175,54 @@ const run = async (fn) => {
   return result instanceof Promise ? result : result;
 };
 
+// Helper de vérification d'ownership — no-op en mode local
+async function checkVoyageOwnership(voyageId, userId) {
+  if (!IS_CLOUD) return true;
+  const voyage = await run(() => db.voyages.getById(voyageId));
+  return voyage && voyage.owner_id === userId;
+}
+
 // ─── VOYAGES ───────────────────────────────────────────────────────────────
 
 app.get('/api/voyages', authMiddleware, async (req, res) => {
-  try { res.json(await run(() => db.voyages.getAll(req.user.id))); } catch(e) { res.status(500).json({error: e.message}); }
+  try { res.json(await run(() => db.voyages.getAll(req.user.id))); } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.get('/api/voyages/:id', authMiddleware, async (req, res) => {
   try {
     const v = await run(() => db.voyages.getById(req.params.id));
     if (!v) return res.status(404).json({ error: 'Voyage non trouvé' });
+    if (IS_CLOUD && v.owner_id !== req.user.id)
+      return res.status(403).json({ error: 'Accès refusé' });
     res.json(v);
-  } catch(e) { res.status(500).json({error: e.message}); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/voyages', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.voyages.create({ ...req.body, owner_id: req.user.id })); res.json({ id: item.id }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.put('/api/voyages/:id', authMiddleware, async (req, res) => {
-  try { await run(() => db.voyages.update(req.params.id, req.body)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  try {
+    const voyage = await run(() => db.voyages.getById(req.params.id));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    if (IS_CLOUD && voyage.owner_id !== req.user.id)
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.voyages.update(req.params.id, req.body));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.delete('/api/voyages/:id', authMiddleware, async (req, res) => {
-  try { await run(() => db.voyages.delete(req.params.id)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  try {
+    const voyage = await run(() => db.voyages.getById(req.params.id));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    if (IS_CLOUD && voyage.owner_id !== req.user.id)
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.voyages.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.patch('/api/voyages/:id/statut', authMiddleware, async (req, res) => {
@@ -197,58 +240,82 @@ app.patch('/api/voyages/:id/statut', authMiddleware, async (req, res) => {
 
 app.get('/api/voyages/:id/reservations', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.reservations.getByVoyage(req.params.id))); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/voyages/:id/reservations', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.reservations.create(req.params.id, req.body)); res.json({ id: item.id }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.put('/api/reservations/:id', async (req, res) => {
-  try { await run(() => db.reservations.update(req.params.id, req.body)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.put('/api/reservations/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.reservations.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.reservations.update(req.params.id, req.body));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.delete('/api/reservations/:id', async (req, res) => {
-  try { await run(() => db.reservations.delete(req.params.id)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.delete('/api/reservations/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.reservations.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.reservations.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ─── AGENDA ────────────────────────────────────────────────────────────────
 
 app.get('/api/voyages/:id/agenda', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.agenda.getByVoyage(req.params.id))); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/voyages/:id/agenda', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.agenda.create(req.params.id, req.body)); res.json({ id: item.id }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.get('/api/agenda/:id/documents', async (req, res) => {
   try {
     const docs = await run(() => db.documents.getByEvent ? db.documents.getByEvent(req.params.id) : []);
     res.json(docs);
-  } catch(e) { res.status(500).json({error: e.message}); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.put('/api/agenda/:id', async (req, res) => {
-  try { await run(() => db.agenda.update(req.params.id, req.body)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.put('/api/agenda/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.agenda.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.agenda.update(req.params.id, req.body));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.delete('/api/agenda/:id', async (req, res) => {
-  try { await run(() => db.agenda.delete(req.params.id)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.delete('/api/agenda/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.agenda.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.agenda.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ─── DOCUMENTS ─────────────────────────────────────────────────────────────
 
 app.get('/api/voyages/:id/documents', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.documents.getByVoyage(req.params.id))); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/voyages/:id/documents', authMiddleware, upload.single('fichier'), async (req, res) => {
@@ -268,48 +335,74 @@ app.post('/api/voyages/:id/documents', authMiddleware, upload.single('fichier'),
   } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
-app.get('/api/documents/:id/download', async (req, res) => {
+app.get('/api/documents/:id/download', authMiddleware, async (req, res) => {
   try {
     const doc = await run(() => db.documents.getById(req.params.id));
     if (!doc) return res.status(404).json({ error: 'Document non trouvé' });
+    if (!(await checkVoyageOwnership(doc.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
     const mime = ALLOWED_MIMES.has(doc.type_fichier) ? doc.type_fichier : 'application/octet-stream';
     res.setHeader('Content-Type', mime);
     res.setHeader('Content-Disposition', `inline; filename="${safeFilename(doc.nom)}"`);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(Buffer.from(doc.contenu, 'base64'));
-  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.put('/api/documents/:id', async (req, res) => {
-  try { await run(() => db.documents.update(req.params.id, req.body)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.put('/api/documents/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.documents.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.documents.update(req.params.id, req.body));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.delete('/api/documents/:id', async (req, res) => {
-  try { await run(() => db.documents.delete(req.params.id)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.delete('/api/documents/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.documents.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.documents.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ─── PARTICIPANTS ──────────────────────────────────────────────────────────
 
 app.get('/api/voyages/:id/participants', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.participants.getByVoyage(req.params.id))); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/voyages/:id/participants', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.participants.create(req.params.id, req.body)); res.json({ id: item.id }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.put('/api/participants/:id', async (req, res) => {
-  try { await run(() => db.participants.update(req.params.id, req.body)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.put('/api/participants/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.participants.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.participants.update(req.params.id, req.body));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.delete('/api/participants/:id', async (req, res) => {
-  try { await run(() => db.participants.delete(req.params.id)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.delete('/api/participants/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.participants.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.participants.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/partage/:token/verify-pin', async (req, res) => {
@@ -336,34 +429,46 @@ app.post('/api/partage/:token/verify-pin', async (req, res) => {
 
 app.get('/api/voyages/:id/depenses', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.depenses.getByVoyage(req.params.id))); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/voyages/:id/depenses', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.depenses.create(req.params.id, req.body)); res.json({ id: item.id }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.put('/api/depenses/:id', async (req, res) => {
-  try { await run(() => db.depenses.update(req.params.id, req.body)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.put('/api/depenses/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.depenses.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.depenses.update(req.params.id, req.body));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.delete('/api/depenses/:id', async (req, res) => {
-  try { await run(() => db.depenses.delete(req.params.id)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.delete('/api/depenses/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.depenses.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.depenses.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ─── BAGAGES ───────────────────────────────────────────────────────────────
 
 app.get('/api/voyages/:id/bagages', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.bagages.getByVoyage(req.params.id))); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/voyages/:id/bagages', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.bagages.create(req.params.id, req.body)); res.json({ id: item.id }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/voyages/:vid/bagages/bulk', authMiddleware, async (req, res) => {
@@ -374,17 +479,29 @@ app.post('/api/voyages/:vid/bagages/bulk', authMiddleware, async (req, res) => {
       await run(() => db.bagages.create(req.params.vid, { ...item, participant_id }));
     }
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({error: e.message}); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.put('/api/bagages/:id', async (req, res) => {
-  try { await run(() => db.bagages.update(req.params.id, req.body)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.put('/api/bagages/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.bagages.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.bagages.update(req.params.id, req.body));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.delete('/api/bagages/:id', async (req, res) => {
-  try { await run(() => db.bagages.delete(req.params.id)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({error: e.message}); }
+app.delete('/api/bagages/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.bagages.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.bagages.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ─── PARTAGE ────────────────────────────────────────────────────────────────
@@ -404,7 +521,7 @@ app.post('/api/voyages/:id/partager', authMiddleware, async (req, res) => {
     }
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     res.json({ token, url: `${baseUrl}/share/${token}` });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.get('/api/partage/:token', async (req, res) => {
@@ -423,7 +540,7 @@ app.get('/api/partage/:token', async (req, res) => {
     // Ne jamais exposer le PIN — transmettre uniquement has_pin
     const participantsSafe = participants.map(({ pin, ...p }) => ({ ...p, has_pin: !!pin }));
     res.json({ voyage, reservations, agenda, participants: participantsSafe, depenses, bagages, documents });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ─── PUSH NOTIFICATIONS & DEMANDES ──────────────────────────────────────────
@@ -452,7 +569,7 @@ app.post('/api/push/subscribe/:voyageId', authMiddleware, async (req, res) => {
   try {
     await run(() => db.push_subscriptions.upsert(req.params.voyageId, req.body));
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/push/subscribe-partage/:token', async (req, res) => {
@@ -461,7 +578,7 @@ app.post('/api/push/subscribe-partage/:token', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     await run(() => db.push_subscriptions.upsert(voyage.id, req.body));
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/demandes/:token', async (req, res) => {
@@ -493,34 +610,57 @@ app.post('/api/demandes/:token', async (req, res) => {
     }
 
     res.json({ ok: true, id: demande.id });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.get('/api/voyages/:id/demandes', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.demandes.getByVoyage(req.params.id))); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.put('/api/demandes/:id', async (req, res) => {
-  try { await run(() => db.demandes.update(req.params.id, req.body)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+app.put('/api/demandes/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.demandes.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.demandes.update(req.params.id, req.body));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.delete('/api/demandes/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.demandes.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.demandes.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ─── ATTRIBUTIONS PRIVÉES ────────────────────────────────────────────────────
 
 app.get('/api/voyages/:id/attributions', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.attributions.getByVoyage(req.params.id))); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/voyages/:id/attributions', authMiddleware, async (req, res) => {
   try { const item = await run(() => db.attributions.create(req.params.id, req.body)); res.json({ id: item.id }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.delete('/api/attributions/:id', async (req, res) => {
-  try { await run(() => db.attributions.delete(req.params.id)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+app.delete('/api/attributions/:id', authMiddleware, async (req, res) => {
+  try {
+    const item = await run(() => db.attributions.getById(req.params.id));
+    if (!item) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.attributions.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.get('/api/partage/:token/mes-infos/:participantId', async (req, res) => {
@@ -535,14 +675,14 @@ app.get('/api/partage/:token/mes-infos/:participantId', async (req, res) => {
       return { ...a, document: doc ? { id: doc.id, nom: doc.nom, type_fichier: doc.type_fichier } : null };
     }));
     res.json(enriched);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ─── MESSAGES PRIVÉS ───────────────────────────────────────────────────────
 
 app.get('/api/voyages/:id/messages-prives', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.messages_prives.getByVoyage(req.params.id))); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/voyages/:id/messages-prives', authMiddleware, async (req, res) => {
@@ -576,12 +716,18 @@ app.post('/api/voyages/:id/messages-prives', authMiddleware, async (req, res) =>
         }
       }
     }
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.delete('/api/voyages/:id/messages-prives/:msgId', async (req, res) => {
-  try { await run(() => db.messages_prives.delete(req.params.msgId)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+app.delete('/api/voyages/:id/messages-prives/:msgId', authMiddleware, async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getById(req.params.id));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    if (IS_CLOUD && voyage.owner_id !== req.user.id)
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.messages_prives.delete(req.params.msgId));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.get('/api/partage/:token/messages-prives/:participantId', async (req, res) => {
@@ -592,7 +738,7 @@ app.get('/api/partage/:token/messages-prives/:participantId', async (req, res) =
     // Marquer comme lus
     msgs.filter(m => !m.lu).forEach(m => run(() => db.messages_prives.marquerLu(m.id)).catch(() => {}));
     res.json(msgs);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ─── COMMENTAIRES ──────────────────────────────────────────────────────────
@@ -602,7 +748,7 @@ app.get('/api/partage/:token/commentaires', async (req, res) => {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     res.json(await run(() => db.commentaires.getByVoyage(voyage.id)));
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/partage/:token/commentaires', async (req, res) => {
@@ -620,7 +766,7 @@ app.post('/api/partage/:token/commentaires', async (req, res) => {
       tag: 'commentaire-' + voyage.id,
       url: `/share/${req.params.token}?tab=discussion`
     }).catch(() => {});
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.delete('/api/partage/:token/commentaires/:id', async (req, res) => {
@@ -637,7 +783,7 @@ app.delete('/api/partage/:token/commentaires/:id', async (req, res) => {
 
 app.get('/api/voyages/:id/commentaires', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.commentaires.getByVoyage(req.params.id))); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/voyages/:id/commentaires', authMiddleware, async (req, res) => {
@@ -657,12 +803,18 @@ app.post('/api/voyages/:id/commentaires', authMiddleware, async (req, res) => {
         url: `/share/${voyage.share_token}?tab=discussion`
       }).catch(() => {});
     }
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.delete('/api/voyages/:id/commentaires/:cid', async (req, res) => {
-  try { await run(() => db.commentaires.delete(req.params.cid)); res.json({ ok: true }); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+app.delete('/api/voyages/:id/commentaires/:cid', authMiddleware, async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getById(req.params.id));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    if (IS_CLOUD && voyage.owner_id !== req.user.id)
+      return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.commentaires.delete(req.params.cid));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ─── DOCS PARTICIPANTS ──────────────────────────────────────────────────────
@@ -672,7 +824,7 @@ app.get('/api/partage/:token/mes-docs/:participantId', async (req, res) => {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     res.json(await run(() => db.docs_participants.getByParticipant(voyage.id, req.params.participantId)));
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/partage/:token/mes-docs', upload.single('fichier'), async (req, res) => {
@@ -715,12 +867,12 @@ app.delete('/api/partage/:token/mes-docs/:docId', async (req, res) => {
     if (!doc || doc.voyage_id !== voyage.id) return res.status(404).json({ error: 'Document introuvable' });
     await run(() => db.docs_participants.delete(req.params.docId));
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.get('/api/voyages/:id/docs-participants', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.docs_participants.getByVoyage(req.params.id))); }
-  catch(e) { res.status(500).json({ error: e.message }); }
+  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.get('/api/voyages/:id/docs-participants/:docId/download', async (req, res) => {
@@ -778,7 +930,7 @@ app.get('/api/partage/:token/locations/stream', async (req, res) => {
       const set = geoClients.get(vid);
       if (set) { set.delete(res); if (set.size === 0) geoClients.delete(vid); }
     });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // Fallback REST (utilisé si SSE indisponible)
@@ -787,7 +939,7 @@ app.get('/api/partage/:token/locations', async (req, res) => {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Token invalide' });
     res.json(await run(() => db.locations.getByVoyage(voyage.id)));
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/partage/:token/location', async (req, res) => {
@@ -799,7 +951,7 @@ app.post('/api/partage/:token/location', async (req, res) => {
     await run(() => db.locations.upsert(voyage.id, { device_id, participant_id: participant_id || null, nom, couleur: couleur || '#6366F1', lat, lng }));
     broadcastLocations(voyage.id); // push SSE à tous les viewers
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.delete('/api/partage/:token/location/:device_id', async (req, res) => {
@@ -809,7 +961,7 @@ app.delete('/api/partage/:token/location/:device_id', async (req, res) => {
     await run(() => db.locations.delete(voyage.id, req.params.device_id));
     broadcastLocations(voyage.id); // push SSE — retire le marker chez tout le monde
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // Anciens liens /partage/ → redirect vers /share/ même depuis bfcache
