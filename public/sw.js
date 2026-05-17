@@ -1,5 +1,5 @@
 // ─── Cache config ────────────────────────────────────────────────────────────
-const CACHE_VERSION = 'cgo-v4';
+const CACHE_VERSION = 'cgo-v5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -22,12 +22,12 @@ self.addEventListener('install', event => {
   );
 });
 
-// ─── Activate : purge stale caches (sans clients.claim pour éviter interruption)
+// ─── Activate : purge stale caches + prendre contrôle immédiat des pages ouvertes
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 

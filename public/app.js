@@ -509,7 +509,8 @@ function _appliquerPhoto(voyageId, photoUrl) {
 }
 
 async function chargerVoyages() {
-  const voyages = await fetch(`${API}/api/voyages`).then(r => r.json());
+  const data = await fetch(`${API}/api/voyages`).then(r => r.ok ? r.json() : []).catch(() => []);
+  const voyages = Array.isArray(data) ? data : [];
   const liste = document.getElementById('liste-voyages');
   const empty = document.getElementById('empty-state');
 
