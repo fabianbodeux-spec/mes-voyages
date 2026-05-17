@@ -58,18 +58,46 @@ let voyageInfoActuel = null;
 // ─── INIT ────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // ── Startup splash ──────────────────────────────────────────
+  // ── Startup splash cinématique ──────────────────────────────
   (function initAppSplash() {
     const splash = document.getElementById('app-splash');
     if (!splash) return;
     let t1, t2;
-    // Total visible : 5.3s (logo dark 0.1→1.5s, allumage 1.5→2.3s, texte 2.6s, sortie 5.3s → fade 0.65s → total ~6s)
-    t1 = setTimeout(() => {
-      splash.classList.add('app-splash-out');
-      const done = () => { splash.style.display = 'none'; clearTimeout(t2); };
-      splash.addEventListener('transitionend', done, { once: true });
-      t2 = setTimeout(done, 700);
-    }, 5300);
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReduced) {
+      // Version rapide sans animation
+      t1 = setTimeout(() => {
+        splash.classList.add('app-splash-out');
+        const done = () => { splash.style.display = 'none'; clearTimeout(t2); };
+        splash.addEventListener('transitionend', done, { once: true });
+        t2 = setTimeout(done, 400);
+      }, 400);
+    } else {
+      // Sortie cinématique à 3.4s — animations CSS terminent à ~2.5s
+      t1 = setTimeout(() => {
+        // Étape 1 : barres letterbox se rétractent
+        splash.classList.add('bars-out');
+
+        // Étape 2 (150ms) : contenu se compresse et disparaît
+        const content = splash.querySelector('.intro-content');
+        if (content) {
+          setTimeout(() => {
+            content.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            content.style.opacity = '0';
+            content.style.transform = 'scale(0.93)';
+          }, 150);
+        }
+
+        // Étape 3 (520ms) : overlay entier fade out → révèle l'app
+        setTimeout(() => {
+          splash.classList.add('app-splash-out');
+          const done = () => { splash.style.display = 'none'; clearTimeout(t2); };
+          splash.addEventListener('transitionend', done, { once: true });
+          t2 = setTimeout(done, 750);
+        }, 520);
+      }, 3400);
+    }
   })();
 
   chargerVoyages();
