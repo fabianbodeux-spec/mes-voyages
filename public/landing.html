@@ -75,14 +75,19 @@
       text-decoration: none;
     }
     .nav-logo img {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      box-shadow: 0 0 16px rgba(249,115,22,0.3);
+      transition: box-shadow 0.2s;
+    }
+    .nav-logo:hover img {
+      box-shadow: 0 0 28px rgba(249,115,22,0.52);
     }
     .nav-wordmark {
-      font-size: 1.15rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
+      font-size: 1.25rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
       line-height: 1;
     }
 
@@ -873,15 +878,16 @@
     }
 
     .footer-tagline {
-      font-size: 0.9rem;
-      color: var(--muted);
+      font-size: 1rem;
+      color: rgba(255,255,255,0.45);
       font-style: italic;
-      font-weight: 500;
+      font-weight: 700;
+      letter-spacing: 0.02em;
     }
 
     .footer-copy {
-      font-size: 0.78rem;
-      color: var(--muted-dim);
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.35);
       margin-top: 4px;
     }
 
@@ -918,9 +924,195 @@
       max-width: 1100px;
       margin: 0 auto;
     }
+
+    /* ─── HERO BRAND BLOCK ─── */
+    .hero-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: -8px;
+    }
+    .hero-brand-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      box-shadow: 0 0 32px rgba(249,115,22,0.35);
+      transition: box-shadow 0.3s;
+    }
+    .hero-brand-icon:hover {
+      box-shadow: 0 0 48px rgba(249,115,22,0.52);
+    }
+    .hero-brand-wordmark {
+      font-size: 1.6rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    /* ─── FEATURE TAG BRAND (sous-marques) ─── */
+    .feature-tag--brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(249,115,22,0.1);
+      border: 1px solid rgba(249,115,22,0.25);
+      padding: 3px 10px 3px 8px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+    }
+    .brand-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px rgba(249,115,22,0.6);
+      flex-shrink: 0;
+    }
+
+    /* ─── PHONE APP NAV (mockup) ─── */
+    .phone-app-nav {
+      display: flex;
+      align-items: center;
+      padding: 4px 2px 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 2px;
+    }
+    .phone-app-logo { line-height: 1; }
+
+    /* ─── FOOTER LINKS ─── */
+    .footer-links {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 4px 0;
+    }
+    .footer-links a {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--accent); }
+
+  /* ─── INTRO OVERLAY ─── */
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes introLogoIn {
+      from { opacity: 0; transform: scale(0.7); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes introWordmarkIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes introTaglineIn {
+      from { opacity: 0; }
+      to   { opacity: 0.6; }
+    }
+  }
+
+  #intro-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .intro-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .intro-logo-wrap {
+    position: relative;
+  }
+
+  .intro-logo-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 18px;
+    box-shadow: 0 0 32px 8px rgba(249, 115, 22, 0.45), 0 0 64px 16px rgba(249, 115, 22, 0.18);
+    will-change: transform, opacity;
+    display: block;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .intro-logo-img {
+      animation: introLogoIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s both;
+    }
+  }
+
+  .intro-wordmark {
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 2.4rem;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .intro-wordmark {
+      animation: introWordmarkIn 0.4s ease-out 0.4s both;
+    }
+  }
+
+  .intro-crewi {
+    color: #fff;
+    font-weight: 800;
+  }
+
+  .intro-go {
+    color: #F97316;
+    font-weight: 900;
+    font-style: italic;
+  }
+
+  .intro-tagline {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .intro-tagline {
+      animation: introTaglineIn 0.4s ease-out 0.8s both;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .intro-logo-img,
+    .intro-wordmark,
+    .intro-tagline {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+    .intro-tagline {
+      opacity: 0.5;
+    }
+  }
   </style>
 </head>
 <body>
+
+  <!-- ─── INTRO OVERLAY ─── -->
+  <div id="intro-overlay" aria-hidden="true">
+    <div class="intro-content">
+      <div class="intro-logo-wrap">
+        <img src="/logo-icon.png" alt="" class="intro-logo-img" width="80" height="80" />
+      </div>
+      <div class="intro-wordmark">
+        <span class="intro-crewi">Crewi</span><span class="intro-go">GO</span>
+      </div>
+      <p class="intro-tagline">Roam together.</p>
+    </div>
+  </div>
 
   <!-- ─── NAV ─── -->
   <nav>
@@ -939,6 +1131,13 @@
   <!-- ─── HERO ─── -->
   <section class="hero">
     <div class="hero-inner">
+      <div class="hero-brand reveal">
+        <img src="/logo-icon.png" alt="CrewiGO" class="hero-brand-icon" width="52" height="52" />
+        <span class="hero-brand-wordmark">
+          <b style="color:#fff">Crewi</b><b style="color:#F97316;font-style:italic">GO</b>
+        </span>
+      </div>
+
       <div class="hero-badge reveal">PWA · Gratuit · iOS &amp; Android</div>
 
       <h1 class="hero-headline reveal reveal-delay-1">
@@ -972,6 +1171,13 @@
                 <svg width="12" height="8" viewBox="0 0 12 8" fill="rgba(255,255,255,0.6)"><rect x="0" y="2" width="2" height="6" rx="1"/><rect x="3" y="1" width="2" height="7" rx="1"/><rect x="6" y="0" width="2" height="8" rx="1"/><rect x="9" y="0" width="2" height="8" rx="1" fill="rgba(255,255,255,0.25)"/></svg>
                 <div class="status-bar"></div>
               </div>
+            </div>
+
+            <div class="phone-app-nav">
+              <span class="phone-app-logo">
+                <b style="color:#fff;font-size:8px;font-weight:900">Crewi</b><b style="color:#F97316;font-style:italic;font-size:8px;font-weight:900">GO</b>
+              </span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)" style="margin-left:auto"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
             </div>
 
             <div class="app-header">
@@ -1086,7 +1292,7 @@
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
           </div>
-          <div class="feature-tag">CrewiCash</div>
+          <div class="feature-tag feature-tag--brand"><span class="brand-dot"></span>CrewiCash</div>
           <div class="feature-title">Budget partagé &amp; split auto</div>
           <p class="feature-desc">Un budget commun, des dépenses tracées, des remboursements calculés automatiquement. Fini les tablettes Excel et les "tu me dois combien ?". One pool, zero awkward money talk.</p>
         </div>
@@ -1096,7 +1302,7 @@
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
           </div>
-          <div class="feature-tag">CrewiChat</div>
+          <div class="feature-tag feature-tag--brand"><span class="brand-dot"></span>CrewiChat</div>
           <div class="feature-title">Chat groupe + push notifs</div>
           <p class="feature-desc">Discutez dans le groupe ou en privé, recevez des notifications push même sans l'app ouverte. Tout reste dans le voyage — pas de WhatsApp à gérer. Real-time chat, built right in.</p>
         </div>
@@ -1121,7 +1327,7 @@
   <section class="how" id="how">
     <div class="section-inner">
       <div>
-        <p class="section-eyebrow reveal">Comment ça marche</p>
+        <p class="section-eyebrow reveal">CrewiGO — Comment ça marche</p>
         <h2 class="section-title reveal">Prêt en 3 étapes.</h2>
         <p class="section-sub reveal">From zero to GO in minutes — no setup headaches, no installs to manage.</p>
       </div>
@@ -1139,7 +1345,7 @@
           <div class="step-number">2</div>
           <div>
             <div class="step-title">Planifiez ensemble</div>
-            <p class="step-desc">Chaque membre peut ajouter des étapes, voter pour des activités, déposer des dépenses. Tout se synchronise en temps réel. Everyone adds, votes, splits — live.</p>
+            <p class="step-desc">Chaque membre peut ajouter des étapes, voter pour des activités, déposer des dépenses via <strong style="color:var(--accent)">CrewiCash</strong>. Discutez en direct dans <strong style="color:var(--accent)">CrewiChat</strong>. Tout se synchronise live. Everyone adds, votes, splits — live.</p>
           </div>
         </div>
 
@@ -1235,6 +1441,12 @@
       </span>
     </a>
     <p class="footer-tagline">Roam together.</p>
+    <nav class="footer-links">
+      <a href="#features">Features</a>
+      <a href="#how">Comment ça marche</a>
+      <a href="#install">Installer</a>
+      <a href="/app">Lancer l'app</a>
+    </nav>
     <p class="footer-copy">© 2026 CrewiGO — Made with ❤️ for adventurous crews</p>
   </footer>
 
@@ -1256,6 +1468,23 @@
     document.querySelectorAll('.hero .reveal').forEach(el => {
       el.classList.add('visible');
     });
+
+    // Intro overlay
+    const introOverlay = document.getElementById('intro-overlay');
+    if (introOverlay) {
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const exitDelay = prefersReduced ? 200 : 2000;
+      setTimeout(() => {
+        introOverlay.style.transition = prefersReduced
+          ? 'opacity 0.3s ease'
+          : 'opacity 0.7s ease, transform 0.7s ease';
+        introOverlay.style.opacity = '0';
+        introOverlay.style.transform = 'translateY(-8px)';
+        introOverlay.addEventListener('transitionend', () => {
+          introOverlay.style.display = 'none';
+        }, { once: true });
+      }, exitDelay);
+    }
   </script>
 
 </body>
