@@ -1225,8 +1225,8 @@ function voirReservation(id) {
       <div class="rd-section-label" style="display:flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" style="opacity:.7"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>Documents liés</div>
       <div class="resa-docs">
         ${docs.map(d => `
-          <button class="resa-doc-badge" onclick="ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g,'')}\`)">
-            ${getDocIcon(d.type_fichier)} <span>${d.nom}</span>
+          <button class="resa-doc-badge" data-doc-id="${d.id}" data-doc-nom="${h(d.nom)}" onclick="ouvrirDocViewerFromEl(this)">
+            ${getDocIcon(d.type_fichier)} <span>${h(d.nom)}</span>
           </button>`).join('')}
       </div>
     </div>` : '';
@@ -1652,12 +1652,12 @@ async function chargerProgramme() {
                   ${it.heure ? `<span class="prog-heure"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="flex-shrink:0;opacity:.7"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L11 13.18V7h1.5v5.52l4.72 2.71-.99 1.77z"/></svg>${h(it.heure)}</span>` : ''}
                   ${it.lieu ? `<div class="prog-lieu"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="flex-shrink:0;opacity:.6"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>${h(it.lieu)}</div>` : ''}
                   ${it.description ? `<div class="prog-desc">${h(it.description).replace(/\n/g,'<br>')}</div>` : ''}
-                  ${it.lien ? `<a href="${it.lien}" target="_blank" rel="noopener" class="prog-lien"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="flex-shrink:0"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7C4.24 7 2 9.24 2 12s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zm4.1 1h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>Ouvrir</a>` : ''}
+                  ${it.lien ? (function(){ const safeLien = /^https?:\/\//i.test(it.lien) ? it.lien : '#'; return `<a href="${h(safeLien)}" target="_blank" rel="noopener noreferrer" class="prog-lien"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11" style="flex-shrink:0"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7C4.24 7 2 9.24 2 12s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zm4.1 1h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>Ouvrir</a>`; })() : ''}
                   ${it.docs && it.docs.length ? `
                   <div class="prog-docs">
                     ${it.docs.map(d => `
-                      <button class="prog-doc-badge" onclick="event.stopPropagation();ouvrirDocViewer(${d.id}, \`${d.nom.replace(/`/g,'')}\`)">
-                        ${getDocIcon(d.type_fichier)}<span>${d.nom}</span>
+                      <button class="prog-doc-badge" data-doc-id="${d.id}" data-doc-nom="${h(d.nom)}" onclick="event.stopPropagation();ouvrirDocViewerFromEl(this)">
+                        ${getDocIcon(d.type_fichier)}<span>${h(d.nom)}</span>
                       </button>`).join('')}
                   </div>` : ''}
                 </div>
@@ -2017,7 +2017,7 @@ function _afficherInfosScan(infos) {
     container.innerHTML = `<p class="scan-no-data">Aucune information structurée détectée — le document sera importé tel quel.</p>`;
   } else {
     container.innerHTML = `<div class="scan-fields">${rows.map(([l, v]) =>
-      `<div class="scan-field"><span class="scan-fl">${l}</span><span class="scan-fv">${v}</span></div>`
+      `<div class="scan-field"><span class="scan-fl">${l}</span><span class="scan-fv">${h(v)}</span></div>`
     ).join('')}</div>`;
   }
 
@@ -2180,6 +2180,12 @@ async function sauvegarderModifDocument() {
 
 // ─── VISUALISEUR DOCUMENT ───────────────────────────
 
+function ouvrirDocViewerFromEl(el) {
+  const id = parseInt(el.dataset.docId, 10);
+  const nom = el.dataset.docNom;
+  ouvrirDocViewer(id, nom);
+}
+
 function ouvrirDocViewer(docId, nom) {
   const url = `${API}/api/documents/${docId}/download`;
   document.getElementById('doc-viewer-nom').textContent = nom;
@@ -2299,7 +2305,7 @@ async function chargerBagages() {
   selector.innerHTML = participants.map(p => `
     <div class="avatar-chip ${p.id === participantBagageActuel ? 'active' : ''}" onclick="selectionnerParticipantBagage(${p.id})" style="${p.id === participantBagageActuel ? 'border-color:'+p.couleur+';background:'+p.couleur+'22' : ''}">
       <div class="avatar" style="background:${p.couleur}">${p.nom[0].toUpperCase()}</div>
-      <span class="avatar-nom">${p.nom}</span>
+      <span class="avatar-nom">${h(p.nom)}</span>
     </div>
   `).join('');
 
@@ -2344,7 +2350,7 @@ function afficherBagages(items) {
           <div class="bagage-check ${item.checked ? 'checked' : ''}">
             ${item.checked ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : ''}
           </div>
-          <span class="bagage-nom">${item.nom}</span>
+          <span class="bagage-nom">${h(item.nom)}</span>
           <button class="bagage-del" onclick="event.stopPropagation();supprimerArticle(${item.id})">×</button>
         </div>
       `).join('')}
@@ -2465,8 +2471,8 @@ function afficherParticipants(participants) {
   }
   container.innerHTML = `<div class="avatars-row">${participants.map(p => `
     <div class="avatar-chip">
-      <div class="avatar" style="background:${p.couleur}">${p.nom[0].toUpperCase()}</div>
-      <span class="avatar-nom">${p.nom}</span>
+      <div class="avatar" style="background:${p.couleur}">${h(p.nom[0].toUpperCase())}</div>
+      <span class="avatar-nom">${h(p.nom)}</span>
       <button class="avatar-pin ${p.pin ? 'has-pin' : ''}" title="${p.pin ? 'Modifier le PIN' : 'Ajouter un PIN'}"
         onclick="ouvrirModalPin(${p.id},'${p.nom.replace(/'/g,"\\'")}','${p.pin||''}')">
         ${p.pin
@@ -2512,10 +2518,10 @@ function afficherDepenses(depenses, participants) {
         <div class="depense-card">
           <div class="depense-cat">${icones[d.categorie] || cgoIcon('document',32)}</div>
           <div class="depense-body">
-            <div class="depense-titre">${d.titre}</div>
+            <div class="depense-titre">${h(d.titre)}</div>
             <div class="depense-meta">
               ${d.date ? `<span>${formatDate(d.date)}</span>` : ''}
-              ${payeur ? `<span style="display:inline-flex;align-items:center;gap:4px"><span class="avatar-xs" style="background:${payeur.couleur}">${payeur.nom[0]}</span>${payeur.nom} a payé</span>` : ''}
+              ${payeur ? `<span style="display:inline-flex;align-items:center;gap:4px"><span class="avatar-xs" style="background:${payeur.couleur}">${h(payeur.nom[0])}</span>${h(payeur.nom)} a payé</span>` : ''}
               <span>${parts.length} pers. · ${share}€/pers.</span>
             </div>
           </div>
@@ -2669,16 +2675,16 @@ async function ouvrirModalDepense(id = null) {
   document.getElementById('dep-payeur-list').innerHTML = participants.map((p, i) => `
     <label class="participant-radio">
       <input type="radio" name="dep-payeur" value="${p.id}" ${i === 0 ? 'checked' : ''}>
-      <div class="avatar" style="background:${p.couleur}">${p.nom[0].toUpperCase()}</div>
-      <span>${p.nom}</span>
+      <div class="avatar" style="background:${p.couleur}">${h(p.nom[0].toUpperCase())}</div>
+      <span>${h(p.nom)}</span>
     </label>
   `).join('');
 
   document.getElementById('dep-participants-list').innerHTML = participants.map(p => `
     <label class="participant-check">
       <input type="checkbox" name="dep-part" value="${p.id}" checked>
-      <div class="avatar" style="background:${p.couleur}">${p.nom[0].toUpperCase()}</div>
-      <span>${p.nom}</span>
+      <div class="avatar" style="background:${p.couleur}">${h(p.nom[0].toUpperCase())}</div>
+      <span>${h(p.nom)}</span>
     </label>
   `).join('');
 
@@ -2790,14 +2796,14 @@ async function chargerAdmin() {
         const p = byId[+pid];
         return `<div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <div class="avatar" style="background:${p?.couleur||'#6366F1'};width:26px;height:26px;font-size:.65rem;flex-shrink:0">${(p?.nom||'?')[0].toUpperCase()}</div>
-            <span style="font-weight:700;font-size:.88rem">${p?.nom||'Participant #'+pid}</span>
+            <div class="avatar" style="background:${p?.couleur||'#6366F1'};width:26px;height:26px;font-size:.65rem;flex-shrink:0">${h((p?.nom||'?')[0].toUpperCase())}</div>
+            <span style="font-weight:700;font-size:.88rem">${h(p?.nom||'Participant #'+pid)}</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;padding-left:34px">` +
           docs.map(d => `<div class="adm-row">
             <span class="adm-row-icon">${getDocIcon(d.type_fichier)}</span>
             <div class="adm-row-body">
-              <div class="adm-row-titre">${d.nom}</div>
+              <div class="adm-row-titre">${h(d.nom)}</div>
               ${d.taille ? `<div class="adm-row-meta"><span>${formatTaille(d.taille)}</span></div>` : ''}
             </div>
             <div class="adm-row-actions">
@@ -2823,14 +2829,14 @@ async function chargerAdmin() {
         const p = byId[+pid];
         return `<div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <div class="avatar" style="background:${p?.couleur||'#C9622F'};width:26px;height:26px;font-size:.65rem;flex-shrink:0">${(p?.nom||'?')[0].toUpperCase()}</div>
-            <span style="font-weight:700;font-size:.88rem">${p?.nom||'Participant #'+pid}</span>
+            <div class="avatar" style="background:${p?.couleur||'#C9622F'};width:26px;height:26px;font-size:.65rem;flex-shrink:0">${h((p?.nom||'?')[0].toUpperCase())}</div>
+            <span style="font-weight:700;font-size:.88rem">${h(p?.nom||'Participant #'+pid)}</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;padding-left:34px">` +
           attrs.map(a => `<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border-solid);display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
               <div style="flex:1;min-width:0">
-                <div style="font-weight:700;font-size:.85rem;margin-bottom:2px">${a.titre}</div>
-                ${a.contenu ? `<div style="font-size:.8rem;color:var(--text-muted);line-height:1.4;white-space:pre-wrap">${a.contenu}</div>` : ''}
+                <div style="font-weight:700;font-size:.85rem;margin-bottom:2px">${h(a.titre)}</div>
+                ${a.contenu ? `<div style="font-size:.8rem;color:var(--text-muted);line-height:1.4;white-space:pre-wrap">${h(a.contenu)}</div>` : ''}
                 ${a.document_id ? `<div style="margin-top:6px"><span class="resa-badge-mini resa-badge-doc" style="display:inline-flex;align-items:center;gap:3px"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>Document lié</span></div>` : ''}
               </div>
               <button class="btn-mini btn-mini-del" onclick="supprimerAttribution(${a.id})" title="Supprimer" style="flex-shrink:0"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
@@ -2895,7 +2901,7 @@ async function chargerAdmin() {
             <div class="adm-row">
               <span class="adm-row-icon">${icon}</span>
               <div class="adm-row-body">
-                <div class="adm-row-titre">${doc.nom}</div>
+                <div class="adm-row-titre">${h(doc.nom)}</div>
                 <div class="adm-row-meta">
                   <span class="adm-row-cat">${cat}</span>
                   ${doc.taille ? `<span>${formatTaille(doc.taille)}</span>` : ''}
@@ -2931,8 +2937,8 @@ async function chargerAdmin() {
           <div style="background:var(--bg);border-radius:12px;padding:12px 14px;border:1px solid var(--border-solid)">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
               <div style="flex:1;min-width:0">
-                <div style="font-weight:700;font-size:.88rem">${d.auteur || 'Invité'} <span style="font-weight:400;color:var(--text-muted)">· ${d.onglet} · ${d.element_nom || ''}</span></div>
-                <div style="color:var(--text-muted);font-size:.82rem;margin-top:4px">${d.message}</div>
+                <div style="font-weight:700;font-size:.88rem">${h(d.auteur || 'Invité')} <span style="font-weight:400;color:var(--text-muted)">· ${h(d.onglet)} · ${h(d.element_nom || '')}</span></div>
+                <div style="color:var(--text-muted);font-size:.82rem;margin-top:4px">${h(d.message)}</div>
                 <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px">${new Date(d.created_at).toLocaleString('fr-BE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
               </div>
               <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
@@ -3020,14 +3026,14 @@ async function ouvrirModalAttribution() {
     : participants.map(p => `
       <label class="participant-radio">
         <input type="radio" name="attr-part" value="${p.id}">
-        <span style="background:${p.couleur||'#C9622F'}22;color:${p.couleur||'#C9622F'};border:1px solid ${p.couleur||'#C9622F'};border-radius:20px;padding:4px 12px;font-size:.85rem">${p.nom}</span>
+        <span style="background:${p.couleur||'#C9622F'}22;color:${p.couleur||'#C9622F'};border:1px solid ${p.couleur||'#C9622F'};border-radius:20px;padding:4px 12px;font-size:.85rem">${h(p.nom)}</span>
       </label>`).join('');
 
   if (pList.querySelector('input[type=radio]')) pList.querySelector('input[type=radio]').checked = true;
 
   const docSel = document.getElementById('attr-document');
   docSel.innerHTML = '<option value="">— Aucun document —</option>' +
-    documents.map(d => `<option value="${d.id}">${d.nom}</option>`).join('');
+    documents.map(d => `<option value="${d.id}">${h(d.nom)}</option>`).join('');
 
   document.getElementById('attr-titre').value = '';
   document.getElementById('attr-contenu').value = '';
@@ -3174,7 +3180,7 @@ async function ouvrirMessagePrive() {
   const participants = await fetch(`${API}/api/voyages/${voyageActuel}/participants`).then(r => r.json()).catch(() => []);
   const sel = document.getElementById('mp-participant');
   sel.innerHTML = participants.length
-    ? participants.map(p => `<option value="${p.id}">${p.nom}</option>`).join('')
+    ? participants.map(p => `<option value="${p.id}">${h(p.nom)}</option>`).join('')
     : '<option value="">Aucun participant</option>';
   document.getElementById('mp-message').value = '';
   document.getElementById('modal-message-prive').classList.remove('hidden');
@@ -3221,11 +3227,11 @@ function _renderCommentairesAdmin(liste) {
       <div class="chat-avatar" style="background:${couleur}">${(c.auteur||'?')[0].toUpperCase()}</div>
       <div class="chat-bubble">
         <div class="chat-meta">
-          <span class="chat-auteur">${c.auteur}</span>
+          <span class="chat-auteur">${h(c.auteur)}</span>
           <span>${heure}</span>
           <button class="chat-del" onclick="_supprimerCommentaireAdmin(${c.id})" title="Supprimer">✕</button>
         </div>
-        <div class="chat-text">${c.message.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+        <div class="chat-text">${h(c.message).replace(/\n/g,'<br>')}</div>
       </div>
     </div>`;
   }).join('');
