@@ -36,6 +36,10 @@ app.use(cors({
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ─── ROUTES PRINCIPALES ────────────────────────────────────────────────────
+app.get('/',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
+app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
 // ─── HELPERS SÉCURITÉ ──────────────────────────────────────────────────────
 
 // Sanitise un nom de fichier pour Content-Disposition

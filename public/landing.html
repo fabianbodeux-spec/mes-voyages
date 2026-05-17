@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CrewiGO — Roam together.</title>
+  <meta name="description" content="L'app PWA pour planifier vos voyages en groupe. Planning collaboratif, budget partagé, chat intégré. Sans App Store." />
+  <meta property="og:title" content="CrewiGO — Roam together." />
+  <meta property="og:description" content="Planifiez vos aventures en groupe. Budget partagé, chat intégré, installe depuis ton navigateur." />
+  <meta property="og:image" content="/logo-icon.png" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,800,900&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #000;
+      --card: #141414;
+      --border: rgba(255,255,255,0.08);
+      --accent: #F97316;
+      --accent-dim: rgba(249,115,22,0.15);
+      --accent-glow: rgba(249,115,22,0.25);
+      --text: #fff;
+      --muted: rgba(255,255,255,0.55);
+      --muted-dim: rgba(255,255,255,0.25);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── SCROLL ANIMATIONS ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.65s ease, transform 0.65s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 60px;
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo img {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+    }
+    .nav-wordmark {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 700;
+      padding: 9px 18px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      white-space: nowrap;
+    }
+    .nav-cta:hover {
+      background: #fb923c;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(249,115,22,0.4);
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* radial glow background */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 600px;
+      background: radial-gradient(ellipse at center, rgba(249,115,22,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* subtle grid */
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 30%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(249,115,22,0.12);
+      border: 1px solid rgba(249,115,22,0.3);
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 6px 14px;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+    .hero-badge::before {
+      content: '';
+      width: 7px; height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .hero-headline {
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      background: linear-gradient(180deg, #fff 60%, rgba(255,255,255,0.55));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-headline span {
+      -webkit-text-fill-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .hero-sub {
+      max-width: 540px;
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--muted);
+      font-weight: 400;
+      line-height: 1.65;
+    }
+    .hero-sub strong {
+      color: rgba(255,255,255,0.85);
+      font-weight: 600;
+    }
+
+    .hero-ctas {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 14px 28px;
+      border-radius: 14px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-primary:hover {
+      background: #fb923c;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(249,115,22,0.45);
+    }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: color 0.2s;
+      padding: 14px 4px;
+    }
+    .btn-ghost:hover { color: var(--text); }
+    .btn-ghost svg { transition: transform 0.2s; }
+    .btn-ghost:hover svg { transform: translateX(3px); }
+
+    /* ─── PHONE MOCKUP ─── */
+    .phone-mockup {
+      position: relative;
+      width: 220px;
+      margin-top: 8px;
+    }
+
+    .phone-frame {
+      width: 220px;
+      height: 440px;
+      background: linear-gradient(145deg, #1a1a1a, #0d0d0d);
+      border-radius: 36px;
+      border: 1.5px solid rgba(255,255,255,0.12);
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.8),
+        0 40px 80px rgba(0,0,0,0.8),
+        0 0 60px rgba(249,115,22,0.06),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* notch */
+    .phone-notch {
+      width: 90px;
+      height: 26px;
+      background: #000;
+      border-radius: 0 0 18px 18px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .phone-notch::before {
+      content: '';
+      width: 10px; height: 10px;
+      background: #1a1a1a;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.06);
+    }
+    .phone-notch::after {
+      content: '';
+      width: 46px; height: 5px;
+      background: #1a1a1a;
+      border-radius: 3px;
+    }
+
+    .phone-screen {
+      flex: 1;
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    /* status bar */
+    .phone-status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px;
+      font-size: 9px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.6);
+    }
+    .phone-status-icons {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .status-bar { width: 14px; height: 7px; border: 1.5px solid rgba(255,255,255,0.5); border-radius: 2px; position: relative; }
+    .status-bar::after { content:''; position:absolute; left:1px; top:1px; bottom:1px; width:7px; background:rgba(255,255,255,0.6); border-radius:1px; }
+
+    /* app header */
+    .app-header {
+      background: rgba(249,115,22,0.1);
+      border: 1px solid rgba(249,115,22,0.2);
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .app-header-left {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .app-header-left span {
+      display: block;
+      font-size: 8px;
+      color: var(--muted);
+      font-weight: 400;
+      margin-top: 1px;
+    }
+    .avatar-stack {
+      display: flex;
+    }
+    .avatar {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid #0d0d0d;
+      margin-left: -5px;
+      font-size: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+    .avatar:first-child { margin-left: 0; }
+
+    /* day cards */
+    .day-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .day-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 800;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .day-content { flex: 1; }
+    .day-title {
+      font-size: 9px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 3px;
+    }
+    .day-pills {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      font-size: 7px;
+      font-weight: 600;
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* budget row */
+    .budget-row {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+    .budget-label {
+      font-size: 8px;
+      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .budget-bar-track {
+      height: 5px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .budget-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #fb923c);
+      border-radius: 3px;
+      width: 68%;
+    }
+    .budget-numbers {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+    .budget-num {
+      font-size: 9px;
+      font-weight: 700;
+    }
+    .budget-num.accent { color: var(--accent); }
+    .budget-num.muted { color: var(--muted); }
+
+    /* chat row */
+    .chat-row {
+      display: flex;
+      gap: 6px;
+      align-items: flex-end;
+    }
+    .chat-bubble {
+      flex: 1;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 8px 8px 8px 2px;
+      padding: 6px 8px;
+      font-size: 8px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.4;
+    }
+    .chat-bubble-self {
+      background: var(--accent-dim);
+      border: 1px solid rgba(249,115,22,0.2);
+      border-radius: 8px 8px 2px 8px;
+      color: rgba(255,255,255,0.8);
+    }
+    .chat-avatar {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      font-size: 8px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ─── TRUST BAR ─── */
+    .trust-bar {
+      padding: 28px 24px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .trust-bar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: wrap;
+    }
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 20px;
+      color: var(--muted);
+      font-size: 0.875rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .trust-item + .trust-item {
+      border-left: 1px solid var(--border);
+    }
+    .trust-icon {
+      width: 18px;
+      height: 18px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* ─── SECTION BASE ─── */
+    section { position: relative; }
+
+    .section-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 120px 24px;
+    }
+
+    .section-eyebrow {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      font-size: 1.05rem;
+      color: var(--muted);
+      max-width: 520px;
+      line-height: 1.7;
+    }
+
+    /* ─── FEATURES ─── */
+    .features .section-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 64px;
+    }
+
+    .features-header { max-width: 600px; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px 28px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+      cursor: default;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 30% 20%, rgba(249,115,22,0.06) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .feature-card:hover {
+      border-color: rgba(249,115,22,0.3);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(249,115,22,0.1);
+    }
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(249,115,22,0.25);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      color: var(--accent);
+    }
+    .feature-icon svg { width: 24px; height: 24px; }
+
+    .feature-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .feature-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 10px;
+      line-height: 1.25;
+    }
+
+    .feature-desc {
+      font-size: 0.93rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* PWA card special */
+    .feature-card.pwa-card {
+      background: linear-gradient(135deg, rgba(249,115,22,0.08) 0%, rgba(255,255,255,0.03) 100%);
+      border-color: rgba(249,115,22,0.18);
+    }
+
+    /* ─── HOW IT WORKS ─── */
+    .how {
+      background: linear-gradient(180deg, transparent, rgba(249,115,22,0.03), transparent);
+    }
+
+    .how .section-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 64px;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      position: relative;
+    }
+
+    /* connector line */
+    .steps-grid::before {
+      content: '';
+      position: absolute;
+      top: 32px;
+      left: calc(16.6% + 16px);
+      right: calc(16.6% + 16px);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      pointer-events: none;
+    }
+
+    .step-card {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 32px 28px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      transition: border-color 0.25s;
+    }
+    .step-card:hover { border-color: rgba(249,115,22,0.25); }
+
+    .step-number {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1.25rem;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(249,115,22,0.3);
+    }
+
+    .step-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .step-desc {
+      font-size: 0.93rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ─── INSTALL ─── */
+    .install {
+      background: linear-gradient(180deg, transparent, rgba(249,115,22,0.04), transparent);
+    }
+
+    .install .section-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 56px;
+    }
+
+    .install-header { max-width: 600px; }
+
+    .install-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+      width: 100%;
+    }
+
+    .qr-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .qr-frame {
+      padding: 16px;
+      background: #0d0d0d;
+      border: 1px solid rgba(249,115,22,0.25);
+      border-radius: 20px;
+      box-shadow: 0 0 40px rgba(249,115,22,0.08);
+    }
+    .qr-frame img {
+      display: block;
+      border-radius: 8px;
+    }
+    .qr-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .install-platforms {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .platform-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 28px;
+      width: 240px;
+      text-align: left;
+      transition: border-color 0.2s;
+    }
+    .platform-card:hover { border-color: rgba(249,115,22,0.3); }
+
+    .platform-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .platform-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .platform-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .platform-steps {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .platform-steps li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .step-num-small {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      background: rgba(249,115,22,0.15);
+      color: var(--accent);
+      font-size: 0.65rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .install-cta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .install-cta .btn-primary {
+      font-size: 1.1rem;
+      padding: 16px 36px;
+      border-radius: 16px;
+    }
+    .install-cta-note {
+      font-size: 0.8rem;
+      color: var(--muted-dim);
+      font-weight: 500;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      text-align: center;
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .footer-logo img {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+    }
+    .footer-wordmark {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .footer-tagline {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-style: italic;
+      font-weight: 500;
+    }
+
+    .footer-copy {
+      font-size: 0.78rem;
+      color: var(--muted-dim);
+      margin-top: 4px;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 640px) {
+      .section-inner { padding: 80px 20px; }
+      .trust-item { padding: 8px 12px; font-size: 0.8rem; }
+      .features-grid { grid-template-columns: 1fr; }
+      .steps-grid { grid-template-columns: 1fr; }
+      .steps-grid::before { display: none; }
+      .install-platforms { flex-direction: column; align-items: center; }
+      .platform-card { width: 100%; max-width: 320px; }
+      .phone-mockup { display: none; }
+    }
+
+    @media (min-width: 768px) {
+      .hero-inner {
+        gap: 36px;
+      }
+      .phone-mockup {
+        animation: float 6s ease-in-out infinite;
+      }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    /* ─── DIVIDERS ─── */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── NAV ─── -->
+  <nav>
+    <a href="/" class="nav-logo">
+      <img src="/logo-icon.png" alt="CrewiGO icon" />
+      <span class="nav-wordmark">
+        <b style="color:#fff">Crewi</b><b style="color:#F97316;font-style:italic">GO</b>
+      </span>
+    </a>
+    <a href="/app" class="nav-cta">
+      Lancer l'app
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </nav>
+
+  <!-- ─── HERO ─── -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge reveal">PWA · Gratuit · iOS &amp; Android</div>
+
+      <h1 class="hero-headline reveal reveal-delay-1">
+        Your crew.<br />One app. <span>GO.</span>
+      </h1>
+
+      <p class="hero-sub reveal reveal-delay-2">
+        <strong>Planifiez, budgétisez et chattez ensemble</strong> — tout en un.<br />
+        Plan, split &amp; roam together. No app store needed.
+      </p>
+
+      <div class="hero-ctas reveal reveal-delay-3">
+        <a href="/app" class="btn-primary">
+          Commencer maintenant
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="#features" class="btn-ghost">
+          Découvrir les features
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        </a>
+      </div>
+
+      <!-- Phone mockup -->
+      <div class="phone-mockup reveal reveal-delay-3">
+        <div class="phone-frame">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-status">
+              <span>9:41</span>
+              <div class="phone-status-icons">
+                <svg width="12" height="8" viewBox="0 0 12 8" fill="rgba(255,255,255,0.6)"><rect x="0" y="2" width="2" height="6" rx="1"/><rect x="3" y="1" width="2" height="7" rx="1"/><rect x="6" y="0" width="2" height="8" rx="1"/><rect x="9" y="0" width="2" height="8" rx="1" fill="rgba(255,255,255,0.25)"/></svg>
+                <div class="status-bar"></div>
+              </div>
+            </div>
+
+            <div class="app-header">
+              <div class="app-header-left">
+                🇯🇵 Tokyo — Mai 2026
+                <span>4 membres · Jour 2/7</span>
+              </div>
+              <div class="avatar-stack">
+                <div class="avatar" style="background:#F97316">F</div>
+                <div class="avatar" style="background:#3B82F6">L</div>
+                <div class="avatar" style="background:#10B981">S</div>
+                <div class="avatar" style="background:#8B5CF6">+1</div>
+              </div>
+            </div>
+
+            <div class="day-card">
+              <div class="day-dot" style="background:rgba(249,115,22,0.2);color:#F97316">J1</div>
+              <div class="day-content">
+                <div class="day-title">Shibuya &amp; Harajuku</div>
+                <div class="day-pills">
+                  <div class="pill">✈️ Arrivée</div>
+                  <div class="pill">🛏 Hôtel</div>
+                  <div class="pill">🍜 Ramen</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="day-card" style="border-color:rgba(249,115,22,0.25);">
+              <div class="day-dot" style="background:var(--accent);color:#fff">J2</div>
+              <div class="day-content">
+                <div class="day-title">Asakusa &amp; Akihabara</div>
+                <div class="day-pills">
+                  <div class="pill" style="background:rgba(249,115,22,0.15);color:#F97316;">🗼 Senso-ji</div>
+                  <div class="pill">🎮 Akiba</div>
+                  <div class="pill">🍱 Bento</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="budget-row">
+              <div class="budget-label">CrewiCash — Budget groupe</div>
+              <div class="budget-bar-track">
+                <div class="budget-bar-fill"></div>
+              </div>
+              <div class="budget-numbers">
+                <div class="budget-num accent">1 360 €</div>
+                <div class="budget-num muted">/ 2 000 €</div>
+              </div>
+            </div>
+
+            <div class="chat-row">
+              <div class="chat-avatar" style="background:#3B82F6;color:#fff">L</div>
+              <div class="chat-bubble">On fait le marché Tsukiji demain matin ? 🐟</div>
+            </div>
+            <div class="chat-row" style="flex-direction:row-reverse">
+              <div class="chat-avatar" style="background:#F97316;color:#fff">F</div>
+              <div class="chat-bubble chat-bubble-self">Ouais ! J'ai ajouté ça en J3 ✅</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── TRUST BAR ─── -->
+  <div class="trust-bar">
+    <div class="trust-bar-inner">
+      <div class="trust-item reveal">
+        <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Sans App Store
+      </div>
+      <div class="trust-item reveal reveal-delay-1">
+        <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+        iPhone &amp; Android
+      </div>
+      <div class="trust-item reveal reveal-delay-2">
+        <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Gratuit
+      </div>
+      <div class="trust-item reveal reveal-delay-3">
+        <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        Open Beta
+      </div>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- ─── FEATURES ─── -->
+  <section class="features" id="features">
+    <div class="section-inner">
+      <div class="features-header">
+        <p class="section-eyebrow reveal">Features</p>
+        <h2 class="section-title reveal">Tout ce qu'il faut<br />pour partir ensemble.</h2>
+        <p class="section-sub reveal">Everything your group needs to plan, split and enjoy the trip — without the chaos.</p>
+      </div>
+
+      <div class="features-grid">
+
+        <!-- Planning -->
+        <div class="feature-card reveal">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+          </div>
+          <div class="feature-tag">Planning</div>
+          <div class="feature-title">Programme jour par jour</div>
+          <p class="feature-desc">Construisez votre roadmap en groupe en temps réel. Ajoutez des étapes, des activités, des notes. Chacun contribue, tout le monde est aligné. Build your shared itinerary — every step, every day.</p>
+        </div>
+
+        <!-- CrewiCash -->
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+          </div>
+          <div class="feature-tag">CrewiCash</div>
+          <div class="feature-title">Budget partagé &amp; split auto</div>
+          <p class="feature-desc">Un budget commun, des dépenses tracées, des remboursements calculés automatiquement. Fini les tablettes Excel et les "tu me dois combien ?". One pool, zero awkward money talk.</p>
+        </div>
+
+        <!-- CrewiChat -->
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+          </div>
+          <div class="feature-tag">CrewiChat</div>
+          <div class="feature-title">Chat groupe + push notifs</div>
+          <p class="feature-desc">Discutez dans le groupe ou en privé, recevez des notifications push même sans l'app ouverte. Tout reste dans le voyage — pas de WhatsApp à gérer. Real-time chat, built right in.</p>
+        </div>
+
+        <!-- PWA -->
+        <div class="feature-card pwa-card reveal reveal-delay-3">
+          <div class="feature-icon" style="background:rgba(249,115,22,0.2);border-color:rgba(249,115,22,0.4);">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-1.99.9-1.99 2v18c0 1.1.89 2 1.99 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/><circle cx="12" cy="17" r="1"/></svg>
+          </div>
+          <div class="feature-tag">PWA · Progressive Web App</div>
+          <div class="feature-title">Sans App Store. Point.</div>
+          <p class="feature-desc">Installez CrewiGO directement depuis votre navigateur sur iOS ou Android. Aucun téléchargement, aucun compte Apple ou Google requis. One tap. Done. No store, no friction, no waiting.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ─── HOW IT WORKS ─── -->
+  <section class="how" id="how">
+    <div class="section-inner">
+      <div>
+        <p class="section-eyebrow reveal">Comment ça marche</p>
+        <h2 class="section-title reveal">Prêt en 3 étapes.</h2>
+        <p class="section-sub reveal">From zero to GO in minutes — no setup headaches, no installs to manage.</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card reveal">
+          <div class="step-number">1</div>
+          <div>
+            <div class="step-title">Crée ton voyage</div>
+            <p class="step-desc">Donne un nom, des dates, invite ton équipage. En 30 secondes, l'espace de voyage est créé et partagé. Create your trip, name your crew.</p>
+          </div>
+        </div>
+
+        <div class="step-card reveal reveal-delay-1">
+          <div class="step-number">2</div>
+          <div>
+            <div class="step-title">Planifiez ensemble</div>
+            <p class="step-desc">Chaque membre peut ajouter des étapes, voter pour des activités, déposer des dépenses. Tout se synchronise en temps réel. Everyone adds, votes, splits — live.</p>
+          </div>
+        </div>
+
+        <div class="step-card reveal reveal-delay-2">
+          <div class="step-number">3</div>
+          <div>
+            <div class="step-title">Partez. Roam together.</div>
+            <p class="step-desc">L'app vous suit sur le terrain : programme du jour, chat du groupe, solde du budget. Tout en poche, sans connexion parfois. Your whole trip in your pocket.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ─── INSTALL ─── -->
+  <section class="install" id="install">
+    <div class="section-inner">
+      <div class="install-header">
+        <p class="section-eyebrow reveal">Installation</p>
+        <h2 class="section-title reveal">Installe l'app<br />en 10 secondes.</h2>
+        <p class="section-sub reveal">Scanne le QR code ou suis les instructions ci-dessous. No App Store. No Google Play. Just GO.</p>
+      </div>
+
+      <div class="install-content">
+
+        <div class="qr-wrapper reveal">
+          <div class="qr-frame">
+            <img
+              src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=F97316&bgcolor=0D0D0D&data=https://www.crewigo.app&qzone=2"
+              alt="QR Code CrewiGO"
+              width="200"
+              height="200"
+            />
+          </div>
+          <span class="qr-label">crewigo.app</span>
+        </div>
+
+        <div class="install-platforms">
+
+          <!-- iOS -->
+          <div class="platform-card reveal">
+            <div class="platform-header">
+              <div class="platform-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,255,255,0.8)"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              </div>
+              <span class="platform-name">iPhone (Safari)</span>
+            </div>
+            <ul class="platform-steps">
+              <li><div class="step-num-small">1</div>Ouvre <strong style="color:rgba(255,255,255,0.8)">crewigo.app</strong> dans Safari</li>
+              <li><div class="step-num-small">2</div>Appuie sur le bouton Partager <strong style="color:rgba(255,255,255,0.8)">⬆</strong></li>
+              <li><div class="step-num-small">3</div>Sélectionne "Sur l'écran d'accueil"</li>
+              <li><div class="step-num-small">4</div>Confirme — l'icône apparaît !</div></li>
+            </ul>
+          </div>
+
+          <!-- Android -->
+          <div class="platform-card reveal reveal-delay-1">
+            <div class="platform-header">
+              <div class="platform-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,255,255,0.8)"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C7.08 3.04 6 4.42 6 6h12c0-1.58-1.08-2.96-2.47-3.84zM10 4H9V3h1v1zm5 0h-1V3h1v1z"/></svg>
+              </div>
+              <span class="platform-name">Android (Chrome)</span>
+            </div>
+            <ul class="platform-steps">
+              <li><div class="step-num-small">1</div>Ouvre <strong style="color:rgba(255,255,255,0.8)">crewigo.app</strong> dans Chrome</li>
+              <li><div class="step-num-small">2</div>Appuie sur les <strong style="color:rgba(255,255,255,0.8)">⋮</strong> (3 points) en haut</li>
+              <li><div class="step-num-small">3</div>Sélectionne "Ajouter à l'écran d'accueil"</li>
+              <li><div class="step-num-small">4</div>Confirme — c'est installé !</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="install-cta reveal">
+          <a href="/app" class="btn-primary">
+            Ouvrir CrewiGO
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <span class="install-cta-note">Aucun compte requis pour commencer · Gratuit</span>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ─── -->
+  <footer>
+    <a href="/" class="footer-logo">
+      <img src="/logo-icon.png" alt="CrewiGO" />
+      <span class="footer-wordmark">
+        <b style="color:#fff">Crewi</b><b style="color:#F97316;font-style:italic">GO</b>
+      </span>
+    </a>
+    <p class="footer-tagline">Roam together.</p>
+    <p class="footer-copy">© 2026 CrewiGO — Made with ❤️ for adventurous crews</p>
+  </footer>
+
+  <script>
+    // Scroll reveal via Intersection Observer
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+    reveals.forEach(el => observer.observe(el));
+
+    // Make hero elements visible immediately (above fold)
+    document.querySelectorAll('.hero .reveal').forEach(el => {
+      el.classList.add('visible');
+    });
+  </script>
+
+</body>
+</html>
