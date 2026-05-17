@@ -1,5 +1,5 @@
 // ─── Cache config ────────────────────────────────────────────────────────────
-const CACHE_VERSION = 'cgo-v3';
+const CACHE_VERSION = 'cgo-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -12,23 +12,22 @@ const STATIC_ASSETS = [
   '/manifest.json'
 ];
 
-// ─── Install : pre-cache static shell ────────────────────────────────────────
+// ─── Install : pre-cache static shell (resilient — n'échoue pas si un asset manque)
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_VERSION)
-      .then(cache => cache.addAll(STATIC_ASSETS))
+      .then(cache => Promise.allSettled(STATIC_ASSETS.map(url => cache.add(url))))
       .then(() => self.skipWaiting())
+      .catch(() => self.skipWaiting())
   );
 });
 
-// ─── Activate : purge stale caches ───────────────────────────────────────────
+// ─── Activate : purge stale caches (sans clients.claim pour éviter interruption)
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k))
-      )
-    ).then(() => self.clients.claim())
+      Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k)))
+    )
   );
 });
 
@@ -37,10 +36,10 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Non-GET or cross-origin → bypass
+  // Non-GET ou cross-origin → bypass total
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  // /api/* → network-first, no cache
+  // /api/* → network uniquement, jamais de cache
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request).catch(() =>
@@ -53,32 +52,32 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Navigation requests → network-first, offline fallback
+  // Navigation → network-first, fallback offline.html
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then(response => {
-          // Update cache with fresh copy
           const clone = response.clone();
-          caches.open(CACHE_VERSION).then(c => c.put(request, clone));
+          caches.open(CACHE_VERSION).then(c => c.put(request, clone)).catch(() => {});
           return response;
         })
-        .catch(() => caches.match('/offline.html'))
+        .catch(() => caches.match('/offline.html').then(r => r || Response.error()))
     );
     return;
   }
 
-  // Static assets → cache-first
+  // Assets statiques → cache-first avec mise à jour silencieuse en arrière-plan
   event.respondWith(
     caches.match(request).then(cached => {
-      if (cached) return cached;
-      return fetch(request).then(response => {
+      const networkFetch = fetch(request).then(response => {
         if (response.ok) {
           const clone = response.clone();
-          caches.open(CACHE_VERSION).then(c => c.put(request, clone));
+          caches.open(CACHE_VERSION).then(c => c.put(request, clone)).catch(() => {});
         }
         return response;
-      });
+      }).catch(() => cached);
+
+      return cached || networkFetch;
     })
   );
 });
