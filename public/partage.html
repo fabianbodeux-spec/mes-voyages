@@ -251,6 +251,12 @@
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
       <span>Mes infos</span>
     </button>
+    <button class="tab-btn" data-tab="preparation" onclick="changerOnglet('preparation', this)">
+      <span class="tab-svg-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      </span>
+      <span>Prépa</span>
+    </button>
   </nav>
 
   <main class="main-content tabs-content">
@@ -368,6 +374,13 @@
     <!-- MES INFOS -->
     <div id="tab-mes-infos" class="tab-panel">
       <div id="mes-infos-content"></div>
+    </div>
+
+    <!-- PRÉPARATION -->
+    <div id="tab-preparation" class="tab-panel">
+      <div id="preparation-content">
+        <!-- Chargé dynamiquement -->
+      </div>
     </div>
 
   </main>
@@ -1204,6 +1217,7 @@ const _origChanterOnglet = window.changerOnglet;
 window.changerOnglet = function(tab, btn) {
   _origChanterOnglet(tab, btn);
   if (tab === 'mes-infos') chargerMesInfos();
+  if (tab === 'preparation') chargerPreparation();
   if (tab === 'discussion') {
     _majBannerNotif();
     chargerCommentaires();
@@ -1721,6 +1735,383 @@ window.chargerAdmin = async function() {
     <div style="height:24px"></div>
   `;
 };
+
+// ─── PRE-TRIP HUB ──────────────────────────────────────────────────────────
+
+async function chargerPreparation() {
+  const el = document.getElementById('preparation-content');
+  if (!el) return;
+  el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>';
+
+  const [hypeData, profils, wishlist, sondages] = await Promise.all([
+    fetch(`/api/partage/${_partageToken}/hype`).then(r => r.ok ? r.json() : { votes:[], moyenne:0, total:0 }).catch(() => ({ votes:[], moyenne:0, total:0 })),
+    fetch(`/api/partage/${_partageToken}/profils`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`/api/partage/${_partageToken}/wishlist`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`/api/partage/${_partageToken}/sondages`).then(r => r.ok ? r.json() : []).catch(() => []),
+  ]);
+
+  el.innerHTML = `
+    ${_renderHypeMeter(hypeData)}
+    ${_renderQuickBio(profils)}
+    ${_renderWishWall(wishlist)}
+    ${_renderSondages(sondages)}
+  `;
+
+  _bindPrepaHandlers(hypeData, profils, wishlist, sondages);
+}
+
+// ── Hype Meter ────────────────────────────────────────────────────────────
+function _renderHypeMeter(data) {
+  const moi = _partageIdentite?.nom;
+  const monVote = data.votes.find(v => v.auteur === moi);
+  const EMOJIS = ['😴','🙂','😃','🤩','🔥'];
+  const LABELS = ['Bof…','Pas mal','Chaud !','Trop hâte','ON FIRE'];
+  const pct = data.moyenne ? Math.round((data.moyenne / 5) * 100) : 0;
+
+  const jaugeColor = pct < 40 ? '#3B82F6' : pct < 70 ? '#F59E0B' : '#F97316';
+
+  return `
+  <div class="prep-section">
+    <div class="prep-section-header">
+      <span class="prep-section-title">🔥 Hype Meter</span>
+      <span class="prep-section-sub">${data.total} vote${data.total > 1 ? 's' : ''}</span>
+    </div>
+    <div class="prep-hype-body">
+      <div class="prep-hype-jauge-wrap">
+        <div class="prep-hype-jauge">
+          <div class="prep-hype-fill" style="width:${pct}%;background:${jaugeColor}"></div>
+        </div>
+        <div class="prep-hype-score" style="color:${jaugeColor}">${data.moyenne > 0 ? data.moyenne.toFixed(1) : '–'}<span style="font-size:.7em;opacity:.6">/5</span></div>
+      </div>
+      ${moi ? `
+      <div class="prep-hype-btns" id="hype-btns">
+        ${EMOJIS.map((e, i) => `
+          <button class="prep-hype-btn${monVote?.score === i+1 ? ' active' : ''}"
+            data-score="${i+1}" data-emoji="${e}" title="${LABELS[i]}">
+            ${e}
+          </button>
+        `).join('')}
+      </div>
+      ${monVote ? `<p style="text-align:center;font-size:.78rem;color:var(--text-muted);margin-top:6px">Ton vote : ${EMOJIS[monVote.score-1]} ${LABELS[monVote.score-1]}</p>` : `<p style="text-align:center;font-size:.78rem;color:var(--text-muted);margin-top:6px">Comment tu te sens par rapport à ce voyage ?</p>`}
+      ` : '<p style="text-align:center;font-size:.78rem;color:var(--text-muted)">Identifie-toi pour voter</p>'}
+      ${data.votes.length > 0 ? `
+      <div class="prep-hype-voters">
+        ${data.votes.map(v => `<span class="prep-voter-chip">${EMOJIS[v.score-1]} ${_he(v.auteur)}</span>`).join('')}
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+// ── Quick Bio ─────────────────────────────────────────────────────────────
+function _renderQuickBio(profils) {
+  const moi = _partageIdentite?.nom;
+  const monProfil = profils.find(p => p.auteur === moi);
+
+  const cartes = profils.map(p => `
+    <div class="prep-bio-card">
+      <div class="prep-bio-avatar" style="background:${_he(p.couleur || '#6B7280')}">${(_he(p.auteur)||'?')[0].toUpperCase()}</div>
+      <div class="prep-bio-body">
+        <div class="prep-bio-nom">${_he(p.auteur)}</div>
+        ${p.truc_en_voyage ? `<div class="prep-bio-item">✈️ ${_he(p.truc_en_voyage)}</div>` : ''}
+        ${p.chaud_pour ? `<div class="prep-bio-item">🙌 ${_he(p.chaud_pour)}</div>` : ''}
+        ${p.refuse ? `<div class="prep-bio-item" style="color:#EF4444">🚫 ${_he(p.refuse)}</div>` : ''}
+        ${!p.truc_en_voyage && !p.chaud_pour && !p.refuse ? `<div class="prep-bio-item" style="opacity:.5">Profil vide</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  const formProfil = moi ? `
+    <div class="prep-bio-form" id="bio-form-${monProfil ? 'edit' : 'new'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:.82rem;font-weight:700;color:var(--text-muted)">${monProfil ? '✏️ Modifier mon profil' : '👤 Compléter mon profil'}</span>
+        ${monProfil ? `<button class="prep-btn-link" onclick="document.getElementById('bio-edit-form').style.display=document.getElementById('bio-edit-form').style.display==='none'?'':'none'">Modifier</button>` : ''}
+      </div>
+      <div id="bio-edit-form" style="${monProfil ? 'display:none' : ''}">
+        <input id="bio-truc" class="prep-input" placeholder="Mon truc en voyage… (ex: je dors 10h 😴)" value="${_he(monProfil?.truc_en_voyage || '')}">
+        <input id="bio-chaud" class="prep-input" placeholder="Je suis chaud pour… (ex: la street food 🍜)" value="${_he(monProfil?.chaud_pour || '')}">
+        <input id="bio-refuse" class="prep-input" placeholder="Je refuse catégoriquement… (ex: les musées 🙅)" value="${_he(monProfil?.refuse || '')}">
+        <button class="prep-btn-primary" id="bio-save-btn" onclick="_sauvegarderProfil()">💾 Sauvegarder</button>
+      </div>
+    </div>
+  ` : '';
+
+  return `
+  <div class="prep-section">
+    <div class="prep-section-header">
+      <span class="prep-section-title">👤 Qui part avec nous ?</span>
+      <span class="prep-section-sub">${profils.length} profil${profils.length > 1 ? 's' : ''}</span>
+    </div>
+    ${formProfil}
+    ${profils.length > 0 ? `<div class="prep-bio-list">${cartes}</div>` : `<p style="padding:12px 0;text-align:center;font-size:.82rem;color:var(--text-muted)">Aucun profil complété pour l'instant</p>`}
+  </div>`;
+}
+
+// ── Wish Wall ─────────────────────────────────────────────────────────────
+function _renderWishWall(wishlist) {
+  const moi = _partageIdentite?.nom;
+  const TYPES = { activite:'🎯', restaurant:'🍽️', destination:'🗺️', logement:'🏠', autre:'✨' };
+
+  const cartes = wishlist.map(w => {
+    const likes = w.likes || [];
+    const jaLike = moi && likes.includes(moi);
+    return `
+    <div class="prep-wish-card" data-id="${w.id}">
+      <div class="prep-wish-header">
+        <span class="prep-wish-type">${TYPES[w.type] || '✨'}</span>
+        <div class="prep-wish-info">
+          <span class="prep-wish-titre">${_he(w.titre)}</span>
+          <span class="prep-wish-auteur">par ${_he(w.auteur)}</span>
+        </div>
+        ${moi && w.auteur === moi ? `<button class="prep-btn-icon prep-wish-del" data-wish-id="${w.id}" title="Supprimer">✕</button>` : ''}
+      </div>
+      ${w.description ? `<p class="prep-wish-desc">${_he(w.description)}</p>` : ''}
+      ${w.url ? `<a href="${_he(w.url)}" target="_blank" rel="noopener" class="prep-wish-link">🔗 Voir le lien</a>` : ''}
+      <div class="prep-wish-footer">
+        ${moi ? `<button class="prep-like-btn${jaLike ? ' liked' : ''}" data-wish-id="${w.id}">
+          ${jaLike ? '❤️' : '🤍'} ${likes.length > 0 ? likes.length : ''}
+        </button>` : `<span style="font-size:.78rem;color:var(--text-muted)">❤️ ${likes.length}</span>`}
+        ${likes.length > 0 ? `<span class="prep-like-names">${likes.slice(0,3).map(_he).join(', ')}${likes.length > 3 ? ` +${likes.length-3}` : ''}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const formWish = moi ? `
+    <div id="wish-form-toggle">
+      <button class="prep-btn-add" onclick="document.getElementById('wish-form').style.display='';this.style.display='none'">
+        + Ajouter une envie
+      </button>
+    </div>
+    <div id="wish-form" style="display:none" class="prep-form-box">
+      <input id="wish-titre" class="prep-input" placeholder="Mon envie pour ce voyage… *" maxlength="80">
+      <div style="display:flex;gap:8px">
+        <select id="wish-type" class="prep-select">
+          <option value="activite">🎯 Activité</option>
+          <option value="restaurant">🍽️ Restaurant</option>
+          <option value="destination">🗺️ Destination</option>
+          <option value="logement">🏠 Logement</option>
+          <option value="autre">✨ Autre</option>
+        </select>
+      </div>
+      <textarea id="wish-desc" class="prep-input" rows="2" placeholder="Description (optionnel)…" style="resize:vertical"></textarea>
+      <input id="wish-url" class="prep-input" placeholder="Lien (optionnel)…" type="url">
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="prep-btn-secondary" onclick="document.getElementById('wish-form').style.display='none';document.getElementById('wish-form-toggle').style.display=''">Annuler</button>
+        <button class="prep-btn-primary" onclick="_ajouterWish()">Ajouter ✨</button>
+      </div>
+    </div>
+  ` : '';
+
+  return `
+  <div class="prep-section">
+    <div class="prep-section-header">
+      <span class="prep-section-title">💡 Wish Wall</span>
+      <span class="prep-section-sub">${wishlist.length} envie${wishlist.length > 1 ? 's' : ''}</span>
+    </div>
+    ${formWish}
+    <div id="wish-list">${wishlist.length > 0 ? cartes : '<p style="padding:12px 0;text-align:center;font-size:.82rem;color:var(--text-muted)">Aucune envie pour l\'instant — soyez les premiers !</p>'}</div>
+  </div>`;
+}
+
+// ── Sondages / Quick Poll ─────────────────────────────────────────────────
+function _renderSondages(sondages) {
+  const moi = _partageIdentite?.nom;
+
+  const cartesSondage = sondages.map(s => {
+    const options = s.options || [];
+    const votes = s.votes || [];
+    const totalVotes = votes.length;
+    const monVote = moi ? votes.find(v => v.auteur === moi) : null;
+    const estFerme = s.statut === 'fermé';
+
+    const optionsHTML = options.map(opt => {
+      const nbVotes = votes.filter(v => v.option_id === opt.id).length;
+      const pct = totalVotes > 0 ? Math.round((nbVotes / totalVotes) * 100) : 0;
+      const jaVote = monVote?.option_id === opt.id;
+      return `
+        <div class="prep-poll-option${jaVote ? ' my-vote' : ''}" ${moi && !estFerme ? `onclick="_voterSondage(${s.id}, ${opt.id})"` : ''} style="${moi && !estFerme ? 'cursor:pointer' : ''}">
+          <div class="prep-poll-bar-wrap">
+            <div class="prep-poll-bar" style="width:${pct}%"></div>
+            <span class="prep-poll-label">${_he(opt.texte)}</span>
+            <span class="prep-poll-pct">${totalVotes > 0 ? pct + '%' : ''} ${nbVotes > 0 ? `(${nbVotes})` : ''}</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+    <div class="prep-poll-card" data-sondage-id="${s.id}">
+      <div class="prep-poll-header">
+        <span class="prep-poll-titre">${_he(s.titre)}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${estFerme ? '<span class="prep-pill prep-pill-closed">Fermé</span>' : '<span class="prep-pill prep-pill-open">Ouvert</span>'}
+          ${(moi && s.created_by === moi && !estFerme) ? `<button class="prep-btn-icon" onclick="_fermerSondage(${s.id})" title="Fermer le vote">🔒</button>` : ''}
+          ${(moi && s.created_by === moi) ? `<button class="prep-btn-icon" onclick="_supprimerSondage(${s.id})" title="Supprimer">✕</button>` : ''}
+        </div>
+      </div>
+      <div class="prep-poll-options">${optionsHTML}</div>
+      <div class="prep-poll-footer">
+        <span>${totalVotes} vote${totalVotes > 1 ? 's' : ''}</span>
+        <span>par ${_he(s.created_by)}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const formPoll = moi ? `
+    <div id="poll-form-toggle">
+      <button class="prep-btn-add" onclick="document.getElementById('poll-form').style.display='';this.style.display='none'">
+        + Créer un vote
+      </button>
+    </div>
+    <div id="poll-form" style="display:none" class="prep-form-box">
+      <input id="poll-titre" class="prep-input" placeholder="Votre question… (ex: Plage ou montagne ?)" maxlength="100">
+      <div id="poll-options-list">
+        <input class="prep-input poll-option-input" placeholder="Option 1…" maxlength="60">
+        <input class="prep-input poll-option-input" placeholder="Option 2…" maxlength="60">
+      </div>
+      <button class="prep-btn-link" onclick="_ajouterOptionSondage()">+ Ajouter une option</button>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="prep-btn-secondary" onclick="document.getElementById('poll-form').style.display='none';document.getElementById('poll-form-toggle').style.display=''">Annuler</button>
+        <button class="prep-btn-primary" onclick="_creerSondage()">Lancer le vote 🗳️</button>
+      </div>
+    </div>
+  ` : '';
+
+  return `
+  <div class="prep-section">
+    <div class="prep-section-header">
+      <span class="prep-section-title">🗳️ Votes du groupe</span>
+      <span class="prep-section-sub">${sondages.length} sondage${sondages.length > 1 ? 's' : ''}</span>
+    </div>
+    ${formPoll}
+    <div id="sondages-list">${sondages.length > 0 ? cartesSondage : '<p style="padding:12px 0;text-align:center;font-size:.82rem;color:var(--text-muted)">Aucun vote pour l\'instant</p>'}</div>
+  </div>`;
+}
+
+// ── Event bindings ─────────────────────────────────────────────────────────
+function _bindPrepaHandlers(hypeData, profils, wishlist, sondages) {
+  // Hype buttons
+  document.getElementById('hype-btns')?.querySelectorAll('.prep-hype-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const score = +btn.dataset.score;
+      const emoji = btn.dataset.emoji;
+      const moi = _partageIdentite?.nom;
+      if (!moi) return;
+      const r = await fetch(`/api/partage/${_partageToken}/hype`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auteur: moi, score, emoji })
+      }).then(r => r.json()).catch(() => ({}));
+      if (r.ok) chargerPreparation();
+    });
+  });
+
+  // Wish likes
+  document.querySelectorAll('.prep-like-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.wishId;
+      const moi = _partageIdentite?.nom;
+      if (!moi) return;
+      await fetch(`/api/partage/${_partageToken}/wishlist/${id}/like`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auteur: moi })
+      });
+      chargerPreparation();
+    });
+  });
+
+  // Wish delete
+  document.querySelectorAll('.prep-wish-del').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.wishId;
+      if (!confirm('Supprimer cette envie ?')) return;
+      await fetch(`/api/partage/${_partageToken}/wishlist/${id}`, { method: 'DELETE' });
+      chargerPreparation();
+    });
+  });
+}
+
+async function _sauvegarderProfil() {
+  const moi = _partageIdentite?.nom;
+  if (!moi) return;
+  const btn = document.getElementById('bio-save-btn');
+  if (btn) btn.textContent = 'Sauvegarde…';
+  const r = await fetch(`/api/partage/${_partageToken}/profil`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      auteur: moi,
+      participant_id: _partageIdentite.participant_id || null,
+      couleur: _partageIdentite.couleur || '#6B7280',
+      truc_en_voyage: document.getElementById('bio-truc')?.value.trim() || null,
+      chaud_pour: document.getElementById('bio-chaud')?.value.trim() || null,
+      refuse: document.getElementById('bio-refuse')?.value.trim() || null
+    })
+  }).then(r => r.json()).catch(() => ({}));
+  if (r.ok) chargerPreparation();
+  else if (btn) btn.textContent = '💾 Sauvegarder';
+}
+
+async function _ajouterWish() {
+  const moi = _partageIdentite?.nom;
+  if (!moi) return;
+  const titre = document.getElementById('wish-titre')?.value.trim();
+  if (!titre) { toast('⚠️ Titre requis'); return; }
+  const r = await fetch(`/api/partage/${_partageToken}/wishlist`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      auteur: moi,
+      titre,
+      description: document.getElementById('wish-desc')?.value.trim() || null,
+      type: document.getElementById('wish-type')?.value || 'activite',
+      url: document.getElementById('wish-url')?.value.trim() || null
+    })
+  }).then(r => r.json()).catch(() => ({}));
+  if (r.id) chargerPreparation();
+}
+
+function _ajouterOptionSondage() {
+  const list = document.getElementById('poll-options-list');
+  if (!list) return;
+  if (list.querySelectorAll('.poll-option-input').length >= 6) { toast('Maximum 6 options'); return; }
+  const input = document.createElement('input');
+  input.className = 'prep-input poll-option-input';
+  input.placeholder = `Option ${list.querySelectorAll('.poll-option-input').length + 1}…`;
+  input.maxLength = 60;
+  list.appendChild(input);
+}
+
+async function _creerSondage() {
+  const moi = _partageIdentite?.nom;
+  if (!moi) return;
+  const titre = document.getElementById('poll-titre')?.value.trim();
+  const options = [...document.querySelectorAll('.poll-option-input')].map(i => i.value.trim()).filter(Boolean);
+  if (!titre) { toast('⚠️ Question requise'); return; }
+  if (options.length < 2) { toast('⚠️ Au moins 2 options'); return; }
+  const r = await fetch(`/api/partage/${_partageToken}/sondages`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ titre, options, created_by: moi })
+  }).then(r => r.json()).catch(() => ({}));
+  if (r.id) chargerPreparation();
+}
+
+async function _voterSondage(sondageId, optionId) {
+  const moi = _partageIdentite?.nom;
+  if (!moi) return;
+  await fetch(`/api/partage/${_partageToken}/sondages/${sondageId}/vote`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ option_id: optionId, auteur: moi })
+  });
+  chargerPreparation();
+}
+
+async function _fermerSondage(id) {
+  if (!confirm('Fermer ce vote définitivement ?')) return;
+  await fetch(`/api/partage/${_partageToken}/sondages/${id}/fermer`, { method: 'PATCH' });
+  chargerPreparation();
+}
+
+async function _supprimerSondage(id) {
+  if (!confirm('Supprimer ce sondage ?')) return;
+  await fetch(`/api/partage/${_partageToken}/sondages/${id}`, { method: 'DELETE' });
+  chargerPreparation();
+}
 </script>
 
 </body>

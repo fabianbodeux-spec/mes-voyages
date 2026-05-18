@@ -23,6 +23,10 @@ const FICHIERS = {
   commentaires:        path.join(DATA_DIR, 'commentaires.json'),
   messages_prives:     path.join(DATA_DIR, 'messages_prives.json'),
   locations:           path.join(DATA_DIR, 'locations.json'),
+  hype_votes:           path.join(DATA_DIR, 'hype_votes.json'),
+  participant_profiles: path.join(DATA_DIR, 'participant_profiles.json'),
+  wishlist:             path.join(DATA_DIR, 'wishlist.json'),
+  sondages:             path.join(DATA_DIR, 'sondages.json'),
 };
 
 function charger(cle) {
@@ -64,6 +68,10 @@ const localDB = {
       sauvegarder('reservations', charger('reservations').filter(r => r.voyage_id !== +id));
       sauvegarder('agenda', charger('agenda').filter(a => a.voyage_id !== +id));
       sauvegarder('documents', charger('documents').filter(d => d.voyage_id !== +id));
+      sauvegarder('hype_votes', charger('hype_votes').filter(h => h.voyage_id !== +id));
+      sauvegarder('participant_profiles', charger('participant_profiles').filter(p => p.voyage_id !== +id));
+      sauvegarder('wishlist', charger('wishlist').filter(w => w.voyage_id !== +id));
+      sauvegarder('sondages', charger('sondages').filter(s => s.voyage_id !== +id));
       sauvegarder('voyages', charger('voyages').filter(v => v.id !== +id));
     }
   },
@@ -187,7 +195,77 @@ const localDB = {
       return true;
     },
     delete: (vid, device_id) => { sauvegarder('locations', charger('locations').filter(l => !(l.voyage_id === +vid && l.device_id === device_id))); }
-  }
+  },
+  hype_votes: {
+    getByVoyage: (vid) => charger('hype_votes').filter(h => h.voyage_id === +vid),
+    upsert: (vid, data) => {
+      const list = charger('hype_votes');
+      const idx = list.findIndex(h => h.voyage_id === +vid && h.auteur === data.auteur);
+      const item = { voyage_id: +vid, auteur: data.auteur, score: data.score, emoji: data.emoji || null, updated_at: new Date().toISOString() };
+      if (idx === -1) { list.push({ ...item, id: nextId(list) }); } else { list[idx] = { ...list[idx], ...item }; }
+      sauvegarder('hype_votes', list);
+      return true;
+    }
+  },
+  participant_profiles: {
+    getByVoyage: (vid) => charger('participant_profiles').filter(p => p.voyage_id === +vid),
+    upsert: (vid, data) => {
+      const list = charger('participant_profiles');
+      const idx = list.findIndex(p => p.voyage_id === +vid && p.auteur === data.auteur);
+      const item = { voyage_id: +vid, auteur: data.auteur, participant_id: data.participant_id || null, couleur: data.couleur || '#6B7280', truc_en_voyage: data.truc_en_voyage || null, chaud_pour: data.chaud_pour || null, refuse: data.refuse || null, updated_at: new Date().toISOString() };
+      if (idx === -1) { list.push({ ...item, id: nextId(list) }); } else { list[idx] = { ...list[idx], ...item }; }
+      sauvegarder('participant_profiles', list);
+      return true;
+    }
+  },
+  wishlist: {
+    getByVoyage: (vid) => charger('wishlist').filter(w => w.voyage_id === +vid).sort((a,b) => b.created_at.localeCompare(a.created_at)),
+    getById: (id) => charger('wishlist').find(w => w.id === +id),
+    create: (vid, data) => {
+      const list = charger('wishlist');
+      const item = { ...data, id: nextId(list), voyage_id: +vid, likes: [], created_at: new Date().toISOString() };
+      list.push(item); sauvegarder('wishlist', list); return item;
+    },
+    toggleLike: (id, auteur) => {
+      const list = charger('wishlist');
+      const idx = list.findIndex(w => w.id === +id);
+      if (idx === -1) return false;
+      const likes = list[idx].likes || [];
+      const pos = likes.indexOf(auteur);
+      if (pos === -1) { likes.push(auteur); } else { likes.splice(pos, 1); }
+      list[idx].likes = likes;
+      sauvegarder('wishlist', list);
+      return pos === -1; // true = liké, false = unliké
+    },
+    delete: (id) => sauvegarder('wishlist', charger('wishlist').filter(w => w.id !== +id))
+  },
+  sondages: {
+    getByVoyage: (vid) => charger('sondages').filter(s => s.voyage_id === +vid).sort((a,b) => b.created_at.localeCompare(a.created_at)),
+    getById: (id) => charger('sondages').find(s => s.id === +id),
+    create: (vid, data) => {
+      const list = charger('sondages');
+      const options = (data.options || []).map((texte, i) => ({ id: i + 1, texte }));
+      const item = { id: nextId(list), voyage_id: +vid, titre: data.titre, created_by: data.created_by, statut: 'ouvert', options, votes: [], created_at: new Date().toISOString() };
+      list.push(item); sauvegarder('sondages', list); return item;
+    },
+    vote: (id, optionId, auteur) => {
+      const list = charger('sondages');
+      const idx = list.findIndex(s => s.id === +id);
+      if (idx === -1) return false;
+      // Retirer le vote précédent de cet auteur
+      list[idx].votes = (list[idx].votes || []).filter(v => v.auteur !== auteur);
+      list[idx].votes.push({ option_id: +optionId, auteur });
+      sauvegarder('sondages', list);
+      return true;
+    },
+    fermer: (id) => {
+      const list = charger('sondages');
+      const idx = list.findIndex(s => s.id === +id);
+      if (idx !== -1) { list[idx].statut = 'fermé'; sauvegarder('sondages', list); }
+      return true;
+    },
+    delete: (id) => sauvegarder('sondages', charger('sondages').filter(s => s.id !== +id))
+  },
 };
 
 // ─── MODE CLOUD : PostgreSQL ───────────────────────────────────────────────
@@ -303,6 +381,48 @@ if (USE_POSTGRES) {
       created_at TIMESTAMPTZ DEFAULT now()
     );
     ALTER TABLE voyages ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES users(id);
+    CREATE TABLE IF NOT EXISTS hype_votes (
+      id SERIAL PRIMARY KEY,
+      voyage_id INTEGER NOT NULL,
+      auteur TEXT NOT NULL,
+      score SMALLINT NOT NULL CHECK (score BETWEEN 1 AND 5),
+      emoji TEXT,
+      updated_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(voyage_id, auteur)
+    );
+    CREATE TABLE IF NOT EXISTS participant_profiles (
+      id SERIAL PRIMARY KEY,
+      voyage_id INTEGER NOT NULL,
+      auteur TEXT NOT NULL,
+      participant_id INTEGER,
+      couleur TEXT DEFAULT '#6B7280',
+      truc_en_voyage TEXT,
+      chaud_pour TEXT,
+      refuse TEXT,
+      updated_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(voyage_id, auteur)
+    );
+    CREATE TABLE IF NOT EXISTS wishlist (
+      id SERIAL PRIMARY KEY,
+      voyage_id INTEGER NOT NULL,
+      auteur TEXT NOT NULL,
+      titre TEXT NOT NULL,
+      description TEXT,
+      type TEXT DEFAULT 'activite',
+      url TEXT,
+      likes TEXT DEFAULT '[]',
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS sondages (
+      id SERIAL PRIMARY KEY,
+      voyage_id INTEGER NOT NULL,
+      titre TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      statut TEXT DEFAULT 'ouvert',
+      options JSONB DEFAULT '[]',
+      votes JSONB DEFAULT '[]',
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
   `).catch(console.error);
 }
 
@@ -332,6 +452,10 @@ const pgDB = pgPool ? {
       await pgPool.query('DELETE FROM reservations WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM agenda WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM documents WHERE voyage_id=$1', [id]);
+      await pgPool.query('DELETE FROM hype_votes WHERE voyage_id=$1', [id]);
+      await pgPool.query('DELETE FROM participant_profiles WHERE voyage_id=$1', [id]);
+      await pgPool.query('DELETE FROM wishlist WHERE voyage_id=$1', [id]);
+      await pgPool.query('DELETE FROM sondages WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM voyages WHERE id=$1', [id]);
     }
   },
@@ -469,7 +593,71 @@ const pgDB = pgPool ? {
     delete: async (vid, device_id) => pgPool.query(
       'DELETE FROM locations WHERE voyage_id=$1 AND device_id=$2', [vid, device_id]
     )
-  }
+  },
+  hype_votes: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM hype_votes WHERE voyage_id=$1 ORDER BY updated_at DESC', [vid])).rows,
+    upsert: async (vid, data) => {
+      await pgPool.query(
+        `INSERT INTO hype_votes(voyage_id, auteur, score, emoji) VALUES($1,$2,$3,$4)
+         ON CONFLICT (voyage_id, auteur) DO UPDATE SET score=EXCLUDED.score, emoji=EXCLUDED.emoji, updated_at=now()`,
+        [vid, data.auteur, data.score, data.emoji || null]
+      );
+      return true;
+    }
+  },
+  participant_profiles: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM participant_profiles WHERE voyage_id=$1 ORDER BY updated_at ASC', [vid])).rows,
+    upsert: async (vid, data) => {
+      await pgPool.query(
+        `INSERT INTO participant_profiles(voyage_id, auteur, participant_id, couleur, truc_en_voyage, chaud_pour, refuse) VALUES($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (voyage_id, auteur) DO UPDATE SET participant_id=EXCLUDED.participant_id, couleur=EXCLUDED.couleur, truc_en_voyage=EXCLUDED.truc_en_voyage, chaud_pour=EXCLUDED.chaud_pour, refuse=EXCLUDED.refuse, updated_at=now()`,
+        [vid, data.auteur, data.participant_id || null, data.couleur || '#6B7280', data.truc_en_voyage || null, data.chaud_pour || null, data.refuse || null]
+      );
+      return true;
+    }
+  },
+  wishlist: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM wishlist WHERE voyage_id=$1 ORDER BY created_at DESC', [vid])).rows,
+    getById: async (id) => (await pgPool.query('SELECT * FROM wishlist WHERE id=$1', [id])).rows[0],
+    create: async (vid, data) => (await pgPool.query(
+      `INSERT INTO wishlist(voyage_id, auteur, titre, description, type, url) VALUES($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [vid, data.auteur, data.titre, data.description || null, data.type || 'activite', data.url || null]
+    )).rows[0],
+    toggleLike: async (id, auteur) => {
+      const row = (await pgPool.query('SELECT likes FROM wishlist WHERE id=$1', [id])).rows[0];
+      if (!row) return false;
+      let likes = [];
+      try { likes = JSON.parse(row.likes || '[]'); } catch {}
+      const pos = likes.indexOf(auteur);
+      if (pos === -1) { likes.push(auteur); } else { likes.splice(pos, 1); }
+      await pgPool.query('UPDATE wishlist SET likes=$1 WHERE id=$2', [JSON.stringify(likes), id]);
+      return pos === -1;
+    },
+    delete: async (id) => pgPool.query('DELETE FROM wishlist WHERE id=$1', [id])
+  },
+  sondages: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM sondages WHERE voyage_id=$1 ORDER BY created_at DESC', [vid])).rows,
+    getById: async (id) => (await pgPool.query('SELECT * FROM sondages WHERE id=$1', [id])).rows[0],
+    create: async (vid, data) => {
+      const options = (data.options || []).map((texte, i) => ({ id: i + 1, texte }));
+      return (await pgPool.query(
+        `INSERT INTO sondages(voyage_id, titre, created_by, options, votes) VALUES($1,$2,$3,$4,'[]') RETURNING *`,
+        [vid, data.titre, data.created_by, JSON.stringify(options)]
+      )).rows[0];
+    },
+    vote: async (id, optionId, auteur) => {
+      const row = (await pgPool.query('SELECT votes FROM sondages WHERE id=$1', [id])).rows[0];
+      if (!row) return false;
+      let votes = row.votes || [];
+      if (typeof votes === 'string') { try { votes = JSON.parse(votes); } catch { votes = []; } }
+      votes = votes.filter(v => v.auteur !== auteur);
+      votes.push({ option_id: +optionId, auteur });
+      await pgPool.query('UPDATE sondages SET votes=$1 WHERE id=$2', [JSON.stringify(votes), id]);
+      return true;
+    },
+    fermer: async (id) => { await pgPool.query("UPDATE sondages SET statut='fermé' WHERE id=$1", [id]); return true; },
+    delete: async (id) => pgPool.query('DELETE FROM sondages WHERE id=$1', [id])
+  },
 } : null;
 
 // Export : utilise PostgreSQL en production, JSON en local

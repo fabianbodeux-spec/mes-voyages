@@ -3416,3 +3416,218 @@ textarea { resize: vertical; line-height: 1.6; }
   .intro-tagline { opacity: 0.38; }
   .intro-wordmark { letter-spacing: -0.04em; }
 }
+
+/* ════════════════════════════════════════════════
+   PRE-TRIP HUB — Onglet Préparation
+   ════════════════════════════════════════════════ */
+
+/* ── Sections ──────────────────────────────────── */
+.prep-section {
+  background: var(--card);
+  border-radius: 16px;
+  margin: 12px 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.prep-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.prep-section-title {
+  font-weight: 700;
+  font-size: .95rem;
+}
+.prep-section-sub {
+  font-size: .72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ── Hype Meter ─────────────────────────────────── */
+.prep-hype-body { padding: 14px 16px; }
+.prep-hype-jauge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.prep-hype-jauge {
+  flex: 1;
+  height: 10px;
+  background: var(--border-solid);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.prep-hype-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width .5s ease, background .5s ease;
+}
+.prep-hype-score {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-family: var(--font-display);
+  min-width: 48px;
+  text-align: right;
+}
+.prep-hype-btns {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+.prep-hype-btn {
+  font-size: 1.5rem;
+  padding: 6px 8px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: transform .15s, border-color .15s;
+}
+.prep-hype-btn:hover { transform: scale(1.2); }
+.prep-hype-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  transform: scale(1.15);
+}
+.prep-hype-voters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.prep-voter-chip {
+  font-size: .72rem;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--bg);
+  color: var(--text-muted);
+}
+
+/* ── Quick Bio ──────────────────────────────────── */
+.prep-bio-form { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.prep-bio-list { padding: 10px 14px; display: flex; flex-direction: column; gap: 10px; }
+.prep-bio-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg);
+}
+.prep-bio-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9rem; font-weight: 800; color: #fff; flex-shrink: 0;
+}
+.prep-bio-body { flex: 1; min-width: 0; }
+.prep-bio-nom { font-weight: 700; font-size: .88rem; margin-bottom: 4px; }
+.prep-bio-item { font-size: .78rem; color: var(--text-muted); line-height: 1.5; }
+
+/* ── Wish Wall ──────────────────────────────────── */
+#wish-list { padding: 10px 14px; display: flex; flex-direction: column; gap: 10px; }
+.prep-wish-card {
+  border: 1.5px solid var(--border-solid);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--bg);
+}
+.prep-wish-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+.prep-wish-type { font-size: 1.2rem; flex-shrink: 0; }
+.prep-wish-info { flex: 1; min-width: 0; }
+.prep-wish-titre { font-weight: 700; font-size: .9rem; display: block; }
+.prep-wish-auteur { font-size: .72rem; color: var(--text-muted); }
+.prep-wish-desc { font-size: .82rem; color: var(--text-muted); margin: 6px 0; line-height: 1.5; }
+.prep-wish-link { font-size: .78rem; color: var(--accent); text-decoration: none; display: block; margin: 4px 0; }
+.prep-wish-footer { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.prep-like-btn {
+  font-size: .82rem; font-weight: 700; padding: 4px 10px;
+  border: 1.5px solid var(--border-solid); border-radius: 20px;
+  background: var(--card); cursor: pointer; color: var(--text);
+  font-family: var(--font-body); transition: all .15s;
+}
+.prep-like-btn.liked { background: #FEF2F2; border-color: #FCA5A5; color: #EF4444; }
+.prep-like-names { font-size: .72rem; color: var(--text-muted); }
+
+/* ── Sondages ───────────────────────────────────── */
+#sondages-list { padding: 10px 14px; display: flex; flex-direction: column; gap: 12px; }
+.prep-poll-card { background: var(--bg); border-radius: 12px; padding: 12px 14px; }
+.prep-poll-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.prep-poll-titre { font-weight: 700; font-size: .9rem; flex: 1; }
+.prep-poll-options { display: flex; flex-direction: column; gap: 8px; }
+.prep-poll-option { border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border-solid); transition: border-color .15s; }
+.prep-poll-option:hover { border-color: var(--accent); }
+.prep-poll-option.my-vote { border-color: var(--accent); }
+.prep-poll-bar-wrap { position: relative; padding: 8px 12px; min-height: 38px; display: flex; align-items: center; justify-content: space-between; }
+.prep-poll-bar {
+  position: absolute; inset: 0; right: auto;
+  background: var(--accent-light); border-radius: 8px;
+  transition: width .4s ease;
+  pointer-events: none;
+}
+.prep-poll-option.my-vote .prep-poll-bar { background: rgba(249,115,22,.18); }
+.prep-poll-label { position: relative; font-size: .84rem; font-weight: 600; flex: 1; z-index: 1; }
+.prep-poll-pct { position: relative; font-size: .72rem; color: var(--text-muted); z-index: 1; white-space: nowrap; }
+.prep-poll-footer { display: flex; justify-content: space-between; font-size: .72rem; color: var(--text-muted); margin-top: 10px; }
+.prep-pill {
+  font-size: .62rem; font-weight: 800; padding: 2px 8px;
+  border-radius: 20px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+}
+.prep-pill-open { background: #DCFCE7; color: #166534; }
+.prep-pill-closed { background: var(--border-solid); color: var(--text-muted); }
+
+/* ── Formulaires communs ────────────────────────── */
+.prep-form-box { padding: 10px 14px 14px; border-bottom: 1px solid var(--border); }
+.prep-input {
+  display: block; width: 100%;
+  padding: 9px 12px; margin-bottom: 8px;
+  border: 1.5px solid var(--border-solid); border-radius: 10px;
+  font-size: .88rem; font-family: var(--font-body);
+  background: var(--card); color: var(--text); outline: none;
+  box-sizing: border-box;
+}
+.prep-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.prep-select {
+  flex: 1; padding: 9px 12px; margin-bottom: 8px;
+  border: 1.5px solid var(--border-solid); border-radius: 10px;
+  font-size: .88rem; font-family: var(--font-body);
+  background: var(--card); color: var(--text); outline: none;
+}
+.prep-btn-primary {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 9px 18px; border: none; border-radius: 10px;
+  background: var(--accent); color: #fff;
+  font-size: .86rem; font-weight: 700; font-family: var(--font-body);
+  cursor: pointer; transition: opacity .15s;
+}
+.prep-btn-primary:hover { opacity: .88; }
+.prep-btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 9px 18px; border: 1.5px solid var(--border-solid); border-radius: 10px;
+  background: var(--card); color: var(--text);
+  font-size: .86rem; font-weight: 600; font-family: var(--font-body);
+  cursor: pointer;
+}
+.prep-btn-add {
+  display: block; width: 100%; margin: 10px 0;
+  padding: 10px 16px; border: 1.5px dashed var(--border-solid); border-radius: 10px;
+  background: transparent; color: var(--text-muted);
+  font-size: .86rem; font-weight: 600; font-family: var(--font-body);
+  cursor: pointer; transition: border-color .15s, color .15s;
+}
+.prep-btn-add:hover { border-color: var(--accent); color: var(--accent); }
+.prep-btn-link {
+  background: none; border: none; color: var(--accent);
+  font-size: .82rem; font-weight: 600; cursor: pointer;
+  font-family: var(--font-body); padding: 0;
+}
+.prep-btn-icon {
+  background: none; border: none; cursor: pointer;
+  font-size: .82rem; color: var(--text-muted); padding: 2px 4px;
+  border-radius: 6px; transition: background .15s;
+}
+.prep-btn-icon:hover { background: var(--border-solid); }

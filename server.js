@@ -968,6 +968,161 @@ app.delete('/api/partage/:token/location/:device_id', async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+// ─── PRE-TRIP HUB ─────────────────────────────────────────────────────────
+
+// ── Hype Meter ────────────────────────────────────────────────────────────
+app.get('/api/partage/:token/hype', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const votes = await run(() => db.hype_votes.getByVoyage(voyage.id));
+    const total = votes.length;
+    const moyenne = total > 0 ? Math.round((votes.reduce((s, v) => s + v.score, 0) / total) * 10) / 10 : 0;
+    res.json({ votes, moyenne, total });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.post('/api/partage/:token/hype', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const { auteur, score, emoji } = req.body;
+    if (!auteur || !score || score < 1 || score > 5) return res.status(400).json({ error: 'Données invalides' });
+    await run(() => db.hype_votes.upsert(voyage.id, { auteur, score: +score, emoji: emoji || null }));
+    const votes = await run(() => db.hype_votes.getByVoyage(voyage.id));
+    const total = votes.length;
+    const moyenne = total > 0 ? Math.round((votes.reduce((s, v) => s + v.score, 0) / total) * 10) / 10 : 0;
+    res.json({ ok: true, moyenne, total });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// ── Profils participants ───────────────────────────────────────────────────
+app.get('/api/partage/:token/profils', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    res.json(await run(() => db.participant_profiles.getByVoyage(voyage.id)));
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.post('/api/partage/:token/profil', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const { auteur, participant_id, couleur, truc_en_voyage, chaud_pour, refuse } = req.body;
+    if (!auteur) return res.status(400).json({ error: 'Auteur requis' });
+    await run(() => db.participant_profiles.upsert(voyage.id, { auteur, participant_id: participant_id || null, couleur, truc_en_voyage, chaud_pour, refuse }));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// ── Wishlist collaborative ─────────────────────────────────────────────────
+app.get('/api/partage/:token/wishlist', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const items = await run(() => db.wishlist.getByVoyage(voyage.id));
+    // Normaliser likes (peut être string JSON en PG)
+    res.json(items.map(w => ({ ...w, likes: typeof w.likes === 'string' ? JSON.parse(w.likes || '[]') : (w.likes || []) })));
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.post('/api/partage/:token/wishlist', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const { auteur, titre, description, type, url } = req.body;
+    if (!auteur || !titre?.trim()) return res.status(400).json({ error: 'Données manquantes' });
+    const item = await run(() => db.wishlist.create(voyage.id, { auteur, titre: titre.trim(), description: description?.trim() || null, type: type || 'activite', url: url?.trim() || null }));
+    res.json({ ...item, likes: [] });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.post('/api/partage/:token/wishlist/:id/like', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const { auteur } = req.body;
+    if (!auteur) return res.status(400).json({ error: 'Auteur requis' });
+    const item = await run(() => db.wishlist.getById(req.params.id));
+    if (!item || item.voyage_id !== voyage.id) return res.status(404).json({ error: 'Item introuvable' });
+    const liked = await run(() => db.wishlist.toggleLike(req.params.id, auteur));
+    res.json({ ok: true, liked });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.delete('/api/partage/:token/wishlist/:id', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const item = await run(() => db.wishlist.getById(req.params.id));
+    if (!item || item.voyage_id !== voyage.id) return res.status(404).json({ error: 'Item introuvable' });
+    await run(() => db.wishlist.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// ── Sondages ──────────────────────────────────────────────────────────────
+app.get('/api/partage/:token/sondages', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const sondages = await run(() => db.sondages.getByVoyage(voyage.id));
+    res.json(sondages.map(s => ({
+      ...s,
+      options: typeof s.options === 'string' ? JSON.parse(s.options || '[]') : (s.options || []),
+      votes:   typeof s.votes   === 'string' ? JSON.parse(s.votes   || '[]') : (s.votes   || [])
+    })));
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.post('/api/partage/:token/sondages', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const { titre, options, created_by } = req.body;
+    if (!titre?.trim() || !Array.isArray(options) || options.length < 2) return res.status(400).json({ error: 'Titre et au moins 2 options requis' });
+    const s = await run(() => db.sondages.create(voyage.id, { titre: titre.trim(), options: options.map(o => String(o).trim()), created_by: created_by || 'Anonyme' }));
+    res.json({ ...s, options: typeof s.options === 'string' ? JSON.parse(s.options || '[]') : (s.options || []), votes: [] });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.post('/api/partage/:token/sondages/:id/vote', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const { option_id, auteur } = req.body;
+    if (!option_id || !auteur) return res.status(400).json({ error: 'Données manquantes' });
+    const s = await run(() => db.sondages.getById(req.params.id));
+    if (!s || s.voyage_id !== voyage.id) return res.status(404).json({ error: 'Sondage introuvable' });
+    if (s.statut === 'fermé') return res.status(403).json({ error: 'Sondage fermé' });
+    await run(() => db.sondages.vote(req.params.id, option_id, auteur));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.patch('/api/partage/:token/sondages/:id/fermer', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const s = await run(() => db.sondages.getById(req.params.id));
+    if (!s || s.voyage_id !== voyage.id) return res.status(404).json({ error: 'Sondage introuvable' });
+    await run(() => db.sondages.fermer(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.delete('/api/partage/:token/sondages/:id', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const s = await run(() => db.sondages.getById(req.params.id));
+    if (!s || s.voyage_id !== voyage.id) return res.status(404).json({ error: 'Sondage introuvable' });
+    await run(() => db.sondages.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
 // Anciens liens /partage/ → redirect vers /share/ même depuis bfcache
 app.get('/partage/:token', (req, res) => {
   const t = req.params.token;
