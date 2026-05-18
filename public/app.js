@@ -3305,3 +3305,221 @@ function formatTaille(bytes) {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} Ko`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
 }
+
+// ─── UI ANIMATIONS (migrated from inline script) ─────────────────────────────
+(function () {
+  const DESTS = [
+    'Paris, France…', 'Tokyo, Japon…', 'Corse, France…',
+    'Marrakech, Maroc…', 'Bali, Indonésie…', 'Santorin, Grèce…',
+    'Lisbonne, Portugal…', 'New York, USA…', 'Barcelone, Espagne…'
+  ];
+  let idx = 0;
+  function cycleDest() {
+    const el = document.getElementById('home-search-anim');
+    if (!el) return;
+    el.style.opacity = '0';
+    setTimeout(() => {
+      idx = (idx + 1) % DESTS.length;
+      el.textContent = DESTS[idx];
+      el.style.opacity = '1';
+    }, 300);
+  }
+  setInterval(cycleDest, 2800);
+
+  let hero = null;
+  function initParallax() {
+    const screen = document.getElementById('screen-home');
+    const main = screen ? screen.querySelector('.main-content') : null;
+    hero = screen ? screen.querySelector('.home-hero-bg') : null;
+    if (!main || !hero) return;
+    main.addEventListener('scroll', () => {
+      hero.style.transform = `translateY(${main.scrollTop * 0.35}px) scale(1)`;
+    }, { passive: true });
+  }
+
+  const cardObserver = new MutationObserver(mutations => {
+    mutations.forEach(m => {
+      m.addedNodes.forEach(node => {
+        if (node.classList && node.classList.contains('voyage-card'))
+          node.style.animationPlayState = 'running';
+      });
+    });
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initParallax();
+    const grid = document.getElementById('liste-voyages');
+    if (grid) cardObserver.observe(grid, { childList: true });
+
+    document.querySelectorAll('.main-content').forEach(el => {
+      el.addEventListener('scroll', () => {
+        const header = el.closest('.screen').querySelector('.app-header');
+        if (header && !el.closest('#screen-home'))
+          header.style.boxShadow = el.scrollTop > 4 ? '0 4px 24px rgba(26,26,46,0.10)' : '';
+      }, { passive: true });
+    });
+  });
+})();
+
+// ─── EVENT BINDING — remplace tous les handlers inline ───────────────────────
+function _on(id, event, handler) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(event, handler);
+}
+
+function _bindStaticHandlers() {
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  _on('login-btn',           'click', submitLogin);
+  _on('register-btn',        'click', submitRegister);
+  _on('switch-to-register',  'click', e => { e.preventDefault(); switchAuthForm('register'); });
+  _on('switch-to-login',     'click', e => { e.preventDefault(); switchAuthForm('login'); });
+
+  // ── Header / home ─────────────────────────────────────────────────────────
+  _on('logout-btn',          'click', logout);
+  _on('home-cta-btn',        'click', ouvrirCreateTrip);
+  _on('empty-create-btn',    'click', ouvrirCreateTrip);
+
+  // ── Voyage screen header ──────────────────────────────────────────────────
+  _on('btn-retour-accueil',  'click', afficherAccueil);
+  _on('btn-menu-voyage',     'click', menuVoyageActuel);
+
+  // ── Tab nav (delegation) ──────────────────────────────────────────────────
+  const tabNav = document.querySelector('.tab-nav');
+  if (tabNav) tabNav.addEventListener('click', e => {
+    const btn = e.target.closest('.tab-btn[data-tab]');
+    if (btn) changerOnglet(btn.dataset.tab, btn);
+  });
+
+  // ── Tab panels ────────────────────────────────────────────────────────────
+  _on('btn-ajouter-participant',    'click', ouvrirModalParticipant);
+  _on('btn-ajouter-agenda',         'click', ouvrirModalAgenda);
+  _on('btn-generer-suggestions',    'click', genererSuggestions);
+  _on('btn-ajouter-article-bagages','click', ouvrirModalAjoutArticle);
+  _on('btn-ajouter-depense',        'click', ouvrirModalDepense);
+  _on('btn-message-prive',          'click', ouvrirMessagePrive);
+
+  // ── Discussion ────────────────────────────────────────────────────────────
+  _on('discussion-input', 'keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _envoyerCommentaireAdmin(); }
+  });
+  _on('discussion-send', 'click', _envoyerCommentaireAdmin);
+
+  // ── Create wizard ─────────────────────────────────────────────────────────
+  _on('create-back-btn', 'click', createBack);
+  _on('create-skip-btn', 'click', createSkip);
+  _on('create-cta-btn',  'click', createNext);
+  _on('c-pays', 'input',   createInputChanged);
+  _on('c-pays', 'keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('c-ville').focus(); } });
+  _on('c-ville', 'input',   createInputChanged);
+  _on('c-ville', 'keydown', e => { if (e.key === 'Enter') createNext(); });
+  _on('c-nom',  'input',   createInputChanged);
+  _on('c-nom',  'keydown', e => { if (e.key === 'Enter') createNext(); });
+  _on('c-date-debut', 'change', createUpdateDuree);
+  _on('c-date-fin',   'change', createUpdateDuree);
+  _on('c-orga-nom', 'input', function () {
+    createInputChanged();
+    const a = document.getElementById('create-orga-avatar');
+    if (a) a.textContent = this.value ? this.value[0].toUpperCase() : '?';
+  });
+  _on('c-p-nom', 'keydown', e => { if (e.key === 'Enter') { e.preventDefault(); createAddParticipant(); } });
+  _on('create-p-add-btn', 'click', createAddParticipant);
+
+  // ── Create type grid (delegation) ─────────────────────────────────────────
+  const typeGrid = document.querySelector('.create-type-grid');
+  if (typeGrid) typeGrid.addEventListener('click', e => {
+    const btn = e.target.closest('.create-type-card[data-type]');
+    if (btn) createSelectType(btn.dataset.type, btn);
+  });
+
+  // ── Modal voyage ──────────────────────────────────────────────────────────
+  _on('form-voyage', 'submit', sauvegarderVoyage);
+  const voyagePicker = document.querySelector('#modal-voyage .color-picker');
+  if (voyagePicker) voyagePicker.addEventListener('click', e => {
+    const btn = e.target.closest('.color-opt');
+    if (btn) choisirCouleur(btn);
+  });
+
+  // ── Modal réservation ─────────────────────────────────────────────────────
+  _on('form-reservation', 'submit', sauvegarderReservation);
+  const resaTypeSelector = document.querySelector('#form-reservation .type-selector');
+  if (resaTypeSelector) resaTypeSelector.addEventListener('click', e => {
+    const btn = e.target.closest('.type-opt');
+    if (btn) choisirType(btn);
+  });
+
+  // ── Modal agenda ──────────────────────────────────────────────────────────
+  _on('form-agenda', 'submit', sauvegarderAgenda);
+
+  // ── Modal document ────────────────────────────────────────────────────────
+  _on('scan-mode-fichier-btn', 'click', () => basculerModeDoc('fichier'));
+  _on('scan-mode-scan-btn',    'click', () => basculerModeDoc('scan'));
+  _on('upload-doc-input',      'change', function () { uploaderDocument(this); });
+  _on('btn-scan-camera',       'click', () => lancerScan('camera'));
+  _on('btn-scan-fichier',      'click', () => lancerScan('file'));
+  _on('scan-camera-input',     'change', function () { traiterImageScan(this); });
+  _on('scan-file-input',       'change', function () { traiterImageScan(this); });
+  _on('scan-confirm-btn',      'click', confirmerImportScan);
+  const docTypeSelector = document.querySelector('#modal-document .type-selector');
+  if (docTypeSelector) docTypeSelector.addEventListener('click', e => {
+    const btn = e.target.closest('.type-opt');
+    if (btn) choisirDocType(btn);
+  });
+
+  // ── Modal modifier document ───────────────────────────────────────────────
+  _on('btn-save-doc-edit', 'click', sauvegarderModifDocument);
+  const docEditTypeSelector = document.querySelector('#modal-doc-edit .type-selector');
+  if (docEditTypeSelector) docEditTypeSelector.addEventListener('click', e => {
+    const btn = e.target.closest('.type-opt');
+    if (btn) choisirDocTypeEdit(btn);
+  });
+
+  // ── Doc viewer ────────────────────────────────────────────────────────────
+  _on('doc-viewer-close-btn', 'click', fermerDocViewer);
+
+  // ── Modal article ─────────────────────────────────────────────────────────
+  _on('btn-ajouter-article', 'click', ajouterArticle);
+
+  // ── Modal participant ─────────────────────────────────────────────────────
+  _on('btn-sauvegarder-participant', 'click', sauvegarderParticipant);
+  const participantPicker = document.querySelector('#modal-participant .color-picker');
+  if (participantPicker) participantPicker.addEventListener('click', e => {
+    const btn = e.target.closest('.color-opt');
+    if (btn) choisirCouleurParticipant(btn);
+  });
+
+  // ── Modal PIN ─────────────────────────────────────────────────────────────
+  _on('pin-valeur',           'keydown', e => { if (e.key === 'Enter') sauvegarderPin(); });
+  _on('btn-sauvegarder-pin',  'click', sauvegarderPin);
+
+  // ── Modal dépense ─────────────────────────────────────────────────────────
+  _on('btn-sauvegarder-depense', 'click', sauvegarderDepense);
+
+  // ── Bottom sheet voyage ───────────────────────────────────────────────────
+  _on('btn-partager-voyage',   'click', partagerVoyage);
+  _on('btn-modifier-voyage',   'click', modifierVoyageActuel);
+  _on('btn-supprimer-voyage',  'click', supprimerVoyageActuel);
+  _on('overlay-sheet',         'click', fermerBottomSheet);
+
+  // ── Modal partage ─────────────────────────────────────────────────────────
+  _on('btn-copier-lien', 'click', copierLienPartage);
+
+  // ── Modal attribution ─────────────────────────────────────────────────────
+  _on('btn-sauvegarder-attribution', 'click', sauvegarderAttribution);
+
+  // ── Modal clôture ─────────────────────────────────────────────────────────
+  _on('cloture-btn-action', 'click', archiverVoyage);
+
+  // ── Modal message privé ───────────────────────────────────────────────────
+  _on('btn-envoyer-message-prive', 'click', envoyerMessagePrive);
+
+  // ── Delegation globale : fermer modals / bottom sheet ────────────────────
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-modal-close]');
+    if (!btn) return;
+    const target = btn.dataset.modalClose;
+    if (target === 'bottom-sheet') fermerBottomSheet();
+    else fermerModal(target);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', _bindStaticHandlers);

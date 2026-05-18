@@ -97,8 +97,8 @@
         <label for="login-password">Mot de passe</label>
         <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
       </div>
-      <button class="auth-btn" id="login-btn" onclick="submitLogin()">Se connecter</button>
-      <p class="auth-switch">Pas encore de compte ? <a href="#" onclick="switchAuthForm('register');return false;">Créer un compte</a></p>
+      <button class="auth-btn" id="login-btn">Se connecter</button>
+      <p class="auth-switch">Pas encore de compte ? <a href="#" id="switch-to-register">Créer un compte</a></p>
     </div>
 
     <!-- Inscription -->
@@ -118,8 +118,8 @@
         <label for="register-password">Mot de passe</label>
         <input type="password" id="register-password" placeholder="6 caractères minimum" autocomplete="new-password">
       </div>
-      <button class="auth-btn" id="register-btn" onclick="submitRegister()">Créer mon compte</button>
-      <p class="auth-switch">Déjà un compte ? <a href="#" onclick="switchAuthForm('login');return false;">Se connecter</a></p>
+      <button class="auth-btn" id="register-btn">Créer mon compte</button>
+      <p class="auth-switch">Déjà un compte ? <a href="#" id="switch-to-login">Se connecter</a></p>
     </div>
 
   </div>
@@ -156,7 +156,7 @@
       </div>
       <div class="header-user">
         <span id="header-user-nom" class="header-user-nom"></span>
-        <button class="header-logout-btn" onclick="logout()" title="Se déconnecter" aria-label="Se déconnecter">
+        <button class="header-logout-btn" id="logout-btn" title="Se déconnecter" aria-label="Se déconnecter">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
       </div>
@@ -170,7 +170,7 @@
 
     <!-- ── CTA ── -->
     <div class="home-cta-row">
-      <button class="home-cta-btn" onclick="ouvrirCreateTrip()">
+      <button class="home-cta-btn" id="home-cta-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M12 4v16m8-8H4"/></svg>
         Créer un trip
       </button>
@@ -198,7 +198,7 @@
       <div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);opacity:.7"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg></div>
       <h2>Aucun voyage pour l'instant</h2>
       <p>Commence par créer ton premier voyage</p>
-      <button class="btn-primary" onclick="ouvrirCreateTrip()">Créer un voyage</button>
+      <button class="btn-primary" id="empty-create-btn">Créer un voyage</button>
     </div>
   </main>
 </div>
@@ -207,14 +207,14 @@
 <div id="screen-voyage" class="screen">
   <header class="app-header voyage-header" id="voyage-header">
     <div class="header-content">
-      <button class="btn-icon btn-back" onclick="afficherAccueil()">
+      <button class="btn-icon btn-back" id="btn-retour-accueil">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </button>
       <div class="header-title">
         <h1 id="voyage-nom"></h1>
         <span id="voyage-dates" class="subtitle"></span>
       </div>
-      <button class="btn-icon" onclick="menuVoyageActuel()" title="Options">
+      <button class="btn-icon" id="btn-menu-voyage" title="Options">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
       </button>
     </div>
@@ -222,27 +222,27 @@
 
   <!-- Onglets navigation -->
   <nav class="tab-nav">
-    <button class="tab-btn active" data-tab="accueil" onclick="changerOnglet('accueil', this)">
+    <button class="tab-btn active" data-tab="accueil">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>
       <span>Basecamp</span>
     </button>
-    <button class="tab-btn" data-tab="programme" onclick="changerOnglet('programme', this)">
+    <button class="tab-btn" data-tab="programme">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
       <span>Road Map</span>
     </button>
-    <button class="tab-btn" data-tab="budget" onclick="changerOnglet('budget', this)">
+    <button class="tab-btn" data-tab="budget">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg></span>
       <span>CrewiCash</span>
     </button>
-    <button class="tab-btn" data-tab="bagages" onclick="changerOnglet('bagages', this)">
+    <button class="tab-btn" data-tab="bagages">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M7.5 5.6L10 7 8.6 4.5 10 2 7.5 3.4 5 2l1.4 2.5L5 7zm12 9.8L17 14l1.4 2.5L17 19l2.5-1.4L22 19l-1.4-2.5L22 14zM22 2l-2.5 1.4L17 2l1.4 2.5L17 7l2.5-1.4L22 7l-1.4-2.5zm-7.63 5.29a1 1 0 0 0-1.41 0L1.29 18.96a1 1 0 0 0 0 1.41l2.34 2.34c.39.39 1.02.39 1.41 0L16.7 11.05a1 1 0 0 0 0-1.41l-2.33-2.35z"/></svg></span>
       <span>Trip & Tricks</span>
     </button>
-    <button class="tab-btn" data-tab="admin" onclick="changerOnglet('admin', this)">
+    <button class="tab-btn" data-tab="admin">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.63-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></span>
       <span>Admin</span>
     </button>
-    <button class="tab-btn" data-tab="discussion" onclick="changerOnglet('discussion', this)">
+    <button class="tab-btn" data-tab="discussion">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></span>
       <span>CrewiChat</span>
     </button>
@@ -255,7 +255,7 @@
       <div class="budget-section">
         <div class="budget-section-header">
           <span class="budget-section-title">Participants</span>
-          <button class="btn-mini-add" onclick="ouvrirModalParticipant()">+ Ajouter</button>
+          <button class="btn-mini-add" id="btn-ajouter-participant">+ Ajouter</button>
         </div>
         <div id="liste-participants" class="participants-list"></div>
       </div>
@@ -265,7 +265,7 @@
     <!-- ONGLET PROGRAMME (ancien Agenda) -->
     <div id="tab-programme" class="tab-panel">
       <div class="panel-actions">
-        <button class="btn-primary" onclick="ouvrirModalAgenda()">
+        <button class="btn-primary" id="btn-ajouter-agenda">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           Ajouter un événement
         </button>
@@ -282,10 +282,10 @@
         <div style="padding:0 16px 14px">
           <div id="bagages-participant-selector" class="avatars-row" style="margin-bottom:12px"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn-primary" onclick="genererSuggestions()" style="flex:1;justify-content:center;gap:6px">
+            <button class="btn-primary" id="btn-generer-suggestions" style="flex:1;justify-content:center;gap:6px">
               <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M7.5 5.6L10 7 8.6 4.5 10 2 7.5 3.4 5 2l1.4 2.5L5 7zm12 9.8L17 14l1.4 2.5L17 19l2.5-1.4L22 19l-1.4-2.5L22 14zM22 2l-2.5 1.4L17 2l1.4 2.5L17 7l2.5-1.4L22 7l-1.4-2.5zm-7.63 5.29a1 1 0 0 0-1.41 0L1.29 18.96a1 1 0 0 0 0 1.41l2.34 2.34c.39.39 1.02.39 1.41 0L16.7 11.05a1 1 0 0 0 0-1.41l-2.33-2.35z"/></svg>Suggestions intelligentes
             </button>
-            <button class="btn-secondary" onclick="ouvrirModalAjoutArticle()" style="flex:1">
+            <button class="btn-secondary" id="btn-ajouter-article-bagages" style="flex:1">
               + Article
             </button>
           </div>
@@ -307,7 +307,7 @@
     <div id="tab-budget" class="tab-panel">
       <!-- Actions -->
       <div class="panel-actions" style="border-top:1px solid var(--border)">
-        <button class="btn-primary" onclick="ouvrirModalDepense()">
+        <button class="btn-primary" id="btn-ajouter-depense">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           Ajouter une dépense
         </button>
@@ -332,13 +332,13 @@
     <div id="tab-discussion" class="tab-panel">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:5">
         <span style="font-weight:700;font-size:.88rem;color:var(--text-muted);display:inline-flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>Discussion générale</span>
-        <button class="btn-mini-add" onclick="ouvrirMessagePrive()" style="display:inline-flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Message privé</button>
+        <button class="btn-mini-add" id="btn-message-prive" style="display:inline-flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Message privé</button>
       </div>
       <div id="discussion-messages" class="chat-messages"></div>
       <div class="chat-input-bar">
         <textarea class="chat-input" id="discussion-input" placeholder="Écrire un message en tant qu'organisateur…" rows="1"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_envoyerCommentaireAdmin();}"></textarea>
-        <button class="chat-send" id="discussion-send" onclick="_envoyerCommentaireAdmin()"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+          ></textarea>
+        <button class="chat-send" id="discussion-send"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
       </div>
     </div>
 
@@ -369,11 +369,11 @@
 
     <!-- Nav haut -->
     <div class="create-topnav">
-      <button class="create-back-btn" id="create-back-btn" onclick="createBack()">
+      <button class="create-back-btn" id="create-back-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
       </button>
       <span class="create-step-counter" id="create-step-counter">1 · 5</span>
-      <button class="create-skip-btn" id="create-skip-btn" onclick="createSkip()">Passer</button>
+      <button class="create-skip-btn" id="create-skip-btn">Passer</button>
     </div>
 
     <!-- Zone des steps -->
@@ -388,15 +388,13 @@
             <span class="create-dest-label">Pays</span>
             <input type="text" id="c-pays" class="create-big-input"
                    placeholder="France, Espagne, Japon…"
-                   oninput="createInputChanged()"
-                   onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('c-ville').focus()}">
+                   >
           </div>
           <div class="create-dest-field">
             <span class="create-dest-label">Ville</span>
             <input type="text" id="c-ville" class="create-big-input"
                    placeholder="Paris, Barcelone, Tokyo…"
-                   oninput="createInputChanged()"
-                   onkeydown="if(event.key==='Enter')createNext()">
+                   >
           </div>
         </div>
       </div>
@@ -406,18 +404,18 @@
         <div class="create-eyebrow">Étape 2 · 5</div>
         <h2 class="create-title">Quel type<br><em>de trip ?</em></h2>
         <div class="create-type-grid">
-          <button class="create-type-card" onclick="createSelectType('ski', this)"><span class="type-emoji">🎿</span>Ski</button>
-          <button class="create-type-card" onclick="createSelectType('city', this)"><span class="type-emoji">🏙️</span>City Trip</button>
-          <button class="create-type-card" onclick="createSelectType('plage', this)"><span class="type-emoji">🏖️</span>Plage</button>
-          <button class="create-type-card" onclick="createSelectType('ile', this)"><span class="type-emoji">🏝️</span>Île</button>
-          <button class="create-type-card" onclick="createSelectType('road', this)"><span class="type-emoji">🚗</span>Road Trip</button>
-          <button class="create-type-card" onclick="createSelectType('evg', this)"><span class="type-emoji">🎉</span>EVG</button>
-          <button class="create-type-card" onclick="createSelectType('evf', this)"><span class="type-emoji">💍</span>EVF</button>
-          <button class="create-type-card" onclick="createSelectType('camping', this)"><span class="type-emoji">🏕️</span>Camping</button>
-          <button class="create-type-card" onclick="createSelectType('rando', this)"><span class="type-emoji">🌿</span>Rando</button>
-          <button class="create-type-card" onclick="createSelectType('plongee', this)"><span class="type-emoji">🤿</span>Plongée</button>
-          <button class="create-type-card" onclick="createSelectType('potes', this)"><span class="type-emoji">🍻</span>Entre potes</button>
-          <button class="create-type-card" onclick="createSelectType('autre', this)"><span class="type-emoji">✈️</span>Autre</button>
+          <button class="create-type-card" data-type="ski"><span class="type-emoji">🎿</span>Ski</button>
+          <button class="create-type-card" data-type="city"><span class="type-emoji">🏙️</span>City Trip</button>
+          <button class="create-type-card" data-type="plage"><span class="type-emoji">🏖️</span>Plage</button>
+          <button class="create-type-card" data-type="ile"><span class="type-emoji">🏝️</span>Île</button>
+          <button class="create-type-card" data-type="road"><span class="type-emoji">🚗</span>Road Trip</button>
+          <button class="create-type-card" data-type="evg"><span class="type-emoji">🎉</span>EVG</button>
+          <button class="create-type-card" data-type="evf"><span class="type-emoji">💍</span>EVF</button>
+          <button class="create-type-card" data-type="camping"><span class="type-emoji">🏕️</span>Camping</button>
+          <button class="create-type-card" data-type="rando"><span class="type-emoji">🌿</span>Rando</button>
+          <button class="create-type-card" data-type="plongee"><span class="type-emoji">🤿</span>Plongée</button>
+          <button class="create-type-card" data-type="potes"><span class="type-emoji">🍻</span>Entre potes</button>
+          <button class="create-type-card" data-type="autre"><span class="type-emoji">✈️</span>Autre</button>
         </div>
       </div>
 
@@ -427,8 +425,7 @@
         <h2 class="create-title">Comment<br><em>on l'appelle ?</em></h2>
         <input type="text" id="c-nom" class="create-big-input"
                placeholder="Mon Trip 2026…"
-               oninput="createInputChanged()"
-               onkeydown="if(event.key==='Enter')createNext()">
+               >
         <p class="create-suggestions-label">Suggestions pour toi</p>
         <div class="create-suggestions" id="create-suggestions"></div>
       </div>
@@ -440,7 +437,7 @@
         <div class="create-dates-row">
           <div class="create-date-card">
             <span class="create-date-label">Départ</span>
-            <input type="date" id="c-date-debut" class="create-date-input" onchange="createUpdateDuree()">
+            <input type="date" id="c-date-debut" class="create-date-input">
             <span class="create-date-val" id="c-date-debut-val">—</span>
           </div>
           <div class="create-date-sep">
@@ -448,7 +445,7 @@
           </div>
           <div class="create-date-card">
             <span class="create-date-label">Retour</span>
-            <input type="date" id="c-date-fin" class="create-date-input" onchange="createUpdateDuree()">
+            <input type="date" id="c-date-fin" class="create-date-input">
             <span class="create-date-val" id="c-date-fin-val">—</span>
           </div>
         </div>
@@ -465,15 +462,15 @@
           <div class="create-orga-info">
             <span class="create-orga-label">Organisateur</span>
             <input type="text" id="c-orga-nom" placeholder="Ton prénom"
-                   oninput="createInputChanged(); (function(v){var a=document.getElementById('create-orga-avatar');if(a)a.textContent=v?v[0].toUpperCase():'?';})(this.value)">
+                   >
           </div>
         </div>
         <div class="create-crew-sep"><span>Ajouter des membres</span></div>
         <div class="create-p-add-row">
           <input type="text" id="c-p-nom" class="create-participant-input"
                  placeholder="Prénom du voyageur…"
-                 onkeydown="if(event.key==='Enter'){event.preventDefault();createAddParticipant()}">
-          <button class="create-p-add-btn" onclick="createAddParticipant()">
+                 >
+          <button class="create-p-add-btn" id="create-p-add-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
           </button>
         </div>
@@ -485,7 +482,7 @@
 
     <!-- CTA bas de page -->
     <div class="create-footer">
-      <button class="create-cta-btn" id="create-cta-btn" onclick="createNext()">
+      <button class="create-cta-btn" id="create-cta-btn">
         <span id="create-cta-label">Continuer</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M15 6l6 6-6 6"/></svg>
       </button>
@@ -509,11 +506,11 @@
   <div class="modal">
     <div class="modal-header">
       <h2 id="modal-voyage-titre">Nouveau voyage</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-voyage')">
+      <button class="btn-icon" data-modal-close="modal-voyage">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <form id="form-voyage" onsubmit="sauvegarderVoyage(event)">
+    <form id="form-voyage">
       <div class="form-group">
         <label>Nom du voyage *</label>
         <input type="text" id="v-nom" placeholder="Ex: Corse Été 2026" required>
@@ -539,18 +536,18 @@
       <div class="form-group">
         <label>Couleur</label>
         <div class="color-picker">
-          <button type="button" class="color-opt active" data-color="#3B82F6" style="background:#3B82F6" onclick="choisirCouleur(this)"></button>
-          <button type="button" class="color-opt" data-color="#10B981" style="background:#10B981" onclick="choisirCouleur(this)"></button>
-          <button type="button" class="color-opt" data-color="#F59E0B" style="background:#F59E0B" onclick="choisirCouleur(this)"></button>
-          <button type="button" class="color-opt" data-color="#EF4444" style="background:#EF4444" onclick="choisirCouleur(this)"></button>
-          <button type="button" class="color-opt" data-color="#8B5CF6" style="background:#8B5CF6" onclick="choisirCouleur(this)"></button>
-          <button type="button" class="color-opt" data-color="#EC4899" style="background:#EC4899" onclick="choisirCouleur(this)"></button>
+          <button type="button" class="color-opt active" data-color="#3B82F6" style="background:#3B82F6"></button>
+          <button type="button" class="color-opt" data-color="#10B981" style="background:#10B981"></button>
+          <button type="button" class="color-opt" data-color="#F59E0B" style="background:#F59E0B"></button>
+          <button type="button" class="color-opt" data-color="#EF4444" style="background:#EF4444"></button>
+          <button type="button" class="color-opt" data-color="#8B5CF6" style="background:#8B5CF6"></button>
+          <button type="button" class="color-opt" data-color="#EC4899" style="background:#EC4899"></button>
         </div>
       </div>
       <input type="hidden" id="v-couleur" value="#3B82F6">
       <input type="hidden" id="v-id">
       <div class="modal-footer">
-        <button type="button" class="btn-secondary" onclick="fermerModal('modal-voyage')">Annuler</button>
+        <button type="button" class="btn-secondary" data-modal-close="modal-voyage">Annuler</button>
         <button type="submit" class="btn-primary">Enregistrer</button>
       </div>
     </form>
@@ -562,19 +559,19 @@
   <div class="modal">
     <div class="modal-header">
       <h2 id="modal-resa-titre">Nouvelle réservation</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-reservation')">
+      <button class="btn-icon" data-modal-close="modal-reservation">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <form id="form-reservation" onsubmit="sauvegarderReservation(event)">
+    <form id="form-reservation">
       <div class="form-group">
         <label>Type de réservation *</label>
         <div class="type-selector">
-          <button type="button" class="type-opt active" data-type="transport" onclick="choisirType(this)">✈️ Transport</button>
-          <button type="button" class="type-opt" data-type="hebergement" onclick="choisirType(this)">🏠 Hébergement</button>
-          <button type="button" class="type-opt" data-type="vehicule" onclick="choisirType(this)">🚗 Véhicule</button>
-          <button type="button" class="type-opt" data-type="activite" onclick="choisirType(this)">🎯 Activité</button>
-          <button type="button" class="type-opt" data-type="restaurant" onclick="choisirType(this)">🍽️ Restaurant</button>
+          <button type="button" class="type-opt active" data-type="transport">✈️ Transport</button>
+          <button type="button" class="type-opt" data-type="hebergement">🏠 Hébergement</button>
+          <button type="button" class="type-opt" data-type="vehicule">🚗 Véhicule</button>
+          <button type="button" class="type-opt" data-type="activite">🎯 Activité</button>
+          <button type="button" class="type-opt" data-type="restaurant">🍽️ Restaurant</button>
         </div>
       </div>
       <div class="form-group">
@@ -624,7 +621,7 @@
       <input type="hidden" id="r-type" value="transport">
       <input type="hidden" id="r-id">
       <div class="modal-footer">
-        <button type="button" class="btn-secondary" onclick="fermerModal('modal-reservation')">Annuler</button>
+        <button type="button" class="btn-secondary" data-modal-close="modal-reservation">Annuler</button>
         <button type="submit" class="btn-primary">Enregistrer</button>
       </div>
     </form>
@@ -636,11 +633,11 @@
   <div class="modal">
     <div class="modal-header">
       <h2 id="modal-agenda-titre">Nouvel événement</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-agenda')">
+      <button class="btn-icon" data-modal-close="modal-agenda">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <form id="form-agenda" onsubmit="sauvegarderAgenda(event)">
+    <form id="form-agenda">
       <div class="form-row">
         <div class="form-group">
           <label>Date *</label>
@@ -681,7 +678,7 @@
       </div>
       <input type="hidden" id="a-id">
       <div class="modal-footer">
-        <button type="button" class="btn-secondary" onclick="fermerModal('modal-agenda')">Annuler</button>
+        <button type="button" class="btn-secondary" data-modal-close="modal-agenda">Annuler</button>
         <button type="submit" class="btn-primary">Enregistrer</button>
       </div>
     </form>
@@ -693,18 +690,18 @@
   <div class="modal">
     <div class="modal-header">
       <h2>Ajouter un document</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-document')">
+      <button class="btn-icon" data-modal-close="modal-document">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
     <div class="form-group">
       <label>Catégorie</label>
       <div class="type-selector">
-        <button type="button" class="type-opt active" data-doctype="transport" onclick="choisirDocType(this)">✈️ Transport</button>
-        <button type="button" class="type-opt" data-doctype="hebergement" onclick="choisirDocType(this)">🏠 Hébergement</button>
-        <button type="button" class="type-opt" data-doctype="vehicule" onclick="choisirDocType(this)">🚗 Véhicule</button>
-        <button type="button" class="type-opt" data-doctype="activite" onclick="choisirDocType(this)">🎯 Activité</button>
-        <button type="button" class="type-opt" data-doctype="autre" onclick="choisirDocType(this)">📄 Autre</button>
+        <button type="button" class="type-opt active" data-doctype="transport">✈️ Transport</button>
+        <button type="button" class="type-opt" data-doctype="hebergement">🏠 Hébergement</button>
+        <button type="button" class="type-opt" data-doctype="vehicule">🚗 Véhicule</button>
+        <button type="button" class="type-opt" data-doctype="activite">🎯 Activité</button>
+        <button type="button" class="type-opt" data-doctype="autre">📄 Autre</button>
       </div>
     </div>
     <div class="form-group">
@@ -717,10 +714,10 @@
     <input type="hidden" id="doc-reservation-id" value="">
     <!-- Sélecteur de mode -->
     <div class="scan-mode-btns">
-      <button type="button" class="scan-mode-btn active" id="scan-mode-fichier-btn" onclick="basculerModeDoc('fichier')">
+      <button type="button" class="scan-mode-btn active" id="scan-mode-fichier-btn">
         📎 Fichier
       </button>
-      <button type="button" class="scan-mode-btn" id="scan-mode-scan-btn" onclick="basculerModeDoc('scan')">
+      <button type="button" class="scan-mode-btn" id="scan-mode-scan-btn">
         📷 Scanner / Photo
       </button>
     </div>
@@ -731,23 +728,23 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
         Choisir un fichier
       </label>
-      <input type="file" id="upload-doc-input" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none" onchange="uploaderDocument(this)">
+      <input type="file" id="upload-doc-input" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none">
       <p id="doc-filename" style="font-size:.82rem;color:var(--text-muted);margin-top:8px"></p>
     </div>
 
     <!-- Mode : Scanner / OCR -->
     <div id="doc-mode-scan" class="hidden" style="margin-top:14px">
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button type="button" class="btn-primary" onclick="lancerScan('camera')" style="flex:1;justify-content:center">
+        <button type="button" class="btn-primary" id="btn-scan-camera" style="flex:1;justify-content:center">
           📷 Prendre une photo
         </button>
-        <button type="button" class="btn-secondary" onclick="lancerScan('file')" style="flex:1">
+        <button type="button" class="btn-secondary" id="btn-scan-fichier" style="flex:1">
           🖼️ Image existante
         </button>
       </div>
       <!-- inputs cachés -->
-      <input type="file" id="scan-camera-input" accept="image/*" capture="environment" style="display:none" onchange="traiterImageScan(this)">
-      <input type="file" id="scan-file-input" accept="image/*" style="display:none" onchange="traiterImageScan(this)">
+      <input type="file" id="scan-camera-input" accept="image/*" capture="environment" style="display:none">
+      <input type="file" id="scan-file-input" accept="image/*" style="display:none">
 
       <!-- Zone résultat (cachée avant scan) -->
       <div id="scan-result-area" class="hidden">
@@ -771,7 +768,7 @@
           <input type="text" id="doc-scan-nom" placeholder="Nom du document scanné">
         </div>
 
-        <button type="button" id="scan-confirm-btn" class="btn-primary" style="width:100%;display:none;margin-top:12px;justify-content:center" onclick="confirmerImportScan()">
+        <button type="button" id="scan-confirm-btn" class="btn-primary" style="width:100%;display:none;margin-top:12px;justify-content:center">
           ✅ Importer ce document
         </button>
       </div>
@@ -786,7 +783,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2>Modifier le document</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-doc-edit')">
+      <button class="btn-icon" data-modal-close="modal-doc-edit">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
@@ -797,11 +794,11 @@
     <div class="form-group">
       <label>Catégorie</label>
       <div class="type-selector">
-        <button type="button" class="type-opt" data-doctype-edit="transport"     onclick="choisirDocTypeEdit(this)">✈️ Transport</button>
-        <button type="button" class="type-opt" data-doctype-edit="hebergement"   onclick="choisirDocTypeEdit(this)">🏠 Hébergement</button>
-        <button type="button" class="type-opt" data-doctype-edit="vehicule"      onclick="choisirDocTypeEdit(this)">🚗 Véhicule</button>
-        <button type="button" class="type-opt" data-doctype-edit="activite"      onclick="choisirDocTypeEdit(this)">🎯 Activité</button>
-        <button type="button" class="type-opt" data-doctype-edit="autre"         onclick="choisirDocTypeEdit(this)">📄 Autre</button>
+        <button type="button" class="type-opt" data-doctype-edit="transport">✈️ Transport</button>
+        <button type="button" class="type-opt" data-doctype-edit="hebergement">🏠 Hébergement</button>
+        <button type="button" class="type-opt" data-doctype-edit="vehicule">🚗 Véhicule</button>
+        <button type="button" class="type-opt" data-doctype-edit="activite">🎯 Activité</button>
+        <button type="button" class="type-opt" data-doctype-edit="autre">📄 Autre</button>
       </div>
     </div>
     <div class="form-group">
@@ -813,8 +810,8 @@
     <input type="hidden" id="doc-edit-id">
     <input type="hidden" id="doc-edit-categorie" value="autre">
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fermerModal('modal-doc-edit')">Annuler</button>
-      <button class="btn-primary" onclick="sauvegarderModifDocument()">Enregistrer</button>
+      <button class="btn-secondary" data-modal-close="modal-doc-edit">Annuler</button>
+      <button class="btn-primary" id="btn-save-doc-edit">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -823,7 +820,7 @@
 <div id="modal-doc-viewer" class="doc-viewer-overlay hidden">
   <div class="doc-viewer-header">
     <span id="doc-viewer-nom" class="doc-viewer-titre"></span>
-    <button class="doc-viewer-close" onclick="fermerDocViewer()">✕ Fermer</button>
+    <button class="doc-viewer-close" id="doc-viewer-close-btn">✕ Fermer</button>
   </div>
   <iframe id="doc-viewer-frame" class="doc-viewer-frame" src=""></iframe>
 </div>
@@ -833,7 +830,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2>Ajouter un article</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-article')">
+      <button class="btn-icon" data-modal-close="modal-article">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
@@ -854,8 +851,8 @@
       </select>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fermerModal('modal-article')">Annuler</button>
-      <button class="btn-primary" onclick="ajouterArticle()">Ajouter</button>
+      <button class="btn-secondary" data-modal-close="modal-article">Annuler</button>
+      <button class="btn-primary" id="btn-ajouter-article">Ajouter</button>
     </div>
   </div>
 </div>
@@ -865,7 +862,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2>Ajouter un participant</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-participant')">
+      <button class="btn-icon" data-modal-close="modal-participant">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
@@ -876,13 +873,13 @@
     <div class="form-group">
       <label>Couleur</label>
       <div class="color-picker">
-        <button type="button" class="color-opt active" data-color="#6366F1" style="background:#6366F1" onclick="choisirCouleurParticipant(this)"></button>
-        <button type="button" class="color-opt" data-color="#10B981" style="background:#10B981" onclick="choisirCouleurParticipant(this)"></button>
-        <button type="button" class="color-opt" data-color="#F59E0B" style="background:#F59E0B" onclick="choisirCouleurParticipant(this)"></button>
-        <button type="button" class="color-opt" data-color="#EF4444" style="background:#EF4444" onclick="choisirCouleurParticipant(this)"></button>
-        <button type="button" class="color-opt" data-color="#EC4899" style="background:#EC4899" onclick="choisirCouleurParticipant(this)"></button>
-        <button type="button" class="color-opt" data-color="#14B8A6" style="background:#14B8A6" onclick="choisirCouleurParticipant(this)"></button>
-        <button type="button" class="color-opt" data-color="#F97316" style="background:#F97316" onclick="choisirCouleurParticipant(this)"></button>
+        <button type="button" class="color-opt active" data-color="#6366F1" style="background:#6366F1"></button>
+        <button type="button" class="color-opt" data-color="#10B981" style="background:#10B981"></button>
+        <button type="button" class="color-opt" data-color="#F59E0B" style="background:#F59E0B"></button>
+        <button type="button" class="color-opt" data-color="#EF4444" style="background:#EF4444"></button>
+        <button type="button" class="color-opt" data-color="#EC4899" style="background:#EC4899"></button>
+        <button type="button" class="color-opt" data-color="#14B8A6" style="background:#14B8A6"></button>
+        <button type="button" class="color-opt" data-color="#F97316" style="background:#F97316"></button>
       </div>
       <input type="hidden" id="p-couleur" value="#6366F1">
     </div>
@@ -892,8 +889,8 @@
              style="letter-spacing:.15em" autocomplete="off">
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fermerModal('modal-participant')">Annuler</button>
-      <button class="btn-primary" onclick="sauvegarderParticipant()">Ajouter</button>
+      <button class="btn-secondary" data-modal-close="modal-participant">Annuler</button>
+      <button class="btn-primary" id="btn-sauvegarder-participant">Ajouter</button>
     </div>
   </div>
 </div>
@@ -903,7 +900,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2 id="modal-pin-titre">Code PIN</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-pin')">
+      <button class="btn-icon" data-modal-close="modal-pin">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
@@ -912,11 +909,11 @@
       <label>Nouveau code PIN <span style="font-weight:400;color:var(--text-muted)">(laisser vide pour retirer)</span></label>
       <input type="text" id="pin-valeur" placeholder="Ex: 1234" maxlength="8" inputmode="numeric"
              style="letter-spacing:.15em" autocomplete="off"
-             onkeydown="if(event.key==='Enter')sauvegarderPin()">
+             >
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fermerModal('modal-pin')">Annuler</button>
-      <button class="btn-primary" onclick="sauvegarderPin()">Enregistrer</button>
+      <button class="btn-secondary" data-modal-close="modal-pin">Annuler</button>
+      <button class="btn-primary" id="btn-sauvegarder-pin">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -926,7 +923,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2 id="modal-depense-titre">Nouvelle dépense</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-depense')">
+      <button class="btn-icon" data-modal-close="modal-depense">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
@@ -966,8 +963,8 @@
     </div>
     <input type="hidden" id="dep-id">
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fermerModal('modal-depense')">Annuler</button>
-      <button class="btn-primary" onclick="sauvegarderDepense()">Enregistrer</button>
+      <button class="btn-secondary" data-modal-close="modal-depense">Annuler</button>
+      <button class="btn-primary" id="btn-sauvegarder-depense">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -979,7 +976,7 @@
     <span id="sheet-voyage-nom">Options du trip</span>
   </div>
   <div class="sheet-actions">
-    <button class="sheet-action-btn" onclick="partagerVoyage()">
+    <button class="sheet-action-btn" id="btn-partager-voyage">
       <span class="sheet-action-icon">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7C4.24 7 2 9.24 2 12s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zm4.1 1h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
       </span>
@@ -989,7 +986,7 @@
       </div>
       <svg class="sheet-action-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
     </button>
-    <button class="sheet-action-btn" onclick="modifierVoyageActuel()">
+    <button class="sheet-action-btn" id="btn-modifier-voyage">
       <span class="sheet-action-icon">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
       </span>
@@ -1001,7 +998,7 @@
     </button>
   </div>
   <div class="sheet-actions" style="margin-top:4px">
-    <button class="sheet-action-btn" onclick="supprimerVoyageActuel()">
+    <button class="sheet-action-btn" id="btn-supprimer-voyage">
       <span class="sheet-action-icon" style="background:linear-gradient(145deg,#FF6B6B 0%,#DC2626 100%);box-shadow:0 3px 10px rgba(220,38,38,.28)">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
       </span>
@@ -1011,7 +1008,7 @@
       </div>
     </button>
   </div>
-  <button class="sheet-cancel-btn" onclick="fermerBottomSheet()">Annuler</button>
+  <button class="sheet-cancel-btn" data-modal-close="bottom-sheet">Annuler</button>
 </div>
 
 <!-- ═══ MODAL PARTAGE ═══ -->
@@ -1019,15 +1016,15 @@
   <div class="modal">
     <div class="modal-header">
       <h2>🔗 Partager le voyage</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-partage')">
+      <button class="btn-icon" data-modal-close="modal-partage">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
     <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:16px;line-height:1.6">Partage ce lien avec tes compagnons de voyage. Ils pourront voir les réservations et l'agenda en lecture seule.</p>
     <div style="background:var(--bg);border-radius:12px;padding:14px;word-break:break-all;font-size:.82rem;color:var(--text);border:1px solid var(--border-solid)" id="partage-url"></div>
     <div class="modal-footer" style="margin-top:16px">
-      <button class="btn-secondary" onclick="fermerModal('modal-partage')">Fermer</button>
-      <button class="btn-primary" onclick="copierLienPartage()">📋 Copier le lien</button>
+      <button class="btn-secondary" data-modal-close="modal-partage">Fermer</button>
+      <button class="btn-primary" id="btn-copier-lien">📋 Copier le lien</button>
     </div>
   </div>
 </div>
@@ -1037,7 +1034,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2 style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="color:var(--accent);flex-shrink:0"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>Attribution privée</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-attribution')">
+      <button class="btn-icon" data-modal-close="modal-attribution">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
@@ -1061,8 +1058,8 @@
     </div>
     <input type="hidden" id="attr-participant-id">
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="fermerModal('modal-attribution')">Annuler</button>
-      <button class="btn-primary" onclick="sauvegarderAttribution()">Attribuer</button>
+      <button class="btn-secondary" data-modal-close="modal-attribution">Annuler</button>
+      <button class="btn-primary" id="btn-sauvegarder-attribution">Attribuer</button>
     </div>
   </div>
 </div>
@@ -1073,21 +1070,21 @@
   <div id="resa-detail-body" class="resa-detail-sheet-body"></div>
 </div>
 
-<div id="overlay-sheet" class="overlay-sheet hidden" onclick="fermerBottomSheet()"></div>
+<div id="overlay-sheet" class="overlay-sheet hidden"></div>
 
 <!-- ═══ MODAL CLÔTURE TRIP ═══ -->
 <div id="modal-cloture" class="modal-overlay hidden">
   <div class="modal" style="padding:0;overflow:hidden">
     <div class="modal-header" style="padding:16px 16px 14px">
       <h2 style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="color:var(--accent);flex-shrink:0"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>Clôture du trip</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-cloture')">
+      <button class="btn-icon" data-modal-close="modal-cloture">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
     <div id="cloture-content" style="overflow-y:auto;max-height:60vh"></div>
     <div class="modal-footer" style="padding:14px 16px;border-top:1px solid var(--border)">
-      <button class="btn-secondary" onclick="fermerModal('modal-cloture')">Fermer</button>
-      <button class="btn-primary" id="cloture-btn-action" onclick="archiverVoyage()" style="display:inline-flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" style="flex-shrink:0"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>Archiver le trip</button>
+      <button class="btn-secondary" data-modal-close="modal-cloture">Fermer</button>
+      <button class="btn-primary" id="cloture-btn-action" style="display:inline-flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" style="flex-shrink:0"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>Archiver le trip</button>
     </div>
   </div>
 </div>
@@ -1167,7 +1164,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2 style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="color:var(--accent);flex-shrink:0"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Message privé</h2>
-      <button class="btn-icon" onclick="fermerModal('modal-message-prive')">
+      <button class="btn-icon" data-modal-close="modal-message-prive">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
@@ -1180,8 +1177,8 @@
       <textarea id="mp-message" rows="4" placeholder="Ton message privé…" style="resize:vertical"></textarea>
     </div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="fermerModal('modal-message-prive')">Annuler</button>
-      <button class="btn-primary" onclick="envoyerMessagePrive()">Envoyer</button>
+      <button class="btn-secondary" data-modal-close="modal-message-prive">Annuler</button>
+      <button class="btn-primary" id="btn-envoyer-message-prive">Envoyer</button>
     </div>
   </div>
 </div>
