@@ -52,7 +52,7 @@ app.use(helmet({
       // les handlers onclick/oninput/... dans le HTML. On l'autorise explicitement
       // car l'app utilise des attributs inline partout.
       scriptSrcAttr: ["'unsafe-inline'"],
-      styleSrc:      ["'self'", "'unsafe-inline'", "api.fontshare.com", "https://api.fontshare.com"],
+      styleSrc:      ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "api.fontshare.com", "https://api.fontshare.com"],
       fontSrc:       ["'self'", "api.fontshare.com", "https://api.fontshare.com"],
       imgSrc:        ["'self'", "data:", "blob:", "upload.wikimedia.org", "commons.wikimedia.org", "api.qrserver.com", "*.tile.openstreetmap.org", "*.wikimedia.org"],
       connectSrc:    ["'self'", "api.fontshare.com", "fr.wikipedia.org", "commons.wikimedia.org", "geocoding-api.open-meteo.com", "api.open-meteo.com", "nominatim.openstreetmap.org"],

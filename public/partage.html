@@ -27,8 +27,8 @@
   <meta name="twitter:image"       content="/logo-512.png">
 
   <link rel="stylesheet" href="/style.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     /* ── Identification overlay ─────────────────── */
     #id-overlay {
@@ -1075,10 +1075,10 @@ const _geoDeviceId = localStorage.getItem('geo_device_id') || (() => {
 function _geoInitMap() {
   if (_geoMap || !window.L) return;
   _geoMap = L.map('geo-map', { zoomControl: true, attributionControl: false });
-  // CartoDB Positron — minimaliste, parfait avec le design Notion
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  // OpenStreetMap — déjà whitelisté dans le CSP img-src
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    subdomains: 'abcd'
+    attribution: '© OpenStreetMap contributors'
   }).addTo(_geoMap);
   _geoMap.setView([46.5, 2.3], 5);
   setTimeout(() => _geoMap && _geoMap.invalidateSize(), 150);
@@ -1140,6 +1140,11 @@ function _geoConnectSSE() {
   };
   _geoSSE.onerror = () => {
     // EventSource gère la reconnexion automatiquement
+    // Si la connexion SSE tombe en erreur définitive, fallback REST
+    if (_geoSSE && _geoSSE.readyState === EventSource.CLOSED) {
+      _geoSSE = null;
+      _rafraichirPositions();
+    }
   };
 }
 
@@ -1207,9 +1212,12 @@ window.changerOnglet = function(tab, btn) {
     _chatPollInterval = null;
   }
   if (tab === 'accueil') {
-    if (!_geoMap && window.L) setTimeout(_geoInitMap, 80);
-    // SSE : connexion persistante, mises à jour instantanées
-    setTimeout(_geoConnectSSE, 100);
+    // Init carte puis SSE dans le même tick — garantit que _geoMap existe
+    // avant que le premier message SSE arrive
+    setTimeout(() => {
+      if (!_geoMap && window.L) _geoInitMap();
+      _geoConnectSSE();
+    }, 80);
   } else {
     // Ferme le flux SSE quand on quitte l'onglet accueil
     _geoDisconnectSSE();
