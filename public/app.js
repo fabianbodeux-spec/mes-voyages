@@ -8,6 +8,15 @@ const API = '';  // même origin
 let currentUser = null;
 let _authToken = localStorage.getItem('crewigo_token');
 
+// Décode le payload JWT côté client (sans vérification de signature)
+// Utilisé comme fallback quand le serveur est injoignable
+function _decodeJwtPayload(token) {
+  try {
+    const b64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    return JSON.parse(atob(b64));
+  } catch { return null; }
+}
+
 // Cache utilisateur local — évite l'écran de login à chaque ouverture
 const _USER_CACHE_KEY = 'crewigo_user';
 function _cacheUser(user) {
@@ -65,11 +74,19 @@ async function initAuth() {
   // 2. Premier lancement avec token mais sans cache : vérifier le serveur
   try {
     const r = await fetch('/api/auth/me');
-    if (r.status === 401) { _doLogout(); return; }   // token invalide côté serveur
+    if (r.status === 401) { _doLogout(); return; }   // token explicitement invalide
     if (!r.ok) {
-      // Erreur serveur ou réseau → ne pas déconnecter, juste afficher l'app
-      _showAuthScreen();
-      if (authParam === 'register' || authParam === 'login') switchAuthForm(authParam);
+      // Erreur serveur (503, cold start…) — utiliser le payload JWT comme fallback
+      const decoded = _decodeJwtPayload(_authToken);
+      if (decoded?.id) {
+        currentUser = { id: decoded.id, email: decoded.email, nom: decoded.nom || decoded.email };
+        _cacheUser(currentUser);
+        _hideAuthScreen();
+        _updateHeaderUser();
+        chargerVoyages();
+      } else {
+        _showAuthScreen();
+      }
       return;
     }
     currentUser = await r.json();
@@ -77,8 +94,17 @@ async function initAuth() {
     _hideAuthScreen();
     _updateHeaderUser();
   } catch {
-    // Pas de réseau au démarrage → afficher l'écran auth plutôt que déconnecter
-    _showAuthScreen();
+    // Pas de réseau — utiliser le payload JWT comme fallback
+    const decoded = _decodeJwtPayload(_authToken);
+    if (decoded?.id) {
+      currentUser = { id: decoded.id, email: decoded.email, nom: decoded.nom || decoded.email };
+      _cacheUser(currentUser);
+      _hideAuthScreen();
+      _updateHeaderUser();
+      chargerVoyages();
+    } else {
+      _showAuthScreen();
+    }
   }
 }
 
@@ -3527,7 +3553,7 @@ function _bindStaticHandlers() {
 
 document.addEventListener('DOMContentLoaded', _bindStaticHandlers);
 
-// ─── PRE-TRIP HUB (vue organisateur) ─────────────────────────────────────────
+// ─── PRE-TRIP HUB (vue organisateur — interactive) ───────────────────────────
 async function chargerPreparationAdmin() {
   const el = document.getElementById('tab-preparation');
   if (!el) return;
@@ -3547,121 +3573,275 @@ async function chargerPreparationAdmin() {
   el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>';
 
   const tok = _shareTokenCourant;
+  const moi = currentUser?.nom || currentUser?.email || 'Organisateur';
+  const couleurMoi = '#F97316';
+
   const [hypeData, profils, wishlist, sondages] = await Promise.all([
-    fetch(`/api/partage/${tok}/hype`).then(r => r.ok ? r.json() : { votes:[], moyenne:0, total:0 }).catch(() => ({ votes:[], moyenne:0, total:0 })),
-    fetch(`/api/partage/${tok}/profils`).then(r => r.ok ? r.json() : []).catch(() => []),
-    fetch(`/api/partage/${tok}/wishlist`).then(r => r.ok ? r.json() : []).catch(() => []),
-    fetch(`/api/partage/${tok}/sondages`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`/api/partage/${tok}/hype`).then(r=>r.ok?r.json():{votes:[],moyenne:0,total:0}).catch(()=>({votes:[],moyenne:0,total:0})),
+    fetch(`/api/partage/${tok}/profils`).then(r=>r.ok?r.json():[]).catch(()=>[]),
+    fetch(`/api/partage/${tok}/wishlist`).then(r=>r.ok?r.json():[]).catch(()=>[]),
+    fetch(`/api/partage/${tok}/sondages`).then(r=>r.ok?r.json():[]).catch(()=>[]),
   ]);
 
   const EMOJIS = ['😴','🙂','😃','🤩','🔥'];
-  const pct = hypeData.moyenne ? Math.round((hypeData.moyenne / 5) * 100) : 0;
-  const jaugeColor = pct < 40 ? '#3B82F6' : pct < 70 ? '#F59E0B' : '#F97316';
-  const TYPES = { activite:'🎯', restaurant:'🍽️', destination:'🗺️', logement:'🏠', autre:'✨' };
+  const LABELS = ['Bof…','Pas mal','Chaud !','Trop hâte','ON FIRE'];
+  const pct = hypeData.moyenne ? Math.round((hypeData.moyenne/5)*100) : 0;
+  const jaugeColor = pct<40?'#3B82F6':pct<70?'#F59E0B':'#F97316';
+  const TYPES = {activite:'🎯',restaurant:'🍽️',destination:'🗺️',logement:'🏠',autre:'✨'};
+  const monVoteHype = hypeData.votes.find(v=>v.auteur===moi);
+  const monProfil = profils.find(p=>p.auteur===moi);
 
-  el.innerHTML = `
-    <div style="padding:12px 0">
+  el.innerHTML = `<div style="padding:12px 0">
 
-      <!-- Hype Meter -->
-      <div class="prep-section">
-        <div class="prep-section-header">
-          <span class="prep-section-title">🔥 Hype Meter du groupe</span>
-          <span class="prep-section-sub">${hypeData.total} vote${hypeData.total > 1 ? 's' : ''}</span>
-        </div>
-        <div class="prep-hype-body">
-          <div class="prep-hype-jauge-wrap">
-            <div class="prep-hype-jauge"><div class="prep-hype-fill" style="width:${pct}%;background:${jaugeColor}"></div></div>
-            <div class="prep-hype-score" style="color:${jaugeColor}">${hypeData.moyenne > 0 ? hypeData.moyenne.toFixed(1) : '–'}<span style="font-size:.7em;opacity:.6">/5</span></div>
+  <!-- ── Hype Meter ───────────────────────────── -->
+  <div class="prep-section">
+    <div class="prep-section-header">
+      <span class="prep-section-title">🔥 Hype Meter</span>
+      <span class="prep-section-sub">${hypeData.total} vote${hypeData.total>1?'s':''}</span>
+    </div>
+    <div class="prep-hype-body">
+      <div class="prep-hype-jauge-wrap">
+        <div class="prep-hype-jauge"><div class="prep-hype-fill" style="width:${pct}%;background:${jaugeColor}"></div></div>
+        <div class="prep-hype-score" style="color:${jaugeColor}">${hypeData.moyenne>0?hypeData.moyenne.toFixed(1):'–'}<span style="font-size:.7em;opacity:.6">/5</span></div>
+      </div>
+      <div class="prep-hype-btns" id="admin-hype-btns">
+        ${EMOJIS.map((e,i)=>`<button class="prep-hype-btn${monVoteHype?.score===i+1?' active':''}" data-score="${i+1}" data-emoji="${e}" title="${LABELS[i]}">${e}</button>`).join('')}
+      </div>
+      <p style="text-align:center;font-size:.78rem;color:var(--text-muted);margin-top:6px">
+        ${monVoteHype?`Ton vote : ${EMOJIS[monVoteHype.score-1]} ${LABELS[monVoteHype.score-1]}`:'Exprime-toi !'}
+      </p>
+      ${hypeData.votes.length>0?`<div class="prep-hype-voters">${hypeData.votes.map(v=>`<span class="prep-voter-chip">${EMOJIS[v.score-1]} ${h(v.auteur)}</span>`).join('')}</div>`:''}
+    </div>
+  </div>
+
+  <!-- ── Quick Bio ─────────────────────────────── -->
+  <div class="prep-section">
+    <div class="prep-section-header">
+      <span class="prep-section-title">👤 Profils</span>
+      <span class="prep-section-sub">${profils.length} profil${profils.length>1?'s':''}</span>
+    </div>
+    <div class="prep-bio-form">
+      <div style="font-size:.82rem;font-weight:700;color:var(--text-muted);margin-bottom:10px">${monProfil?'✏️ Ton profil':'👤 Complète ton profil'}</div>
+      <input id="admin-bio-truc" class="prep-input" placeholder="Mon truc en voyage… (ex: je dors 10h 😴)" value="${h(monProfil?.truc_en_voyage||'')}">
+      <input id="admin-bio-chaud" class="prep-input" placeholder="Je suis chaud pour… (ex: la street food 🍜)" value="${h(monProfil?.chaud_pour||'')}">
+      <input id="admin-bio-refuse" class="prep-input" placeholder="Je refuse catégoriquement… (ex: les musées 🙅)" value="${h(monProfil?.refuse||'')}">
+      <button class="prep-btn-primary" id="admin-bio-save">💾 Sauvegarder</button>
+    </div>
+    <div class="prep-bio-list">
+      ${profils.map(p=>`
+        <div class="prep-bio-card">
+          <div class="prep-bio-avatar" style="background:${h(p.couleur||'#6B7280')}">${(h(p.auteur)||'?')[0].toUpperCase()}</div>
+          <div class="prep-bio-body">
+            <div class="prep-bio-nom">${h(p.auteur)}</div>
+            ${p.truc_en_voyage?`<div class="prep-bio-item">✈️ ${h(p.truc_en_voyage)}</div>`:''}
+            ${p.chaud_pour?`<div class="prep-bio-item">🙌 ${h(p.chaud_pour)}</div>`:''}
+            ${p.refuse?`<div class="prep-bio-item" style="color:#EF4444">🚫 ${h(p.refuse)}</div>`:''}
           </div>
-          ${hypeData.votes.length > 0
-            ? `<div class="prep-hype-voters">${hypeData.votes.map(v => `<span class="prep-voter-chip">${EMOJIS[v.score-1]} ${h(v.auteur)}</span>`).join('')}</div>`
-            : `<p style="text-align:center;font-size:.82rem;color:var(--text-muted)">Aucun vote pour l'instant</p>`}
+        </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- ── Wish Wall ─────────────────────────────── -->
+  <div class="prep-section">
+    <div class="prep-section-header">
+      <span class="prep-section-title">💡 Wish Wall</span>
+      <span class="prep-section-sub">${wishlist.length} envie${wishlist.length>1?'s':''}</span>
+    </div>
+    <div class="prep-form-box">
+      <div id="admin-wish-toggle">
+        <button class="prep-btn-add" id="admin-wish-show-btn">+ Ajouter une envie</button>
+      </div>
+      <div id="admin-wish-form" style="display:none">
+        <input id="admin-wish-titre" class="prep-input" placeholder="Mon envie pour ce voyage… *" maxlength="80">
+        <div style="display:flex;gap:8px">
+          <select id="admin-wish-type" class="prep-select">
+            <option value="activite">🎯 Activité</option>
+            <option value="restaurant">🍽️ Restaurant</option>
+            <option value="destination">🗺️ Destination</option>
+            <option value="logement">🏠 Logement</option>
+            <option value="autre">✨ Autre</option>
+          </select>
+        </div>
+        <textarea id="admin-wish-desc" class="prep-input" rows="2" placeholder="Description (optionnel)…"></textarea>
+        <input id="admin-wish-url" class="prep-input" type="url" placeholder="Lien (optionnel)…">
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="prep-btn-secondary" id="admin-wish-cancel">Annuler</button>
+          <button class="prep-btn-primary" id="admin-wish-submit">Ajouter ✨</button>
         </div>
       </div>
+    </div>
+    <div id="admin-wish-list" style="padding:10px 14px;display:flex;flex-direction:column;gap:10px">
+      ${wishlist.length>0?wishlist.map(w=>{
+        const likes=Array.isArray(w.likes)?w.likes:[];
+        const jaLike=likes.includes(moi);
+        return `<div class="prep-wish-card" data-id="${w.id}">
+          <div class="prep-wish-header">
+            <span class="prep-wish-type">${TYPES[w.type]||'✨'}</span>
+            <div class="prep-wish-info">
+              <span class="prep-wish-titre">${h(w.titre)}</span>
+              <span class="prep-wish-auteur">par ${h(w.auteur)}</span>
+            </div>
+            <button class="prep-btn-icon admin-wish-del" data-id="${w.id}" title="Supprimer">✕</button>
+          </div>
+          ${w.description?`<p class="prep-wish-desc">${h(w.description)}</p>`:''}
+          <div class="prep-wish-footer">
+            <button class="prep-like-btn${jaLike?' liked':''} admin-wish-like" data-id="${w.id}">${jaLike?'❤️':'🤍'} ${likes.length||''}</button>
+            ${likes.length>0?`<span class="prep-like-names">${likes.slice(0,3).map(h).join(', ')}${likes.length>3?` +${likes.length-3}`:''}</span>`:''}
+          </div>
+        </div>`;}).join(''):`<p style="text-align:center;font-size:.82rem;color:var(--text-muted)">Aucune envie pour l'instant</p>`}
+    </div>
+  </div>
 
-      <!-- Profils -->
-      <div class="prep-section">
-        <div class="prep-section-header">
-          <span class="prep-section-title">👤 Profils des participants</span>
-          <span class="prep-section-sub">${profils.length} profil${profils.length > 1 ? 's' : ''}</span>
+  <!-- ── Sondages ───────────────────────────────── -->
+  <div class="prep-section">
+    <div class="prep-section-header">
+      <span class="prep-section-title">🗳️ Votes du groupe</span>
+      <span class="prep-section-sub">${sondages.length} sondage${sondages.length>1?'s':''}</span>
+    </div>
+    <div class="prep-form-box">
+      <div id="admin-poll-toggle">
+        <button class="prep-btn-add" id="admin-poll-show-btn">+ Créer un vote</button>
+      </div>
+      <div id="admin-poll-form" style="display:none">
+        <input id="admin-poll-titre" class="prep-input" placeholder="Votre question… *" maxlength="100">
+        <div id="admin-poll-options">
+          <input class="prep-input admin-poll-opt" placeholder="Option 1…" maxlength="60">
+          <input class="prep-input admin-poll-opt" placeholder="Option 2…" maxlength="60">
         </div>
-        <div class="prep-bio-list">
-          ${profils.length > 0 ? profils.map(p => `
-            <div class="prep-bio-card">
-              <div class="prep-bio-avatar" style="background:${h(p.couleur||'#6B7280')}">${(h(p.auteur)||'?')[0].toUpperCase()}</div>
-              <div class="prep-bio-body">
-                <div class="prep-bio-nom">${h(p.auteur)}</div>
-                ${p.truc_en_voyage ? `<div class="prep-bio-item">✈️ ${h(p.truc_en_voyage)}</div>` : ''}
-                ${p.chaud_pour ? `<div class="prep-bio-item">🙌 ${h(p.chaud_pour)}</div>` : ''}
-                ${p.refuse ? `<div class="prep-bio-item" style="color:#EF4444">🚫 ${h(p.refuse)}</div>` : ''}
-                ${!p.truc_en_voyage && !p.chaud_pour && !p.refuse ? `<div class="prep-bio-item" style="opacity:.5">Profil vide</div>` : ''}
-              </div>
-            </div>`).join('')
-            : `<p style="padding:8px 0;text-align:center;font-size:.82rem;color:var(--text-muted)">Aucun profil complété</p>`}
+        <button class="prep-btn-link" id="admin-poll-add-opt">+ Ajouter une option</button>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="prep-btn-secondary" id="admin-poll-cancel">Annuler</button>
+          <button class="prep-btn-primary" id="admin-poll-submit">Lancer le vote 🗳️</button>
         </div>
       </div>
-
-      <!-- Wish Wall -->
-      <div class="prep-section">
-        <div class="prep-section-header">
-          <span class="prep-section-title">💡 Wish Wall</span>
-          <span class="prep-section-sub">${wishlist.length} envie${wishlist.length > 1 ? 's' : ''}</span>
-        </div>
-        <div style="padding:10px 14px;display:flex;flex-direction:column;gap:10px">
-          ${wishlist.length > 0 ? wishlist.map(w => {
-            const likes = Array.isArray(w.likes) ? w.likes : [];
-            return `
-            <div class="prep-wish-card">
-              <div class="prep-wish-header">
-                <span class="prep-wish-type">${TYPES[w.type]||'✨'}</span>
-                <div class="prep-wish-info">
-                  <span class="prep-wish-titre">${h(w.titre)}</span>
-                  <span class="prep-wish-auteur">par ${h(w.auteur)}</span>
+    </div>
+    <div id="admin-sondages-list" style="padding:10px 14px;display:flex;flex-direction:column;gap:12px">
+      ${sondages.length>0?sondages.map(s=>{
+        const opts=s.options||[];const votes=s.votes||[];const total=votes.length;
+        const monVote=votes.find(v=>v.auteur===moi);
+        const estFerme=s.statut==='fermé';
+        return `<div class="prep-poll-card">
+          <div class="prep-poll-header">
+            <span class="prep-poll-titre">${h(s.titre)}</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span class="prep-pill ${estFerme?'prep-pill-closed':'prep-pill-open'}">${estFerme?'Fermé':'Ouvert'}</span>
+              ${!estFerme?`<button class="prep-btn-icon admin-poll-fermer" data-id="${s.id}" title="Fermer">🔒</button>`:''}
+              <button class="prep-btn-icon admin-poll-del" data-id="${s.id}" title="Supprimer">✕</button>
+            </div>
+          </div>
+          <div class="prep-poll-options">
+            ${opts.map(opt=>{
+              const nb=votes.filter(v=>v.option_id===opt.id).length;
+              const p=total>0?Math.round((nb/total)*100):0;
+              const jaVote=monVote?.option_id===opt.id;
+              return `<div class="prep-poll-option${jaVote?' my-vote':''}" ${!estFerme?`data-sondage="${s.id}" data-option="${opt.id}" style="cursor:pointer"`:''}>
+                <div class="prep-poll-bar-wrap">
+                  <div class="prep-poll-bar" style="width:${p}%"></div>
+                  <span class="prep-poll-label">${h(opt.texte)}</span>
+                  <span class="prep-poll-pct">${total>0?p+'%':''} ${nb>0?'('+nb+')':''}</span>
                 </div>
-                <span style="font-size:.72rem;color:var(--accent);font-weight:700">❤️ ${likes.length}</span>
-              </div>
-              ${w.description ? `<p class="prep-wish-desc">${h(w.description)}</p>` : ''}
-            </div>`;
-          }).join('') : `<p style="text-align:center;font-size:.82rem;color:var(--text-muted)">Aucune envie pour l'instant</p>`}
-        </div>
-      </div>
+              </div>`;}).join('')}
+          </div>
+          <div class="prep-poll-footer"><span>${total} vote${total>1?'s':''}</span><span>par ${h(s.created_by)}</span></div>
+        </div>`;}).join(''):`<p style="text-align:center;font-size:.82rem;color:var(--text-muted)">Aucun vote pour l'instant</p>`}
+    </div>
+  </div>
 
-      <!-- Sondages -->
-      <div class="prep-section">
-        <div class="prep-section-header">
-          <span class="prep-section-title">🗳️ Votes du groupe</span>
-          <span class="prep-section-sub">${sondages.length} sondage${sondages.length > 1 ? 's' : ''}</span>
-        </div>
-        <div style="padding:10px 14px;display:flex;flex-direction:column;gap:12px">
-          ${sondages.length > 0 ? sondages.map(s => {
-            const opts = s.options || [];
-            const votes = s.votes || [];
-            const total = votes.length;
-            return `
-            <div class="prep-poll-card">
-              <div class="prep-poll-header">
-                <span class="prep-poll-titre">${h(s.titre)}</span>
-                <span class="prep-pill ${s.statut === 'fermé' ? 'prep-pill-closed' : 'prep-pill-open'}">${s.statut === 'fermé' ? 'Fermé' : 'Ouvert'}</span>
-              </div>
-              <div class="prep-poll-options">
-                ${opts.map(opt => {
-                  const nb = votes.filter(v => v.option_id === opt.id).length;
-                  const p = total > 0 ? Math.round((nb/total)*100) : 0;
-                  return `
-                  <div class="prep-poll-option">
-                    <div class="prep-poll-bar-wrap">
-                      <div class="prep-poll-bar" style="width:${p}%"></div>
-                      <span class="prep-poll-label">${h(opt.texte)}</span>
-                      <span class="prep-poll-pct">${total > 0 ? p+'%' : ''} ${nb > 0 ? '('+nb+')' : ''}</span>
-                    </div>
-                  </div>`;
-                }).join('')}
-              </div>
-              <div class="prep-poll-footer"><span>${total} vote${total>1?'s':''}</span><span>par ${h(s.created_by)}</span></div>
-            </div>`;
-          }).join('') : `<p style="text-align:center;font-size:.82rem;color:var(--text-muted)">Aucun vote pour l'instant</p>`}
-        </div>
-      </div>
+  </div>`;
 
-    </div>`;
+  // ── Event bindings ─────────────────────────────────────────────────────────
+
+  // Hype
+  document.getElementById('admin-hype-btns')?.querySelectorAll('.prep-hype-btn').forEach(btn=>{
+    btn.addEventListener('click', async()=>{
+      await fetch(`/api/partage/${tok}/hype`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auteur:moi,score:+btn.dataset.score,emoji:btn.dataset.emoji})});
+      chargerPreparationAdmin();
+    });
+  });
+
+  // Bio
+  document.getElementById('admin-bio-save')?.addEventListener('click', async()=>{
+    const btn=document.getElementById('admin-bio-save');
+    btn.textContent='Sauvegarde…';
+    await fetch(`/api/partage/${tok}/profil`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auteur:moi,couleur:couleurMoi,truc_en_voyage:document.getElementById('admin-bio-truc')?.value.trim()||null,chaud_pour:document.getElementById('admin-bio-chaud')?.value.trim()||null,refuse:document.getElementById('admin-bio-refuse')?.value.trim()||null})});
+    chargerPreparationAdmin();
+  });
+
+  // Wish — show/hide form
+  document.getElementById('admin-wish-show-btn')?.addEventListener('click',()=>{
+    document.getElementById('admin-wish-form').style.display='';
+    document.getElementById('admin-wish-toggle').style.display='none';
+  });
+  document.getElementById('admin-wish-cancel')?.addEventListener('click',()=>{
+    document.getElementById('admin-wish-form').style.display='none';
+    document.getElementById('admin-wish-toggle').style.display='';
+  });
+  document.getElementById('admin-wish-submit')?.addEventListener('click', async()=>{
+    const titre=document.getElementById('admin-wish-titre')?.value.trim();
+    if(!titre){toast('⚠️ Titre requis');return;}
+    const r=await fetch(`/api/partage/${tok}/wishlist`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auteur:moi,titre,description:document.getElementById('admin-wish-desc')?.value.trim()||null,type:document.getElementById('admin-wish-type')?.value||'activite',url:document.getElementById('admin-wish-url')?.value.trim()||null})}).then(r=>r.json()).catch(()=>({}));
+    if(r.id) chargerPreparationAdmin();
+  });
+  // Wish — like & delete
+  document.querySelectorAll('.admin-wish-like').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      await fetch(`/api/partage/${tok}/wishlist/${btn.dataset.id}/like`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auteur:moi})});
+      chargerPreparationAdmin();
+    });
+  });
+  document.querySelectorAll('.admin-wish-del').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      if(!confirm('Supprimer cette envie ?'))return;
+      await fetch(`/api/partage/${tok}/wishlist/${btn.dataset.id}`,{method:'DELETE'});
+      chargerPreparationAdmin();
+    });
+  });
+
+  // Poll — show/hide form
+  document.getElementById('admin-poll-show-btn')?.addEventListener('click',()=>{
+    document.getElementById('admin-poll-form').style.display='';
+    document.getElementById('admin-poll-toggle').style.display='none';
+  });
+  document.getElementById('admin-poll-cancel')?.addEventListener('click',()=>{
+    document.getElementById('admin-poll-form').style.display='none';
+    document.getElementById('admin-poll-toggle').style.display='';
+  });
+  document.getElementById('admin-poll-add-opt')?.addEventListener('click',()=>{
+    const list=document.getElementById('admin-poll-options');
+    if(list.querySelectorAll('.admin-poll-opt').length>=6){toast('Maximum 6 options');return;}
+    const inp=document.createElement('input');
+    inp.className='prep-input admin-poll-opt';
+    inp.placeholder=`Option ${list.querySelectorAll('.admin-poll-opt').length+1}…`;
+    inp.maxLength=60;
+    list.appendChild(inp);
+  });
+  document.getElementById('admin-poll-submit')?.addEventListener('click', async()=>{
+    const titre=document.getElementById('admin-poll-titre')?.value.trim();
+    const options=[...document.querySelectorAll('.admin-poll-opt')].map(i=>i.value.trim()).filter(Boolean);
+    if(!titre){toast('⚠️ Question requise');return;}
+    if(options.length<2){toast('⚠️ Au moins 2 options');return;}
+    const r=await fetch(`/api/partage/${tok}/sondages`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({titre,options,created_by:moi})}).then(r=>r.json()).catch(()=>({}));
+    if(r.id) chargerPreparationAdmin();
+  });
+  // Poll — vote, fermer, supprimer
+  document.querySelectorAll('.prep-poll-option[data-sondage]').forEach(opt=>{
+    opt.addEventListener('click',async()=>{
+      await fetch(`/api/partage/${tok}/sondages/${opt.dataset.sondage}/vote`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({option_id:+opt.dataset.option,auteur:moi})});
+      chargerPreparationAdmin();
+    });
+  });
+  document.querySelectorAll('.admin-poll-fermer').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      if(!confirm('Fermer ce vote ?'))return;
+      await fetch(`/api/partage/${tok}/sondages/${btn.dataset.id}/fermer`,{method:'PATCH'});
+      chargerPreparationAdmin();
+    });
+  });
+  document.querySelectorAll('.admin-poll-del').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      if(!confirm('Supprimer ce sondage ?'))return;
+      await fetch(`/api/partage/${tok}/sondages/${btn.dataset.id}`,{method:'DELETE'});
+      chargerPreparationAdmin();
+    });
+  });
 }
