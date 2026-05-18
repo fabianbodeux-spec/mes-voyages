@@ -46,15 +46,19 @@ app.use(cors({
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "cdn.jsdelivr.net", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "api.fontshare.com", "https://api.fontshare.com"],
-      fontSrc: ["'self'", "api.fontshare.com", "https://api.fontshare.com"],
-      imgSrc: ["'self'", "data:", "blob:", "upload.wikimedia.org", "commons.wikimedia.org", "api.qrserver.com", "*.tile.openstreetmap.org", "*.wikimedia.org"],
-      connectSrc: ["'self'", "api.fontshare.com", "fr.wikipedia.org", "commons.wikimedia.org", "geocoding-api.open-meteo.com", "api.open-meteo.com", "nominatim.openstreetmap.org", "api.open-meteo.com"],
-      workerSrc: ["'self'", "blob:", "cdn.jsdelivr.net"],
-      frameSrc: ["'none'"],
-      objectSrc: ["'none'"],
+      defaultSrc:    ["'self'"],
+      scriptSrc:     ["'self'", "cdn.jsdelivr.net", "'unsafe-inline'"],
+      // Helmet 7 ajoute script-src-attr 'none' par défaut, ce qui bloque tous
+      // les handlers onclick/oninput/... dans le HTML. On l'autorise explicitement
+      // car l'app utilise des attributs inline partout.
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc:      ["'self'", "'unsafe-inline'", "api.fontshare.com", "https://api.fontshare.com"],
+      fontSrc:       ["'self'", "api.fontshare.com", "https://api.fontshare.com"],
+      imgSrc:        ["'self'", "data:", "blob:", "upload.wikimedia.org", "commons.wikimedia.org", "api.qrserver.com", "*.tile.openstreetmap.org", "*.wikimedia.org"],
+      connectSrc:    ["'self'", "api.fontshare.com", "fr.wikipedia.org", "commons.wikimedia.org", "geocoding-api.open-meteo.com", "api.open-meteo.com", "nominatim.openstreetmap.org"],
+      workerSrc:     ["'self'", "blob:", "cdn.jsdelivr.net"],
+      frameSrc:      ["'none'"],
+      objectSrc:     ["'none'"],
     }
   },
   crossOriginEmbedderPolicy: false,
