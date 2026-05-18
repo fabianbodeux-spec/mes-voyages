@@ -234,6 +234,7 @@ function cgoIcon(name, size = 40) {
 }
 
 let voyageActuel = null;
+let _shareTokenCourant = null; // token de partage du voyage ouvert
 let _adminSousOnglet = 'reservations';
 let _chatPollAdmin = null;
 let filtreActuel = 'tous';
@@ -355,6 +356,7 @@ function afficherVoyage(id) {
   fetch(`${API}/api/voyages/${id}`)
     .then(r => r.json())
     .then(voyage => {
+      _shareTokenCourant = voyage.share_token || null;
       document.getElementById('screen-home').classList.remove('active');
       document.getElementById('screen-voyage').classList.add('active');
       document.getElementById('voyage-nom').textContent = voyage.nom;
@@ -404,6 +406,7 @@ function changerOnglet(tab, btn) {
   document.getElementById(`tab-${tab}`).classList.add('active');
 
   if (tab === 'accueil') chargerAccueil();
+  if (tab === 'preparation') chargerPreparationAdmin();
   if (tab === 'programme') chargerProgramme();
   if (tab === 'budget') chargerBudget();
   if (tab === 'bagages') chargerBagages();
@@ -3523,3 +3526,142 @@ function _bindStaticHandlers() {
 }
 
 document.addEventListener('DOMContentLoaded', _bindStaticHandlers);
+
+// ─── PRE-TRIP HUB (vue organisateur) ─────────────────────────────────────────
+async function chargerPreparationAdmin() {
+  const el = document.getElementById('tab-preparation');
+  if (!el) return;
+
+  if (!_shareTokenCourant) {
+    el.innerHTML = `
+      <div style="padding:32px 20px;text-align:center">
+        <div style="font-size:2rem;margin-bottom:12px">🔗</div>
+        <p style="color:var(--text-muted);font-size:.88rem;margin-bottom:16px">
+          Génère d'abord un lien de partage pour activer le Pre-trip Hub.
+        </p>
+        <button class="btn-primary" onclick="partagerVoyage()">Créer le lien de partage</button>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>';
+
+  const tok = _shareTokenCourant;
+  const [hypeData, profils, wishlist, sondages] = await Promise.all([
+    fetch(`/api/partage/${tok}/hype`).then(r => r.ok ? r.json() : { votes:[], moyenne:0, total:0 }).catch(() => ({ votes:[], moyenne:0, total:0 })),
+    fetch(`/api/partage/${tok}/profils`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`/api/partage/${tok}/wishlist`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`/api/partage/${tok}/sondages`).then(r => r.ok ? r.json() : []).catch(() => []),
+  ]);
+
+  const EMOJIS = ['😴','🙂','😃','🤩','🔥'];
+  const pct = hypeData.moyenne ? Math.round((hypeData.moyenne / 5) * 100) : 0;
+  const jaugeColor = pct < 40 ? '#3B82F6' : pct < 70 ? '#F59E0B' : '#F97316';
+  const TYPES = { activite:'🎯', restaurant:'🍽️', destination:'🗺️', logement:'🏠', autre:'✨' };
+
+  el.innerHTML = `
+    <div style="padding:12px 0">
+
+      <!-- Hype Meter -->
+      <div class="prep-section">
+        <div class="prep-section-header">
+          <span class="prep-section-title">🔥 Hype Meter du groupe</span>
+          <span class="prep-section-sub">${hypeData.total} vote${hypeData.total > 1 ? 's' : ''}</span>
+        </div>
+        <div class="prep-hype-body">
+          <div class="prep-hype-jauge-wrap">
+            <div class="prep-hype-jauge"><div class="prep-hype-fill" style="width:${pct}%;background:${jaugeColor}"></div></div>
+            <div class="prep-hype-score" style="color:${jaugeColor}">${hypeData.moyenne > 0 ? hypeData.moyenne.toFixed(1) : '–'}<span style="font-size:.7em;opacity:.6">/5</span></div>
+          </div>
+          ${hypeData.votes.length > 0
+            ? `<div class="prep-hype-voters">${hypeData.votes.map(v => `<span class="prep-voter-chip">${EMOJIS[v.score-1]} ${h(v.auteur)}</span>`).join('')}</div>`
+            : `<p style="text-align:center;font-size:.82rem;color:var(--text-muted)">Aucun vote pour l'instant</p>`}
+        </div>
+      </div>
+
+      <!-- Profils -->
+      <div class="prep-section">
+        <div class="prep-section-header">
+          <span class="prep-section-title">👤 Profils des participants</span>
+          <span class="prep-section-sub">${profils.length} profil${profils.length > 1 ? 's' : ''}</span>
+        </div>
+        <div class="prep-bio-list">
+          ${profils.length > 0 ? profils.map(p => `
+            <div class="prep-bio-card">
+              <div class="prep-bio-avatar" style="background:${h(p.couleur||'#6B7280')}">${(h(p.auteur)||'?')[0].toUpperCase()}</div>
+              <div class="prep-bio-body">
+                <div class="prep-bio-nom">${h(p.auteur)}</div>
+                ${p.truc_en_voyage ? `<div class="prep-bio-item">✈️ ${h(p.truc_en_voyage)}</div>` : ''}
+                ${p.chaud_pour ? `<div class="prep-bio-item">🙌 ${h(p.chaud_pour)}</div>` : ''}
+                ${p.refuse ? `<div class="prep-bio-item" style="color:#EF4444">🚫 ${h(p.refuse)}</div>` : ''}
+                ${!p.truc_en_voyage && !p.chaud_pour && !p.refuse ? `<div class="prep-bio-item" style="opacity:.5">Profil vide</div>` : ''}
+              </div>
+            </div>`).join('')
+            : `<p style="padding:8px 0;text-align:center;font-size:.82rem;color:var(--text-muted)">Aucun profil complété</p>`}
+        </div>
+      </div>
+
+      <!-- Wish Wall -->
+      <div class="prep-section">
+        <div class="prep-section-header">
+          <span class="prep-section-title">💡 Wish Wall</span>
+          <span class="prep-section-sub">${wishlist.length} envie${wishlist.length > 1 ? 's' : ''}</span>
+        </div>
+        <div style="padding:10px 14px;display:flex;flex-direction:column;gap:10px">
+          ${wishlist.length > 0 ? wishlist.map(w => {
+            const likes = Array.isArray(w.likes) ? w.likes : [];
+            return `
+            <div class="prep-wish-card">
+              <div class="prep-wish-header">
+                <span class="prep-wish-type">${TYPES[w.type]||'✨'}</span>
+                <div class="prep-wish-info">
+                  <span class="prep-wish-titre">${h(w.titre)}</span>
+                  <span class="prep-wish-auteur">par ${h(w.auteur)}</span>
+                </div>
+                <span style="font-size:.72rem;color:var(--accent);font-weight:700">❤️ ${likes.length}</span>
+              </div>
+              ${w.description ? `<p class="prep-wish-desc">${h(w.description)}</p>` : ''}
+            </div>`;
+          }).join('') : `<p style="text-align:center;font-size:.82rem;color:var(--text-muted)">Aucune envie pour l'instant</p>`}
+        </div>
+      </div>
+
+      <!-- Sondages -->
+      <div class="prep-section">
+        <div class="prep-section-header">
+          <span class="prep-section-title">🗳️ Votes du groupe</span>
+          <span class="prep-section-sub">${sondages.length} sondage${sondages.length > 1 ? 's' : ''}</span>
+        </div>
+        <div style="padding:10px 14px;display:flex;flex-direction:column;gap:12px">
+          ${sondages.length > 0 ? sondages.map(s => {
+            const opts = s.options || [];
+            const votes = s.votes || [];
+            const total = votes.length;
+            return `
+            <div class="prep-poll-card">
+              <div class="prep-poll-header">
+                <span class="prep-poll-titre">${h(s.titre)}</span>
+                <span class="prep-pill ${s.statut === 'fermé' ? 'prep-pill-closed' : 'prep-pill-open'}">${s.statut === 'fermé' ? 'Fermé' : 'Ouvert'}</span>
+              </div>
+              <div class="prep-poll-options">
+                ${opts.map(opt => {
+                  const nb = votes.filter(v => v.option_id === opt.id).length;
+                  const p = total > 0 ? Math.round((nb/total)*100) : 0;
+                  return `
+                  <div class="prep-poll-option">
+                    <div class="prep-poll-bar-wrap">
+                      <div class="prep-poll-bar" style="width:${p}%"></div>
+                      <span class="prep-poll-label">${h(opt.texte)}</span>
+                      <span class="prep-poll-pct">${total > 0 ? p+'%' : ''} ${nb > 0 ? '('+nb+')' : ''}</span>
+                    </div>
+                  </div>`;
+                }).join('')}
+              </div>
+              <div class="prep-poll-footer"><span>${total} vote${total>1?'s':''}</span><span>par ${h(s.created_by)}</span></div>
+            </div>`;
+          }).join('') : `<p style="text-align:center;font-size:.82rem;color:var(--text-muted)">Aucun vote pour l'instant</p>`}
+        </div>
+      </div>
+
+    </div>`;
+}
