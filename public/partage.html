@@ -913,7 +913,9 @@ function _annulerPin() {
 function _idParNom() {
   const nom = (document.getElementById('id-nom-input').value || '').trim();
   if (!nom) return;
-  _lancerPartage({ nom, participant_id: null, couleur: '#6B7280' });
+  const identite = { nom, participant_id: null, couleur: '#6B7280' };
+  localStorage.setItem('partage_id_' + _partageToken, JSON.stringify(identite));
+  _lancerPartage(identite);
 }
 
 function _idLectureSeule() {
