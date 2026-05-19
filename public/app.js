@@ -573,24 +573,33 @@ async function chargerVoyages() {
       <div class="voyage-card-banner">
         <div class="voyage-card-accent" style="background:${h(v.couleur)}"></div>
         <img class="voyage-card-banner-img" src="" alt="" style="opacity:0">
-        <div class="voyage-card-color-wash" style="background:linear-gradient(135deg,${h(v.couleur)}1A 0%,transparent 65%)"></div>
-        <div class="voyage-card-banner-row">
-          <span class="voyage-card-dest">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-            ${h(v.destination)}
-          </span>
-          <span class="voyage-badge badge-${statut.classe}">${statut.label}</span>
+        <div class="voyage-card-color-wash" style="background:linear-gradient(135deg,${h(v.couleur)}33 0%,transparent 70%)"></div>
+        <div class="voyage-card-banner-content">
+          <div class="voyage-card-banner-top">
+            <span class="voyage-badge badge-${statut.classe}">${statut.label}</span>
+          </div>
+          <div class="voyage-card-banner-bottom">
+            <span class="voyage-card-dest">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+              ${h(v.destination)}
+            </span>
+          </div>
         </div>
       </div>
       <!-- Contenu texte -->
       <div class="voyage-card-body">
         <h2 class="voyage-card-title">${h(v.nom)}</h2>
-        <div class="voyage-card-footer">
+        <div class="voyage-card-meta">
           <span class="voyage-dates">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
-            ${v.date_debut ? formatDates(v.date_debut, v.date_fin) : 'Dates à définir'}
+            ${v.date_debut ? formatDates(v.date_debut, v.date_fin) : '<em>Dates à définir</em>'}
           </span>
-          ${duree ? `<span class="voyage-duree">${duree}</span>` : '<span class="voyage-arrow">›</span>'}
+          ${duree ? `<span class="voyage-duree">${duree}</span>` : ''}
+        </div>
+        <div class="voyage-card-cta">
+          <span class="voyage-card-open-btn">Ouvrir le trip
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M15 6l6 6-6 6"/></svg>
+          </span>
         </div>
       </div>
     </div>`;
@@ -1565,6 +1574,7 @@ async function chargerProgramme() {
   ]);
 
   const container = document.getElementById('liste-programme');
+  if (!container) return;
 
   // Fusionner : chaque résa avec une date → apparaît dans la timeline
   const items = [];

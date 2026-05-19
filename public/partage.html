@@ -173,7 +173,7 @@
     <div class="id-hero">
       <div class="crewigo-logo" style="justify-content:center;gap:10px">
         <img src="/logo-icon.png" width="48" height="48" class="crewigo-logo-img crewigo-logo-img--lg" alt="CrewiGo">
-        <span class="logo-crew" style="font-size:1.4rem">Crewi</span><span class="logo-go" style="font-size:1.4rem">GO</span>
+        <span class="logo-wordmark" style="font-size:1.4rem"><span class="logo-crew">Crewi</span><span class="logo-go">GO</span></span>
       </div>
     </div>
     <h2 class="id-voyage-nom" id="id-voyage-nom">Trip partagé</h2>
@@ -400,7 +400,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <form id="form-agenda" onsubmit="sauvegarderAgenda(event)">
+    <form id="form-agenda">
       <div class="form-row">
         <div class="form-group"><label>Date *</label><input type="date" id="a-date" required></div>
         <div class="form-group"><label>Heure</label><input type="time" id="a-heure"></div>
@@ -1503,6 +1503,7 @@ window.chargerProgramme = async function() {
   }
 
   const container = document.getElementById('liste-programme');
+  if (!container) return;
   container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>';
 
   const [voyage, reservations, agendaItems, documents] = await Promise.all([
