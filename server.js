@@ -307,7 +307,11 @@ app.post('/api/voyages/:id/agenda', authMiddleware, async (req, res) => {
     if (!date || !titre) return res.status(400).json({ error: 'Date et titre requis' });
     const item = await run(() => db.agenda.create(req.params.id, req.body));
     res.json({ id: item.id });
-  } catch(e) { console.error('[AGENDA CREATE ERROR]', e.message, e.stack); res.status(500).json({ error: e.message || 'Erreur interne' }); }
+  } catch(e) {
+    const detail = e?.message || String(e) || 'Erreur interne';
+    console.error('[AGENDA CREATE ERROR]', detail, e?.stack);
+    res.status(500).json({ error: detail });
+  }
 });
 
 app.get('/api/agenda/:id/documents', async (req, res) => {

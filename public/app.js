@@ -1793,6 +1793,10 @@ async function sauvegarderAgenda(e) {
     return;
   }
 
+  // Auto-préfixer https:// si l'utilisateur tape une URL sans protocole
+  const lienRaw = document.getElementById('a-lien').value.trim();
+  const lienVal = lienRaw && !/^https?:\/\//i.test(lienRaw) ? 'https://' + lienRaw : lienRaw;
+
   const data = {
     date: dateVal,
     heure: document.getElementById('a-heure').value || null,
@@ -1800,7 +1804,7 @@ async function sauvegarderAgenda(e) {
     description: document.getElementById('a-description').value,
     lieu: document.getElementById('a-lieu').value,
     type: document.getElementById('a-type').value,
-    lien: document.getElementById('a-lien').value || null
+    lien: lienVal || null
   };
 
   const url = id ? `${API}/api/agenda/${id}` : `${API}/api/voyages/${voyageActuel}/agenda`;
