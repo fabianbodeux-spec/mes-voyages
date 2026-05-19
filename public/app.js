@@ -435,7 +435,7 @@ function changerOnglet(tab, btn) {
   if (tab === 'preparation') chargerPreparationAdmin();
   if (tab === 'programme') chargerProgramme();
   if (tab === 'budget') chargerBudget();
-  if (tab === 'bagages') chargerBagages();
+  // Trip & Tricks supprimé
   if (tab === 'admin') chargerAdmin();
   if (tab === 'discussion') {
     chargerCommentairesAdmin();
@@ -3599,13 +3599,14 @@ async function chargerPreparationAdmin() {
       <span class="prep-section-title">🔥 Hype Meter</span>
       <span class="prep-section-sub">${hypeData.total} vote${hypeData.total>1?'s':''}</span>
     </div>
+    <p class="prep-section-desc">C'est quoi ton niveau d'excitation ? Vote et compare avec le groupe !</p>
     <div class="prep-hype-body">
       <div class="prep-hype-jauge-wrap">
         <div class="prep-hype-jauge"><div class="prep-hype-fill" style="width:${pct}%;background:${jaugeColor}"></div></div>
         <div class="prep-hype-score" style="color:${jaugeColor}">${hypeData.moyenne>0?hypeData.moyenne.toFixed(1):'–'}<span style="font-size:.7em;opacity:.6">/5</span></div>
       </div>
       <div class="prep-hype-btns" id="admin-hype-btns">
-        ${EMOJIS.map((e,i)=>`<button class="prep-hype-btn${monVoteHype?.score===i+1?' active':''}" data-score="${i+1}" data-emoji="${e}" title="${LABELS[i]}">${e}</button>`).join('')}
+        ${EMOJIS.map((e,i)=>`<button class="prep-hype-btn${monVoteHype?.score===i+1?' active':''}" data-score="${i+1}" data-emoji="${e}"><span class="hype-emoji">${e}</span><span class="hype-label">${LABELS[i]}</span></button>`).join('')}
       </div>
       <p style="text-align:center;font-size:.78rem;color:var(--text-muted);margin-top:6px">
         ${monVoteHype?`Ton vote : ${EMOJIS[monVoteHype.score-1]} ${LABELS[monVoteHype.score-1]}`:'Exprime-toi !'}
@@ -3620,11 +3621,11 @@ async function chargerPreparationAdmin() {
       <span class="prep-section-title">👤 Profils</span>
       <span class="prep-section-sub">${profils.length} profil${profils.length>1?'s':''}</span>
     </div>
+    <p class="prep-section-desc">Quelques mots sur tes habitudes de voyage — aide le groupe à mieux te connaître 😊</p>
     <div class="prep-bio-form">
       <div style="font-size:.82rem;font-weight:700;color:var(--text-muted);margin-bottom:10px">${monProfil?'✏️ Ton profil':'👤 Complète ton profil'}</div>
       <input id="admin-bio-truc" class="prep-input" placeholder="Mon truc en voyage… (ex: je dors 10h 😴)" value="${h(monProfil?.truc_en_voyage||'')}">
       <input id="admin-bio-chaud" class="prep-input" placeholder="Je suis chaud pour… (ex: la street food 🍜)" value="${h(monProfil?.chaud_pour||'')}">
-      <input id="admin-bio-refuse" class="prep-input" placeholder="Je refuse catégoriquement… (ex: les musées 🙅)" value="${h(monProfil?.refuse||'')}">
       <button class="prep-btn-primary" id="admin-bio-save">💾 Sauvegarder</button>
     </div>
     <div class="prep-bio-list">
@@ -3635,7 +3636,6 @@ async function chargerPreparationAdmin() {
             <div class="prep-bio-nom">${h(p.auteur)}</div>
             ${p.truc_en_voyage?`<div class="prep-bio-item">✈️ ${h(p.truc_en_voyage)}</div>`:''}
             ${p.chaud_pour?`<div class="prep-bio-item">🙌 ${h(p.chaud_pour)}</div>`:''}
-            ${p.refuse?`<div class="prep-bio-item" style="color:#EF4444">🚫 ${h(p.refuse)}</div>`:''}
           </div>
         </div>`).join('')}
     </div>
@@ -3647,6 +3647,7 @@ async function chargerPreparationAdmin() {
       <span class="prep-section-title">💡 Wish Wall</span>
       <span class="prep-section-sub">${wishlist.length} envie${wishlist.length>1?'s':''}</span>
     </div>
+    <p class="prep-section-desc">Propose des idées d'activités, restos ou lieux. Like celles qui te branchent !</p>
     <div class="prep-form-box">
       <div id="admin-wish-toggle">
         <button class="prep-btn-add" id="admin-wish-show-btn">+ Ajouter une envie</button>
@@ -3698,6 +3699,7 @@ async function chargerPreparationAdmin() {
       <span class="prep-section-title">🗳️ Votes du groupe</span>
       <span class="prep-section-sub">${sondages.length} sondage${sondages.length>1?'s':''}</span>
     </div>
+    <p class="prep-section-desc">Décidez ensemble des activités, hébergements ou autres choix collectifs.</p>
     <div class="prep-form-box">
       <div id="admin-poll-toggle">
         <button class="prep-btn-add" id="admin-poll-show-btn">+ Créer un vote</button>
@@ -3754,6 +3756,7 @@ async function chargerPreparationAdmin() {
   // Hype
   document.getElementById('admin-hype-btns')?.querySelectorAll('.prep-hype-btn').forEach(btn=>{
     btn.addEventListener('click', async()=>{
+      document.getElementById('admin-hype-btns')?.querySelectorAll('.prep-hype-btn').forEach(b=>{b.disabled=true;b.style.opacity='0.5';});
       await fetch(`/api/partage/${tok}/hype`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auteur:moi,score:+btn.dataset.score,emoji:btn.dataset.emoji})});
       chargerPreparationAdmin();
     });
@@ -3763,7 +3766,7 @@ async function chargerPreparationAdmin() {
   document.getElementById('admin-bio-save')?.addEventListener('click', async()=>{
     const btn=document.getElementById('admin-bio-save');
     btn.textContent='Sauvegarde…';
-    await fetch(`/api/partage/${tok}/profil`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auteur:moi,couleur:couleurMoi,truc_en_voyage:document.getElementById('admin-bio-truc')?.value.trim()||null,chaud_pour:document.getElementById('admin-bio-chaud')?.value.trim()||null,refuse:document.getElementById('admin-bio-refuse')?.value.trim()||null})});
+    await fetch(`/api/partage/${tok}/profil`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auteur:moi,couleur:couleurMoi,truc_en_voyage:document.getElementById('admin-bio-truc')?.value.trim()||null,chaud_pour:document.getElementById('admin-bio-chaud')?.value.trim()||null})});
     chargerPreparationAdmin();
   });
 

@@ -968,6 +968,26 @@ app.delete('/api/partage/:token/location/:device_id', async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+// ─── PARTAGE : RÉSERVATIONS + DOCUMENTS (lecture seule via token) ──────────
+
+app.get('/api/partage/:token/reservations', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const resas = await run(() => db.reservations.getByVoyage(voyage.id));
+    res.json(resas);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/partage/:token/documents', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const docs = await run(() => db.documents.getByVoyage(voyage.id));
+    res.json(docs);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── PRE-TRIP HUB ─────────────────────────────────────────────────────────
 
 // ── Hype Meter ────────────────────────────────────────────────────────────

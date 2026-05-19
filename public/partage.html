@@ -168,7 +168,7 @@
 </div>
 
 <!-- ═══ IDENTIFICATION ═══════════════════════════════════════════ -->
-<div id="id-overlay">
+<div id="id-overlay" style="display:none">
   <div class="id-card">
     <div class="id-hero">
       <div class="crewigo-logo" style="justify-content:center;gap:10px">
@@ -211,8 +211,8 @@
 
   <header class="app-header voyage-header" id="voyage-header">
     <div class="header-content">
-      <button class="btn-icon btn-back" onclick="afficherAccueil()" title="Changer d'identité">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      <button class="btn-icon btn-back" id="btn-changer-identite" onclick="afficherAccueil()" title="Changer d'identité" style="padding:0;width:36px;height:36px;border-radius:50%;overflow:hidden;background:var(--accent)">
+        <div id="header-avatar" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;color:#fff">?</div>
       </button>
       <div class="header-title">
         <h1 id="voyage-nom"></h1>
@@ -227,35 +227,27 @@
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>
       <span>Basecamp</span>
     </button>
+    <button class="tab-btn" data-tab="programme" onclick="changerOnglet('programme', this)">
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
+      <span>Road Map</span>
+    </button>
     <button class="tab-btn" data-tab="preparation" onclick="changerOnglet('preparation', this)">
       <span class="tab-svg-icon">
         <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
       </span>
       <span>Prépa</span>
     </button>
-    <button class="tab-btn" data-tab="programme" onclick="changerOnglet('programme', this)">
-      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
-      <span>Road Map</span>
-    </button>
     <button class="tab-btn" data-tab="budget" onclick="changerOnglet('budget', this)">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg></span>
       <span>CrewiCash</span>
-    </button>
-    <button class="tab-btn" data-tab="bagages" onclick="changerOnglet('bagages', this)">
-      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M7.5 5.6L10 7 8.6 4.5 10 2 7.5 3.4 5 2l1.4 2.5L5 7zm12 9.8L17 14l1.4 2.5L17 19l2.5-1.4L22 19l-1.4-2.5L22 14zM22 2l-2.5 1.4L17 2l1.4 2.5L17 7l2.5-1.4L22 7l-1.4-2.5zm-7.63 5.29a1 1 0 0 0-1.41 0L1.29 18.96a1 1 0 0 0 0 1.41l2.34 2.34c.39.39 1.02.39 1.41 0L16.7 11.05a1 1 0 0 0 0-1.41l-2.33-2.35z"/></svg></span>
-      <span>Trip & Tricks</span>
     </button>
     <button class="tab-btn" data-tab="discussion" onclick="changerOnglet('discussion', this)">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></span>
       <span id="tab-discussion-label">CrewiChat</span>
     </button>
-    <button class="tab-btn" data-tab="admin" onclick="changerOnglet('admin', this)">
-      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.63-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></span>
-      <span>Admin</span>
-    </button>
-    <button class="tab-btn" data-tab="mes-infos" id="tab-btn-mes-infos" onclick="changerOnglet('mes-infos', this)" style="display:none">
-      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
-      <span>Mes infos</span>
+    <button class="tab-btn" data-tab="docs" onclick="changerOnglet('docs', this)">
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></span>
+      <span>Docs</span>
     </button>
   </nav>
 
@@ -294,35 +286,6 @@
     </div>
 
     <!-- BAGAGES -->
-    <div id="tab-bagages" class="tab-panel">
-      <div class="budget-section">
-        <div class="budget-section-header">
-          <span class="budget-section-title">🧳 Ma liste de bagages</span>
-        </div>
-        <div style="padding:0 16px 14px">
-          <div id="bagages-participant-selector" class="avatars-row" style="margin-bottom:12px"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn-primary" onclick="genererSuggestions()" style="flex:1;justify-content:center">
-              ✨ Suggestions intelligentes
-            </button>
-            <button class="btn-secondary" onclick="ouvrirModalAjoutArticle()" style="flex:1">
-              + Article
-            </button>
-          </div>
-        </div>
-      </div>
-      <div id="bagages-progress-bar" style="display:none;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:.78rem;font-weight:700;color:var(--text-muted)">PROGRESSION</span>
-          <span id="bagages-progress-text" style="font-size:.78rem;font-weight:700;color:var(--accent)"></span>
-        </div>
-        <div style="background:var(--border-solid);border-radius:4px;height:6px;overflow:hidden">
-          <div id="bagages-progress-fill" style="height:100%;border-radius:4px;background:linear-gradient(90deg,#F97316,#FBBF24);transition:width .4s"></div>
-        </div>
-      </div>
-      <div id="liste-bagages" style="padding:12px 16px;display:flex;flex-direction:column;gap:6px"></div>
-    </div>
-
     <!-- BUDGET -->
     <div id="tab-budget" class="tab-panel">
       <div class="budget-section">
@@ -366,14 +329,9 @@
       </div>
     </div>
 
-    <!-- ADMIN -->
-    <div id="tab-admin" class="tab-panel">
-      <div id="admin-content"></div>
-    </div>
-
-    <!-- MES INFOS -->
-    <div id="tab-mes-infos" class="tab-panel">
-      <div id="mes-infos-content"></div>
+    <!-- DOCS & INFOS (fusion réservations, documents, infos privées) -->
+    <div id="tab-docs" class="tab-panel">
+      <div id="docs-content"></div>
     </div>
 
     <!-- PRÉPARATION -->
@@ -772,6 +730,8 @@ const _partageToken = location.pathname.replace(/^\/(partage|share)\//, '');
 
 // "Retour" = retour à l'écran d'identification
 window.afficherAccueil = function() {
+  const nom = _partageIdentite?.nom;
+  if (nom && !confirm('Changer d\'identité ?\nTu devras te réidentifier.')) return;
   localStorage.removeItem('partage_id_' + _partageToken);
   document.getElementById('screen-voyage').classList.remove('active');
   document.getElementById('id-overlay').style.display = 'flex';
@@ -853,7 +813,7 @@ async function _initPartage() {
 
     // Attendre 2.3s puis cacher le splash
     const elapsed = performance.now(); // l'API a déjà pris du temps
-    const delay = Math.max(0, 6000 - elapsed);
+    const delay = Math.max(0, 2000 - elapsed);
     clearTimeout(_splashWelcomeT1);
     _splashWelcomeT1 = setTimeout(() => {
       _cacherWelcomeSplash(() => {
@@ -867,7 +827,18 @@ async function _initPartage() {
 
   } catch(e) {
     console.error('initPartage error:', e);
-    _cacherWelcomeSplash();
+    let _fallbackIdentite = null;
+    try {
+      const _stored = localStorage.getItem('partage_id_' + _partageToken);
+      if (_stored) _fallbackIdentite = JSON.parse(_stored);
+    } catch {}
+    _cacherWelcomeSplash(() => {
+      if (_fallbackIdentite) {
+        _lancerPartage(_fallbackIdentite);
+      } else {
+        document.getElementById('id-overlay').style.display = 'flex';
+      }
+    });
   }
 }
 
@@ -926,7 +897,11 @@ function _annulerPin() {
 function _idParNom() {
   const nom = (document.getElementById('id-nom-input').value || '').trim();
   if (!nom) return;
-  const identite = { nom, participant_id: null, couleur: '#6B7280' };
+  const _pal = ['#F97316','#3B82F6','#10B981','#8B5CF6','#EC4899','#F59E0B','#6366F1','#14B8A6'];
+  let _h = 0;
+  for (const c of nom) _h = (_h * 31 + c.charCodeAt(0)) & 0xFFFFFF;
+  const couleur = _pal[Math.abs(_h) % _pal.length];
+  const identite = { nom, participant_id: null, couleur };
   localStorage.setItem('partage_id_' + _partageToken, JSON.stringify(identite));
   _lancerPartage(identite);
 }
@@ -1051,9 +1026,13 @@ function _lancerPartage(identite) {
     badge.style.color = identite.couleur || '#F97316';
     badge.style.border = '1px solid ' + (identite.couleur || '#F97316');
   }
-  // Afficher l'onglet "Mes infos" uniquement si le participant est identifié avec un ID
-  const mesInfosBtn = document.getElementById('tab-btn-mes-infos');
-  if (mesInfosBtn) mesInfosBtn.style.display = identite && identite.participant_id ? '' : 'none';
+  // Mettre à jour l'avatar dans le header
+  const _avatar = document.getElementById('header-avatar');
+  const _btnAvatar = document.getElementById('btn-changer-identite');
+  if (_avatar && identite && identite.nom) {
+    _avatar.textContent = identite.nom[0].toUpperCase();
+    if (_btnAvatar) _btnAvatar.style.background = identite.couleur || 'var(--accent)';
+  }
   const _targetTab = new URLSearchParams(window.location.search).get('tab');
   if (_targetTab) {
     const tabBtn = document.querySelector(`[data-tab="${_targetTab}"]`);
@@ -1212,11 +1191,11 @@ function _geoArreter() {
   _rafraichirPositions();
 }
 
-// Override changerOnglet pour gérer mes-infos + discussion + géo
+// Override changerOnglet pour gérer docs + discussion + géo
 const _origChanterOnglet = window.changerOnglet;
 window.changerOnglet = function(tab, btn) {
   _origChanterOnglet(tab, btn);
-  if (tab === 'mes-infos') chargerMesInfos();
+  if (tab === 'docs') chargerDocs();
   if (tab === 'preparation') chargerPreparation();
   if (tab === 'discussion') {
     _majBannerNotif();
@@ -1637,7 +1616,100 @@ window.chargerProgramme = async function() {
 };
 
 // ══════════════════════════════════════════════════════
-//  ADMIN — lecture seule + bouton Demander par item
+//  DOCS & INFOS — réservations + documents + infos privées
+// ══════════════════════════════════════════════════════
+
+async function chargerDocs() {
+  const container = document.getElementById('docs-content');
+  if (!container) return;
+  container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>';
+
+  const token = _partageToken;
+  const partId = _partageIdentite?.participant_id || null;
+  const moi = _partageIdentite?.nom || null;
+
+  const [reservations, documents, mesInfos, mesDocs] = await Promise.all([
+    fetch(`/api/partage/${token}/reservations`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`/api/partage/${token}/documents`).then(r => r.ok ? r.json() : []).catch(() => []),
+    partId ? fetch(`/api/partage/${token}/mes-infos/${partId}`).then(r => r.json()).catch(() => []) : Promise.resolve([]),
+    partId ? fetch(`/api/partage/${token}/mes-docs/${partId}`).then(r => r.json()).catch(() => []) : Promise.resolve([])
+  ]);
+
+  const catLabels = { transport:'Transport', hebergement:'Hébergement', activite:'Activité', identite:'Identité', visa:'Visa', assurance:'Assurance', autre:'Autre' };
+
+  const infosPriveesHtml = partId && (mesInfos.length > 0 || mesDocs.length > 0) ? `
+    <div class="adm-section">
+      <div class="adm-section-head"><span class="adm-section-title">🔒 Mes infos privées</span></div>
+      <div style="padding:8px 12px">
+        ${mesInfos.map(a => `
+        <div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);border-left:4px solid #F97316;margin-bottom:10px">
+          <div style="font-weight:800;font-size:.95rem;margin-bottom:6px">🔒 ${a.titre}</div>
+          ${a.contenu ? `<div style="font-size:.88rem;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px 12px">${a.contenu}</div>` : ''}
+          ${a.document ? `<div style="margin-top:10px"><a href="/api/documents/${a.document.id}/download" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#F97316;color:#fff;border-radius:20px;font-size:.83rem;font-weight:700;text-decoration:none">${getDocIcon(a.document.type_fichier)} ${a.document.nom}</a></div>` : ''}
+        </div>`).join('')}
+        ${mesDocs.length > 0 ? `<div style="margin-top:8px">${mesDocs.map(doc => `
+        <div class="adm-row">
+          <span class="adm-row-icon">${getDocIcon(doc.type_fichier)}</span>
+          <div class="adm-row-body"><div class="adm-row-titre">${doc.nom}</div></div>
+          <div class="adm-row-actions"><a href="/api/partage/${token}/mes-docs/${doc.id}/download?participant_id=${partId}" target="_blank" class="btn-mini">⬇️</a></div>
+        </div>`).join('')}</div>` : ''}
+      </div>
+    </div>` : '';
+
+  const resasHtml = `
+    <div class="adm-section">
+      <div class="adm-section-head"><span class="adm-section-title">🎫 Réservations</span></div>
+      ${reservations.length === 0 ? '<div class="adm-empty">Aucune réservation</div>' : `
+      <div style="padding:8px 12px">${reservations.map(r => {
+        const icones = {transport:'✈️',hebergement:'🏠',vehicule:'🚗',activite:'🎯',restaurant:'🍽️'};
+        const docs = documents.filter(d => d.reservation_id == r.id);
+        const nom = (r.titre||'').replace(/'/g,"\\'");
+        return `<div class="resa-card" onclick="voirReservation(${r.id})">
+          <div class="resa-card-inner">
+            <div class="resa-icon icon-${r.type}">${icones[r.type]||'📌'}</div>
+            <div class="resa-body">
+              <div class="resa-titre">${r.titre}</div>
+              <div class="resa-meta">${r.heure_debut?`<span>🕐 ${r.heure_debut}</span>`:''} ${r.lieu?`<span>📍 ${r.lieu}</span>`:''}</div>
+              <div class="resa-card-badges">${r.numero_confirmation?`<span class="resa-badge-mini">📋 ${r.numero_confirmation}</span>`:''} ${docs.length?`<span class="resa-badge-mini resa-badge-doc">📎 ${docs.length}</span>`:''}</div>
+            </div>
+            ${moi?`<div class="resa-actions" onclick="event.stopPropagation()"><button class="btn-mini" onclick="_ouvrirDemande('docs','reservation',${r.id},'${nom}')">📩</button></div>`:''}
+          </div>
+        </div>`;
+      }).join('')}</div>`}
+    </div>`;
+
+  const docsHtml = `
+    <div class="adm-section">
+      <div class="adm-section-head"><span class="adm-section-title">📁 Documents du voyage</span></div>
+      ${documents.length === 0 ? '<div class="adm-empty">Aucun document partagé</div>' : `
+      <div class="adm-table">${documents.map(doc => {
+        const cat = catLabels[doc.categorie]||doc.categorie||'Autre';
+        const nom = (doc.nom||'').replace(/'/g,"\\'");
+        return `<div class="adm-row">
+          <span class="adm-row-icon">${getDocIcon(doc.type_fichier)}</span>
+          <div class="adm-row-body"><div class="adm-row-titre">${doc.nom}</div><div class="adm-row-meta"><span class="adm-row-cat">${cat}</span>${doc.taille?` <span>${formatTaille(doc.taille)}</span>`:''}</div></div>
+          <div class="adm-row-actions">
+            <a href="/api/documents/${doc.id}/download" target="_blank" class="btn-mini">⬇️</a>
+            ${moi?`<button class="btn-mini" onclick="_ouvrirDemande('docs','document',${doc.id},'${nom}')">📩</button>`:''}
+          </div>
+        </div>`;
+      }).join('')}</div>`}
+    </div>`;
+
+  container.innerHTML = `
+    <div class="adm-stats">
+      <div class="adm-stat"><span class="adm-stat-n">${reservations.length}</span><span class="adm-stat-l">Réservations</span></div>
+      <div class="adm-stat-sep"></div>
+      <div class="adm-stat"><span class="adm-stat-n">${documents.length}</span><span class="adm-stat-l">Documents</span></div>
+    </div>
+    ${infosPriveesHtml}
+    ${resasHtml}
+    ${docsHtml}
+    <div style="height:24px"></div>`;
+}
+
+// ══════════════════════════════════════════════════════
+//  ADMIN — lecture seule + bouton Demander par item (conservé pour compat)
 // ══════════════════════════════════════════════════════
 
 window.chargerAdmin = async function() {
@@ -1776,6 +1848,7 @@ function _renderHypeMeter(data) {
       <span class="prep-section-title">🔥 Hype Meter</span>
       <span class="prep-section-sub">${data.total} vote${data.total > 1 ? 's' : ''}</span>
     </div>
+    <p class="prep-section-desc">C'est quoi ton niveau d'excitation pour ce voyage ? Vote et compare avec le groupe !</p>
     <div class="prep-hype-body">
       <div class="prep-hype-jauge-wrap">
         <div class="prep-hype-jauge">
@@ -1787,8 +1860,10 @@ function _renderHypeMeter(data) {
       <div class="prep-hype-btns" id="hype-btns">
         ${EMOJIS.map((e, i) => `
           <button class="prep-hype-btn${monVote?.score === i+1 ? ' active' : ''}"
-            data-score="${i+1}" data-emoji="${e}" title="${LABELS[i]}">
-            ${e}
+            data-score="${i+1}" data-emoji="${e}"
+            style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:52px;">
+            <span class="hype-emoji">${e}</span>
+            <span class="hype-label">${LABELS[i]}</span>
           </button>
         `).join('')}
       </div>
@@ -1814,8 +1889,7 @@ function _renderQuickBio(profils) {
         <div class="prep-bio-nom">${_he(p.auteur)}</div>
         ${p.truc_en_voyage ? `<div class="prep-bio-item">✈️ ${_he(p.truc_en_voyage)}</div>` : ''}
         ${p.chaud_pour ? `<div class="prep-bio-item">🙌 ${_he(p.chaud_pour)}</div>` : ''}
-        ${p.refuse ? `<div class="prep-bio-item" style="color:#EF4444">🚫 ${_he(p.refuse)}</div>` : ''}
-        ${!p.truc_en_voyage && !p.chaud_pour && !p.refuse ? `<div class="prep-bio-item" style="opacity:.5">Profil vide</div>` : ''}
+        ${!p.truc_en_voyage && !p.chaud_pour ? `<div class="prep-bio-item" style="opacity:.5">Profil vide</div>` : ''}
       </div>
     </div>
   `).join('');
@@ -1829,7 +1903,6 @@ function _renderQuickBio(profils) {
       <div id="bio-edit-form" style="${monProfil ? 'display:none' : ''}">
         <input id="bio-truc" class="prep-input" placeholder="Mon truc en voyage… (ex: je dors 10h 😴)" value="${_he(monProfil?.truc_en_voyage || '')}">
         <input id="bio-chaud" class="prep-input" placeholder="Je suis chaud pour… (ex: la street food 🍜)" value="${_he(monProfil?.chaud_pour || '')}">
-        <input id="bio-refuse" class="prep-input" placeholder="Je refuse catégoriquement… (ex: les musées 🙅)" value="${_he(monProfil?.refuse || '')}">
         <button class="prep-btn-primary" id="bio-save-btn" onclick="_sauvegarderProfil()">💾 Sauvegarder</button>
       </div>
     </div>
@@ -1841,6 +1914,7 @@ function _renderQuickBio(profils) {
       <span class="prep-section-title">👤 Qui part avec nous ?</span>
       <span class="prep-section-sub">${profils.length} profil${profils.length > 1 ? 's' : ''}</span>
     </div>
+    <p class="prep-section-desc">Quelques mots sur tes habitudes de voyage — aide le groupe à mieux te connaître 😊</p>
     ${formProfil}
     ${profils.length > 0 ? `<div class="prep-bio-list">${cartes}</div>` : `<p style="padding:12px 0;text-align:center;font-size:.82rem;color:var(--text-muted)">Aucun profil complété pour l'instant</p>`}
   </div>`;
@@ -1907,6 +1981,7 @@ function _renderWishWall(wishlist) {
       <span class="prep-section-title">💡 Wish Wall</span>
       <span class="prep-section-sub">${wishlist.length} envie${wishlist.length > 1 ? 's' : ''}</span>
     </div>
+    <p class="prep-section-desc">Propose des idées d'activités, restos ou lieux. Like celles qui te branchent !</p>
     ${formWish}
     <div id="wish-list">${wishlist.length > 0 ? cartes : '<p style="padding:12px 0;text-align:center;font-size:.82rem;color:var(--text-muted)">Aucune envie pour l\'instant — soyez les premiers !</p>'}</div>
   </div>`;
@@ -1981,6 +2056,7 @@ function _renderSondages(sondages) {
       <span class="prep-section-title">🗳️ Votes du groupe</span>
       <span class="prep-section-sub">${sondages.length} sondage${sondages.length > 1 ? 's' : ''}</span>
     </div>
+    <p class="prep-section-desc">Décidez ensemble des activités, hébergements ou autres choix collectifs.</p>
     ${formPoll}
     <div id="sondages-list">${sondages.length > 0 ? cartesSondage : '<p style="padding:12px 0;text-align:center;font-size:.82rem;color:var(--text-muted)">Aucun vote pour l\'instant</p>'}</div>
   </div>`;
@@ -1995,11 +2071,12 @@ function _bindPrepaHandlers(hypeData, profils, wishlist, sondages) {
       const emoji = btn.dataset.emoji;
       const moi = _partageIdentite?.nom;
       if (!moi) return;
+      document.getElementById('hype-btns')?.querySelectorAll('.prep-hype-btn').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
       const r = await fetch(`/api/partage/${_partageToken}/hype`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ auteur: moi, score, emoji })
       }).then(r => r.json()).catch(() => ({}));
-      if (r.ok) chargerPreparation();
+      if (r.ok) { _toast('✅ Vote enregistré !'); chargerPreparation(); }
     });
   });
 
@@ -2040,11 +2117,10 @@ async function _sauvegarderProfil() {
       participant_id: _partageIdentite.participant_id || null,
       couleur: _partageIdentite.couleur || '#6B7280',
       truc_en_voyage: document.getElementById('bio-truc')?.value.trim() || null,
-      chaud_pour: document.getElementById('bio-chaud')?.value.trim() || null,
-      refuse: document.getElementById('bio-refuse')?.value.trim() || null
+      chaud_pour: document.getElementById('bio-chaud')?.value.trim() || null
     })
   }).then(r => r.json()).catch(() => ({}));
-  if (r.ok) chargerPreparation();
+  if (r.ok) { _toast('✅ Profil sauvegardé !'); chargerPreparation(); }
   else if (btn) btn.textContent = '💾 Sauvegarder';
 }
 
@@ -2112,7 +2188,72 @@ async function _supprimerSondage(id) {
   await fetch(`/api/partage/${_partageToken}/sondages/${id}`, { method: 'DELETE' });
   chargerPreparation();
 }
+
+
+// ── Toast de feedback ──────────────────────────────────────────────────────
+function _toast(msg, duree = 2500) {
+  const t = document.getElementById('toast-partage');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(20px)';
+  }, duree);
+}
+
+// ── PWA Install Prompt ─────────────────────────────────────────────────────
+(function _pwaInstallPrompt() {
+  if (localStorage.getItem('pwa_dismissed')) return;
+  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
+  const banner = document.getElementById('pwa-install-banner');
+  const installBtn = document.getElementById('pwa-install-btn');
+  if (!banner || !installBtn) return;
+  let _deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _deferredPrompt = e;
+    banner.style.display = 'block';
+    installBtn.addEventListener('click', async () => {
+      banner.style.display = 'none';
+      _deferredPrompt.prompt();
+      const { outcome } = await _deferredPrompt.userChoice;
+      _deferredPrompt = null;
+      if (outcome === 'accepted') localStorage.setItem('pwa_dismissed', '1');
+    }, { once: true });
+  });
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS) {
+    const desc = document.getElementById('pwa-install-desc');
+    if (desc) desc.textContent = 'Appuie sur ⬆️ Partager → « Sur l\'écran d\'accueil »';
+    installBtn.textContent = 'Compris';
+    setTimeout(() => { banner.style.display = 'block'; }, 3500);
+    installBtn.addEventListener('click', () => {
+      banner.style.display = 'none';
+      localStorage.setItem('pwa_dismissed', '1');
+    }, { once: true });
+  }
+})();
+
 </script>
+
+<!-- Toast de feedback -->
+<div id="toast-partage" style="position:fixed;bottom:calc(env(safe-area-inset-bottom) + 80px);left:50%;transform:translateX(-50%) translateY(20px);background:#1C1917;color:#fff;padding:10px 20px;border-radius:20px;font-size:.85rem;font-weight:600;opacity:0;transition:opacity .25s,transform .25s;z-index:9999;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 32px);text-align:center"></div>
+
+<!-- Bannière installation PWA -->
+<div id="pwa-install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:1500;padding:12px 16px;padding-bottom:calc(env(safe-area-inset-bottom) + 12px);background:var(--card);border-top:1px solid var(--border);box-shadow:0 -4px 20px rgba(0,0,0,.15)">
+  <div style="display:flex;align-items:center;gap:12px;max-width:480px;margin:0 auto">
+    <img src="/logo-icon.png" style="width:44px;height:44px;border-radius:12px;flex-shrink:0" alt="CrewiGo">
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:800;font-size:.9rem">Installer CrewiGo</div>
+      <div id="pwa-install-desc" style="font-size:.76rem;color:var(--text-muted);line-height:1.4">Accède au voyage en un tap, même hors connexion.</div>
+    </div>
+    <button id="pwa-install-btn" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:9px 16px;font-size:.82rem;font-weight:800;cursor:pointer;white-space:nowrap;font-family:var(--font-body)">Installer</button>
+    <button onclick="document.getElementById('pwa-install-banner').style.display='none';localStorage.setItem('pwa_dismissed','1')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.4rem;padding:4px;line-height:1">×</button>
+  </div>
+</div>
 
 </body>
 </html>
