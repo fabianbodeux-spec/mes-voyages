@@ -1817,7 +1817,9 @@ async function sauvegarderAgenda(e) {
     saveOk = true;
   } catch(err) {
     console.error('sauvegarderAgenda – erreur save:', err);
-    toast(`❌ Erreur sauvegarde : ${err.message}`);
+    const msg = err.message || String(err);
+    // Afficher l'erreur dans une alerte pour que l'utilisateur puisse copier le message exact
+    alert(`❌ Erreur création événement :\n\n${msg}\n\n(Copie ce message et envoie-le pour diagnostic)`);
     if (submitBtn) submitBtn.disabled = false;
     return;
   }
