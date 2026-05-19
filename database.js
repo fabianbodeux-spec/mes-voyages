@@ -307,7 +307,6 @@ if (USE_POSTGRES) {
     ALTER TABLE documents ADD COLUMN IF NOT EXISTS event_id INTEGER;
     ALTER TABLE documents ADD COLUMN IF NOT EXISTS reservation_id INTEGER;
     ALTER TABLE voyages ADD COLUMN IF NOT EXISTS share_token TEXT UNIQUE;
-    ALTER TABLE bagages ADD COLUMN IF NOT EXISTS checked BOOLEAN DEFAULT FALSE;
     CREATE TABLE IF NOT EXISTS participants (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       nom TEXT, couleur TEXT DEFAULT '#6366F1',
@@ -324,6 +323,7 @@ if (USE_POSTGRES) {
       participant_id INTEGER NOT NULL, nom TEXT, categorie TEXT DEFAULT 'divers',
       checked BOOLEAN DEFAULT FALSE, created_at TEXT DEFAULT now()::text
     );
+    ALTER TABLE bagages ADD COLUMN IF NOT EXISTS checked BOOLEAN DEFAULT FALSE;
     CREATE TABLE IF NOT EXISTS push_subscriptions (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       endpoint TEXT UNIQUE, p256dh TEXT, auth TEXT,

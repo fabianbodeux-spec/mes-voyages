@@ -1748,6 +1748,9 @@ function ouvrirModalAgenda(id = null) {
     document.getElementById('form-agenda').reset();
     document.getElementById('a-lien').value = '';
   }
+  // Réactiver le bouton submit (peut avoir été désactivé par une soumission précédente)
+  const btn = document.querySelector('#form-agenda [type="submit"]');
+  if (btn) btn.disabled = false;
   document.getElementById('modal-agenda').classList.remove('hidden');
 }
 
@@ -1764,6 +1767,8 @@ async function modifierAgenda(id) {
   document.getElementById('a-type').value = item.type;
   document.getElementById('a-lien').value = item.lien || '';
   document.getElementById('modal-agenda-titre').textContent = 'Modifier l\'événement';
+  const btn = document.querySelector('#form-agenda [type="submit"]');
+  if (btn) btn.disabled = false;
   document.getElementById('modal-agenda').classList.remove('hidden');
 }
 
