@@ -1506,12 +1506,12 @@ window.chargerProgramme = async function() {
   if (!container) return;
   container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>';
 
-  const [voyage, reservations, agendaItems, documents] = await Promise.all([
-    fetch(`/api/voyages/${voyageActuel}`).then(r => r.ok ? r.json() : {}).catch(() => ({})),
-    fetch(`/api/voyages/${voyageActuel}/reservations`).then(r => r.ok ? r.json() : []).catch(() => []),
-    fetch(`/api/voyages/${voyageActuel}/agenda`).then(r => r.ok ? r.json() : []).catch(() => []),
-    fetch(`/api/voyages/${voyageActuel}/documents`).then(r => r.ok ? r.json() : []).catch(() => [])
-  ]);
+  // Utiliser la route partage publique (pas de JWT requis) — retourne tout en une seule requête
+  const _pd = await fetch(`/api/partage/${_partageToken}`).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  const voyage = _pd.voyage || {};
+  const reservations = _pd.reservations || [];
+  const agendaItems  = _pd.agenda      || [];
+  const documents    = _pd.documents   || [];
 
   const items = [];
   agendaItems.forEach(a => {
