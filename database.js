@@ -664,3 +664,4 @@ const pgDB = pgPool ? {
 module.exports = USE_POSTGRES ? pgDB : localDB;
 module.exports.isAsync = USE_POSTGRES;
 module.exports.usePostgres = USE_POSTGRES;
+module.exports._pool = pgPool; // diagnostic uniquement
