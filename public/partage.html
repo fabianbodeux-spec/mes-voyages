@@ -1506,10 +1506,10 @@ window.chargerProgramme = async function() {
   container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>';
 
   const [voyage, reservations, agendaItems, documents] = await Promise.all([
-    fetch(`/api/voyages/${voyageActuel}`).then(r => r.json()),
-    fetch(`/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
-    fetch(`/api/voyages/${voyageActuel}/agenda`).then(r => r.json()),
-    fetch(`/api/voyages/${voyageActuel}/documents`).then(r => r.json())
+    fetch(`/api/voyages/${voyageActuel}`).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    fetch(`/api/voyages/${voyageActuel}/reservations`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`/api/voyages/${voyageActuel}/agenda`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`/api/voyages/${voyageActuel}/documents`).then(r => r.ok ? r.json() : []).catch(() => [])
   ]);
 
   const items = [];

@@ -1558,10 +1558,10 @@ function wmoEmoji(code) {
 
 async function chargerProgramme() {
   const [evts, resas, voyage, docs] = await Promise.all([
-    fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json()),
-    fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
-    fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.json()),
-    fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json())
+    fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.ok ? r.json() : []).catch(() => [])
   ]);
 
   const container = document.getElementById('liste-programme');
@@ -1759,11 +1759,29 @@ async function modifierAgenda(id) {
 
 async function sauvegarderAgenda(e) {
   e.preventDefault();
+  const submitBtn = e.submitter || e.target?.querySelector('[type="submit"]');
+  if (submitBtn) { submitBtn.disabled = true; }
+
   const id = document.getElementById('a-id').value;
+  const dateVal = document.getElementById('a-date').value;
+  const titreVal = document.getElementById('a-titre').value.trim();
+
+  // Validation client — protège contre les edge cases mobile (date picker fermé sans sélection)
+  if (!dateVal) {
+    toast('⚠️ Une date est requise');
+    if (submitBtn) submitBtn.disabled = false;
+    return;
+  }
+  if (!titreVal) {
+    toast('⚠️ Un titre est requis');
+    if (submitBtn) submitBtn.disabled = false;
+    return;
+  }
+
   const data = {
-    date: document.getElementById('a-date').value,
+    date: dateVal,
     heure: document.getElementById('a-heure').value || null,
-    titre: document.getElementById('a-titre').value,
+    titre: titreVal,
     description: document.getElementById('a-description').value,
     lieu: document.getElementById('a-lieu').value,
     type: document.getElementById('a-type').value,
@@ -1772,18 +1790,28 @@ async function sauvegarderAgenda(e) {
 
   const url = id ? `${API}/api/agenda/${id}` : `${API}/api/voyages/${voyageActuel}/agenda`;
   const method = id ? 'PUT' : 'POST';
-  await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
 
-  fermerModal('modal-agenda');
-  toast(id ? '✅ Événement modifié' : '✅ Événement ajouté');
-  chargerProgramme();
+  try {
+    const resp = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+    fermerModal('modal-agenda');
+    toast(id ? '✅ Événement modifié' : '✅ Événement ajouté');
+    await chargerProgramme();
+  } catch(err) {
+    console.error('sauvegarderAgenda:', err);
+    toast(`❌ Erreur : ${err.message}`);
+    if (submitBtn) submitBtn.disabled = false;
+  }
 }
 
 async function supprimerAgenda(id) {
   if (!confirm('Supprimer cet événement ?')) return;
   await fetch(`${API}/api/agenda/${id}`, { method: 'DELETE' });
   toast('🗑️ Événement supprimé');
-  chargerProgramme();
+  await chargerProgramme();
 }
 
 // ─── DOCUMENTS ───────────────────────────────────────

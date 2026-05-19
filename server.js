@@ -282,6 +282,8 @@ app.get('/api/voyages/:id/agenda', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/voyages/:id/agenda', authMiddleware, async (req, res) => {
+  const { date, titre } = req.body;
+  if (!date || !titre) return res.status(400).json({ error: 'Date et titre requis' });
   try { const item = await run(() => db.agenda.create(req.params.id, req.body)); res.json({ id: item.id }); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
