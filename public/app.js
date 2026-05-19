@@ -316,6 +316,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initAuth().then(() => { if (currentUser) chargerVoyages(); });
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(console.error);
+    // Quand un nouveau Service Worker prend le contrôle → rechargement automatique
+    // pour que l'utilisateur bénéficie immédiatement des nouveaux fichiers JS/CSS
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    });
   }
 
   // ── PWA Install (in-app, post-auth) ──────────────────────────────────
@@ -3609,6 +3614,19 @@ function _bindStaticHandlers() {
 }
 
 document.addEventListener('DOMContentLoaded', _bindStaticHandlers);
+
+// ─── FIX CLAVIER MOBILE : ajuste la hauteur des modales quand le clavier s'ouvre ───
+// Sur iOS < 16, dvh n'est pas supporté et position:fixed ne répond pas au clavier.
+// Le visualViewport API donne la vraie hauteur visible, hors clavier.
+if (window.visualViewport) {
+  function _ajusterModalesPourClavier() {
+    const vh = window.visualViewport.height;
+    document.querySelectorAll('.modal-overlay:not(.hidden) .modal').forEach(modal => {
+      modal.style.maxHeight = Math.floor(vh * 0.92) + 'px';
+    });
+  }
+  window.visualViewport.addEventListener('resize', _ajusterModalesPourClavier);
+}
 
 // ─── PRE-TRIP HUB (vue organisateur — interactive) ───────────────────────────
 async function chargerPreparationAdmin() {

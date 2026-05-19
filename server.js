@@ -70,7 +70,15 @@ app.use(express.json({ limit: '20mb' }));
 app.get('/',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders(res, filePath) {
+    // Forcer la revalidation des fichiers JS/CSS/HTML à chaque requête
+    // → les navigateurs rechargent toujours le vrai contenu quand les fichiers changent
+    if (/\.(js|css|html)$/.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
 
 // ─── HELPERS SÉCURITÉ ──────────────────────────────────────────────────────
 

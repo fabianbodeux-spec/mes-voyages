@@ -380,14 +380,14 @@
       <div class="form-group"><label>Adresse</label><input type="text" id="r-adresse" placeholder="Rue, ville..."></div>
       <div class="form-group"><label>N° de confirmation</label><input type="text" id="r-confirmation" placeholder="Ex: BK-123456789"></div>
       <div class="form-group"><label>Notes</label><textarea id="r-notes" rows="2" placeholder="Infos complémentaires..."></textarea></div>
-      <div class="form-group"><label>🔗 Lien</label><input type="url" id="r-lien" placeholder="https://..."></div>
+      <div class="form-group"><label>🔗 Lien</label><input type="text" id="r-lien" placeholder="https://..."></div>
       <input type="hidden" id="r-type" value="transport">
       <input type="hidden" id="r-id">
-      <div class="modal-footer">
-        <button type="button" class="btn-secondary" onclick="fermerModal('modal-reservation')">Annuler</button>
-        <button type="submit" class="btn-primary">Enregistrer</button>
-      </div>
     </form>
+    <div class="modal-footer">
+      <button type="button" class="btn-secondary" onclick="fermerModal('modal-reservation')">Annuler</button>
+      <button type="submit" form="form-reservation" class="btn-primary">Enregistrer</button>
+    </div>
   </div>
 </div>
 
@@ -420,13 +420,13 @@
       </div>
       <div class="form-group"><label>Lieu</label><input type="text" id="a-lieu" placeholder="Ex: Ajaccio"></div>
       <div class="form-group"><label>Description</label><textarea id="a-description" rows="2" placeholder="Détails..."></textarea></div>
-      <div class="form-group"><label>🔗 Lien</label><input type="url" id="a-lien" placeholder="https://..."></div>
+      <div class="form-group"><label>🔗 Lien</label><input type="text" id="a-lien" placeholder="https://..."></div>
       <input type="hidden" id="a-id">
-      <div class="modal-footer">
-        <button type="button" class="btn-secondary" onclick="fermerModal('modal-agenda')">Annuler</button>
-        <button type="submit" class="btn-primary">Enregistrer</button>
-      </div>
     </form>
+    <div class="modal-footer">
+      <button type="button" class="btn-secondary" onclick="fermerModal('modal-agenda')">Annuler</button>
+      <button type="submit" form="form-agenda" class="btn-primary">Enregistrer</button>
+    </div>
   </div>
 </div>
 
@@ -1968,7 +1968,7 @@ function _renderWishWall(wishlist) {
         </select>
       </div>
       <textarea id="wish-desc" class="prep-input" rows="2" placeholder="Description (optionnel)…" style="resize:vertical"></textarea>
-      <input id="wish-url" class="prep-input" placeholder="Lien (optionnel)…" type="url">
+      <input id="wish-url" class="prep-input" placeholder="Lien (optionnel)…" type="text">
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="prep-btn-secondary" onclick="document.getElementById('wish-form').style.display='none';document.getElementById('wish-form-toggle').style.display=''">Annuler</button>
         <button class="prep-btn-primary" onclick="_ajouterWish()">Ajouter ✨</button>
