@@ -3478,7 +3478,7 @@ function _bindStaticHandlers() {
 
   // ── Tab panels ────────────────────────────────────────────────────────────
   _on('btn-ajouter-participant',    'click', ouvrirModalParticipant);
-  _on('btn-ajouter-agenda',         'click', ouvrirModalAgenda);
+  _on('btn-ajouter-agenda',         'click', () => ouvrirModalAgenda());
   _on('btn-generer-suggestions',    'click', genererSuggestions);
   _on('btn-ajouter-article-bagages','click', ouvrirModalAjoutArticle);
   _on('btn-ajouter-depense',        'click', ouvrirModalDepense);
