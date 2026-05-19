@@ -1801,19 +1801,27 @@ async function sauvegarderAgenda(e) {
   const url = id ? `${API}/api/agenda/${id}` : `${API}/api/voyages/${voyageActuel}/agenda`;
   const method = id ? 'PUT' : 'POST';
 
+  // ── Étape 1 : sauvegarder (erreur remontée à l'utilisateur) ──────────────
+  let saveOk = false;
   try {
     const resp = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${resp.status}`);
+      const errBody = await resp.json().catch(() => ({}));
+      throw new Error(errBody.error || `HTTP ${resp.status}`);
     }
+    saveOk = true;
+  } catch(err) {
+    console.error('sauvegarderAgenda – erreur save:', err);
+    toast(`❌ Erreur sauvegarde : ${err.message}`);
+    if (submitBtn) submitBtn.disabled = false;
+    return;
+  }
+
+  // ── Étape 2 : feedback + rechargement (erreurs silencieuses) ─────────────
+  if (saveOk) {
     fermerModal('modal-agenda');
     toast(id ? '✅ Événement modifié' : '✅ Événement ajouté');
-    await chargerProgramme();
-  } catch(err) {
-    console.error('sauvegarderAgenda:', err);
-    toast(`❌ Erreur : ${err.message}`);
-    if (submitBtn) submitBtn.disabled = false;
+    chargerProgramme().catch(e => console.warn('chargerProgramme post-save:', e));
   }
 }
 
