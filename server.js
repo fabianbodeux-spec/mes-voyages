@@ -1024,6 +1024,21 @@ app.get('/api/partage/:token/documents', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Téléchargement public d'un document (réservation / agenda) ────────────
+app.get('/api/partage/:token/documents/:docId/download', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const doc = await run(() => db.documents.getById(req.params.docId));
+    if (!doc || doc.voyage_id !== voyage.id) return res.status(404).json({ error: 'Document introuvable' });
+    const mime = ALLOWED_MIMES.has(doc.type_fichier) ? doc.type_fichier : 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Disposition', `inline; filename="${safeFilename(doc.nom)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(Buffer.from(doc.contenu, 'base64'));
+  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // ─── PRE-TRIP HUB ─────────────────────────────────────────────────────────
 
 // ── Hype Meter ────────────────────────────────────────────────────────────

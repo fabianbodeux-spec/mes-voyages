@@ -436,16 +436,17 @@ function changerOnglet(tab, btn) {
   btn.classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
-  if (tab === 'accueil') chargerAccueil();
-  if (tab === 'preparation') chargerPreparationAdmin();
-  if (tab === 'programme') chargerProgramme();
-  if (tab === 'budget') chargerBudget();
+  if (tab === 'accueil') (window.chargerAccueil || chargerAccueil)();
+  if (tab === 'preparation') (window.chargerPreparationAdmin || chargerPreparationAdmin)();
+  if (tab === 'programme') (window.chargerProgramme || chargerProgramme)();
+  if (tab === 'budget') (window.chargerBudget || chargerBudget)();
   // Trip & Tricks supprimé
-  if (tab === 'admin') chargerAdmin();
+  if (tab === 'admin') (window.chargerAdmin || chargerAdmin)();
   if (tab === 'discussion') {
-    chargerCommentairesAdmin();
+    const _fnChat = window.chargerCommentairesAdmin || chargerCommentairesAdmin;
+    _fnChat();
     clearInterval(_chatPollAdmin);
-    _chatPollAdmin = setInterval(chargerCommentairesAdmin, 15000);
+    _chatPollAdmin = setInterval(_fnChat, 15000);
   } else {
     clearInterval(_chatPollAdmin);
     _chatPollAdmin = null;

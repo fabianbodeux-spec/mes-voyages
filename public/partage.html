@@ -910,18 +910,60 @@ function _idLectureSeule() {
   _lancerPartage({ nom: null });
 }
 
-// ── Override : voirReservation — alimente le cache si besoin ──
+// ── Override : voirReservation — alimente le cache via routes publiques ──
 const _origVoirReservation = window.voirReservation;
 window.voirReservation = async function(id) {
   if (_resasCache.length === 0) {
     const [resas, docs] = await Promise.all([
-      fetch(`/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
-      fetch(`/api/voyages/${voyageActuel}/documents`).then(r => r.json())
+      fetch(`/api/partage/${_partageToken}/reservations`).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`/api/partage/${_partageToken}/documents`).then(r => r.ok ? r.json() : []).catch(() => [])
     ]);
     _resasCache = resas;
     _docsCache  = docs;
   }
   _origVoirReservation(id);
+};
+
+// ── Override : chargerPreparationAdmin → no-op (partage.html gère chargerPreparation séparément) ──
+window.chargerPreparationAdmin = function() {};
+
+// ── Override : chargerCommentairesAdmin → no-op (partage.html gère chargerCommentaires séparément) ──
+window.chargerCommentairesAdmin = function() {};
+
+// ── Override : chargerAccueil → no-op (partage.html affiche son propre accueil via _initPartage) ──
+window.chargerAccueil = function() {};
+
+// ── Override : chargerBudget → affiche les participants depuis la route publique ──
+window.chargerBudget = async function() {
+  const container = document.getElementById('budget-liste-participants');
+  if (!container) return;
+  try {
+    const d = await fetch(`/api/partage/${_partageToken}`).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+    const parts = d.participants || [];
+    if (parts.length === 0) {
+      container.innerHTML = '<div class="empty-tab"><div class="empty-tab-icon">👥</div><p>Aucun participant</p></div>';
+      return;
+    }
+    container.innerHTML = parts.map(p => `
+      <div class="part-row">
+        <div class="part-avatar" style="background:${p.couleur||'var(--accent)'}22;color:${p.couleur||'var(--accent)'}">${(p.nom||'?')[0].toUpperCase()}</div>
+        <div class="part-info"><div class="part-nom">${_he(p.nom)}</div>${p.email?`<div class="part-email">${_he(p.email)}</div>`:''}</div>
+      </div>`).join('');
+  } catch(e) { container.innerHTML = ''; }
+  // Masquer la section bilan (données protégées)
+  const bilan = document.getElementById('section-bilan');
+  if (bilan) bilan.style.display = 'none';
+};
+
+// ── Override : ouvrirDocViewer → télécharge via route publique partage ──
+window.ouvrirDocViewer = function(docId, nom) {
+  const url = `/api/partage/${_partageToken}/documents/${docId}/download`;
+  document.getElementById('doc-viewer-nom').textContent = nom;
+  document.getElementById('doc-viewer-frame').src = url;
+  const dl = document.getElementById('doc-viewer-dl');
+  if (dl) dl.href = url;
+  document.getElementById('modal-doc-viewer').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
 };
 
 // ── Dépense : ouvrir le modal (toujours, même sans participants) ──
@@ -1247,7 +1289,7 @@ async function chargerMesInfos() {
           ${a.contenu ? `<div style="font-size:.88rem;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px 12px">${a.contenu}</div>` : ''}
           ${a.document ? `
           <div style="margin-top:10px">
-            <a href="/api/documents/${a.document.id}/download" target="_blank"
+            <a href="/api/partage/${_partageToken}/documents/${a.document.id}/download" target="_blank"
               style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#F97316;color:#fff;border-radius:20px;font-size:.83rem;font-weight:700;text-decoration:none">
               ${getDocIcon(a.document.type_fichier)} Ouvrir ${a.document.nom}
             </a>
@@ -1646,7 +1688,7 @@ async function chargerDocs() {
         <div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);border-left:4px solid #F97316;margin-bottom:10px">
           <div style="font-weight:800;font-size:.95rem;margin-bottom:6px">🔒 ${a.titre}</div>
           ${a.contenu ? `<div style="font-size:.88rem;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px 12px">${a.contenu}</div>` : ''}
-          ${a.document ? `<div style="margin-top:10px"><a href="/api/documents/${a.document.id}/download" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#F97316;color:#fff;border-radius:20px;font-size:.83rem;font-weight:700;text-decoration:none">${getDocIcon(a.document.type_fichier)} ${a.document.nom}</a></div>` : ''}
+          ${a.document ? `<div style="margin-top:10px"><a href="/api/partage/${token}/documents/${a.document.id}/download" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#F97316;color:#fff;border-radius:20px;font-size:.83rem;font-weight:700;text-decoration:none">${getDocIcon(a.document.type_fichier)} ${a.document.nom}</a></div>` : ''}
         </div>`).join('')}
         ${mesDocs.length > 0 ? `<div style="margin-top:8px">${mesDocs.map(doc => `
         <div class="adm-row">
@@ -1690,7 +1732,7 @@ async function chargerDocs() {
           <span class="adm-row-icon">${getDocIcon(doc.type_fichier)}</span>
           <div class="adm-row-body"><div class="adm-row-titre">${doc.nom}</div><div class="adm-row-meta"><span class="adm-row-cat">${cat}</span>${doc.taille?` <span>${formatTaille(doc.taille)}</span>`:''}</div></div>
           <div class="adm-row-actions">
-            <a href="/api/documents/${doc.id}/download" target="_blank" class="btn-mini">⬇️</a>
+            <a href="/api/partage/${token}/documents/${doc.id}/download" target="_blank" class="btn-mini">⬇️</a>
             ${moi?`<button class="btn-mini" onclick="_ouvrirDemande('docs','document',${doc.id},'${nom}')">📩</button>`:''}
           </div>
         </div>`;
@@ -1718,8 +1760,8 @@ window.chargerAdmin = async function() {
   container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>';
 
   const [reservations, documents] = await Promise.all([
-    fetch(`/api/voyages/${voyageActuel}/reservations`).then(r => r.ok ? r.json() : []).catch(() => []),
-    fetch(`/api/voyages/${voyageActuel}/documents`).then(r => r.ok ? r.json() : []).catch(() => [])
+    fetch(`/api/partage/${_partageToken}/reservations`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`/api/partage/${_partageToken}/documents`).then(r => r.ok ? r.json() : []).catch(() => [])
   ]);
 
   _resasCache = reservations;
@@ -1794,7 +1836,7 @@ window.chargerAdmin = async function() {
               </div>
             </div>
             <div class="adm-row-actions">
-              <a href="/api/documents/${doc.id}/download" target="_blank" class="btn-mini adm-btn-link" title="Télécharger">⬇️</a>
+              <a href="/api/partage/${_partageToken}/documents/${doc.id}/download" target="_blank" class="btn-mini adm-btn-link" title="Télécharger">⬇️</a>
               <button class="btn-mini" style="white-space:nowrap;font-size:.72rem"
                 onclick="_ouvrirDemande('admin','document',${doc.id},'${nom}')">
                 📩 Demander
