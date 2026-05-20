@@ -1024,13 +1024,28 @@ app.get('/api/partage/:token/documents', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── Dépenses publiques (lecture seule pour les participants) ─────────────────
+// ── Dépenses publiques (participants) — GET liste + POST créer ───────────────
 app.get('/api/partage/:token/depenses', async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const depenses = await run(() => db.depenses.getByVoyage(voyage.id));
     res.json(depenses);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/partage/:token/depenses', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const { titre, montant, date, categorie, payeur_id, participants_ids } = req.body;
+    if (!titre || !montant) return res.status(400).json({ error: 'Titre et montant requis' });
+    const item = await run(() => db.depenses.create(voyage.id, {
+      titre, montant, date, categorie: categorie || 'autre',
+      payeur_id: payeur_id || null,
+      participants_ids: participants_ids || '[]'
+    }));
+    res.json(item);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

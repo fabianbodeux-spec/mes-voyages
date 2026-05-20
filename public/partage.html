@@ -933,12 +933,8 @@ window.chargerCommentairesAdmin = function() {};
 // ── Override : chargerAccueil → no-op (partage.html affiche son propre accueil via _initPartage) ──
 window.chargerAccueil = function() {};
 
-// ── Override : chargerBudget → lecture seule via routes publiques ──
+// ── Override : chargerBudget → vue complète via routes publiques ──
 window.chargerBudget = async function() {
-  // Masquer le bouton "Ajouter une dépense" (réservé à l'admin)
-  const addBtn = document.querySelector('#tab-budget > div:not(.budget-section)');
-  if (addBtn) addBtn.style.display = 'none';
-
   const [d, depenses] = await Promise.all([
     fetch(`/api/partage/${_partageToken}`).then(r => r.ok ? r.json() : {}).catch(() => ({})),
     fetch(`/api/partage/${_partageToken}/depenses`).then(r => r.ok ? r.json() : []).catch(() => [])
@@ -1089,8 +1085,10 @@ async function _depenseSauvegarder() {
     categorie: document.getElementById('dep-categorie').value
   };
   const id  = document.getElementById('dep-id').value;
-  const url = id ? `/api/depenses/${id}` : `/api/voyages/${voyageActuel}/depenses`;
-  await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  // Route publique partage pour les participants (pas de JWT requis)
+  const url = id ? `/api/depenses/${id}` : `/api/partage/${_partageToken}/depenses`;
+  const resp = await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  if (!resp.ok) { toast('❌ Erreur lors de l\'enregistrement'); return; }
   fermerModal('modal-depense');
   toast(id ? '✅ Dépense modifiée' : '✅ Dépense ajoutée');
   chargerBudget();
