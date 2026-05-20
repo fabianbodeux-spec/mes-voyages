@@ -933,26 +933,74 @@ window.chargerCommentairesAdmin = function() {};
 // ── Override : chargerAccueil → no-op (partage.html affiche son propre accueil via _initPartage) ──
 window.chargerAccueil = function() {};
 
-// ── Override : chargerBudget → affiche les participants depuis la route publique ──
+// ── Override : chargerBudget → lecture seule via routes publiques ──
 window.chargerBudget = async function() {
-  const container = document.getElementById('budget-liste-participants');
-  if (!container) return;
-  try {
-    const d = await fetch(`/api/partage/${_partageToken}`).then(r => r.ok ? r.json() : {}).catch(() => ({}));
-    const parts = d.participants || [];
-    if (parts.length === 0) {
-      container.innerHTML = '<div class="empty-tab"><div class="empty-tab-icon">👥</div><p>Aucun participant</p></div>';
-      return;
+  // Masquer le bouton "Ajouter une dépense" (réservé à l'admin)
+  const addBtn = document.querySelector('#tab-budget > div:not(.budget-section)');
+  if (addBtn) addBtn.style.display = 'none';
+
+  const [d, depenses] = await Promise.all([
+    fetch(`/api/partage/${_partageToken}`).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    fetch(`/api/partage/${_partageToken}/depenses`).then(r => r.ok ? r.json() : []).catch(() => [])
+  ]);
+
+  const participants = d.participants || [];
+  participantsActuels = participants;
+
+  // ── Participants (avatars, lecture seule — pas de boutons PIN/supprimer) ──
+  const partContainer = document.getElementById('liste-participants');
+  if (partContainer) {
+    if (participants.length === 0) {
+      partContainer.innerHTML = `<p style="font-size:.82rem;color:var(--text-muted);padding:8px 0">Aucun participant pour ce voyage</p>`;
+    } else {
+      partContainer.innerHTML = `<div class="avatars-row">${participants.map(p => `
+        <div class="avatar-chip">
+          <div class="avatar" style="background:${p.couleur||'var(--accent)'}">${_he((p.nom||'?')[0].toUpperCase())}</div>
+          <span class="avatar-nom">${_he(p.nom)}</span>
+        </div>`).join('')}</div>`;
     }
-    container.innerHTML = parts.map(p => `
-      <div class="part-row">
-        <div class="part-avatar" style="background:${p.couleur||'var(--accent)'}22;color:${p.couleur||'var(--accent)'}">${(p.nom||'?')[0].toUpperCase()}</div>
-        <div class="part-info"><div class="part-nom">${_he(p.nom)}</div>${p.email?`<div class="part-email">${_he(p.email)}</div>`:''}</div>
-      </div>`).join('');
-  } catch(e) { container.innerHTML = ''; }
-  // Masquer la section bilan (données protégées)
-  const bilan = document.getElementById('section-bilan');
-  if (bilan) bilan.style.display = 'none';
+  }
+
+  // ── Dépenses (lecture seule — pas de boutons modifier/supprimer) ──
+  const depContainer = document.getElementById('liste-depenses');
+  if (depContainer) {
+    if (depenses.length === 0) {
+      depContainer.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon">💶</div><p>Aucune dépense enregistrée</p></div>`;
+    } else {
+      const byId = {};
+      participants.forEach(p => { byId[p.id] = p; });
+      const total = depenses.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
+      const icones = { hebergement:'🏠', transport:'✈️', restauration:'🍽️', activite:'🎯', courses:'🛒', autre:'💳' };
+      depContainer.innerHTML = `
+        <div class="budget-total-bar">
+          <span class="budget-total-label">Total dépenses</span>
+          <span class="budget-total-amount">${total.toFixed(2)} €</span>
+        </div>
+        <div style="padding:0 16px 12px;display:flex;flex-direction:column;gap:8px">
+          ${depenses.map(dep => {
+            const payeur = byId[dep.payeur_id];
+            const parts = parseIds(dep.participants_ids);
+            const share = parts.length > 0 ? (parseFloat(dep.montant) / parts.length).toFixed(2) : '—';
+            return `
+            <div class="depense-card">
+              <div class="depense-cat">${icones[dep.categorie] || '💳'}</div>
+              <div class="depense-body">
+                <div class="depense-titre">${_he(dep.titre)}</div>
+                <div class="depense-meta">
+                  ${dep.date ? `<span>${formatDate(dep.date)}</span>` : ''}
+                  ${payeur ? `<span style="display:inline-flex;align-items:center;gap:4px"><span class="avatar-xs" style="background:${payeur.couleur}">${_he(payeur.nom[0])}</span>${_he(payeur.nom)} a payé</span>` : ''}
+                  <span>${parts.length} pers. · ${share}€/pers.</span>
+                </div>
+              </div>
+              <span class="depense-montant">${parseFloat(dep.montant).toFixed(2)}€</span>
+            </div>`;
+          }).join('')}
+        </div>`;
+    }
+  }
+
+  // ── Bilan (qui doit quoi) — réutilise la fonction de app.js ──
+  afficherBilan(depenses, participants);
 };
 
 // ── Override : ouvrirDocViewer → télécharge via route publique partage ──

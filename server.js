@@ -1024,6 +1024,16 @@ app.get('/api/partage/:token/documents', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Dépenses publiques (lecture seule pour les participants) ─────────────────
+app.get('/api/partage/:token/depenses', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const depenses = await run(() => db.depenses.getByVoyage(voyage.id));
+    res.json(depenses);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Téléchargement public d'un document (réservation / agenda) ────────────
 app.get('/api/partage/:token/documents/:docId/download', async (req, res) => {
   try {
