@@ -2547,13 +2547,15 @@ async function genererSuggestions() {
 
 async function chargerBudget() {
   const [participants, depenses] = await Promise.all([
-    fetch(`${API}/api/voyages/${voyageActuel}/participants`).then(r => r.json()),
-    fetch(`${API}/api/voyages/${voyageActuel}/depenses`).then(r => r.json())
+    fetch(`${API}/api/voyages/${voyageActuel}/participants`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`${API}/api/voyages/${voyageActuel}/depenses`).then(r => r.ok ? r.json() : []).catch(() => [])
   ]);
-  participantsActuels = participants;
-  afficherParticipants(participants);
-  afficherDepenses(depenses, participants);
-  afficherBilan(depenses, participants);
+  const safeParticipants = Array.isArray(participants) ? participants : [];
+  const safeDepenses     = Array.isArray(depenses)     ? depenses     : [];
+  participantsActuels = safeParticipants;
+  afficherParticipants(safeParticipants);
+  afficherDepenses(safeDepenses, safeParticipants);
+  afficherBilan(safeDepenses, safeParticipants);
 }
 
 function afficherParticipants(participants) {
@@ -2824,7 +2826,11 @@ async function sauvegarderDepense() {
   const id = document.getElementById('dep-id').value;
   const url = id ? `${API}/api/depenses/${id}` : `${API}/api/voyages/${voyageActuel}/depenses`;
   const method = id ? 'PUT' : 'POST';
-  await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const resp = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).catch(() => null);
+  if (!resp || !resp.ok) {
+    toast('❌ Erreur lors de l\'enregistrement — vérifie ta connexion');
+    return;
+  }
 
   fermerModal('modal-depense');
   toast(id ? '✅ Dépense modifiée' : '✅ Dépense ajoutée');

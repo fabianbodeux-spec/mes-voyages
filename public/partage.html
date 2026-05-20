@@ -1089,8 +1089,8 @@ async function _depenseSauvegarder() {
   const id  = document.getElementById('dep-id').value;
   // Route publique partage pour les participants (pas de JWT requis)
   const url = id ? `/api/depenses/${id}` : `/api/partage/${_partageToken}/depenses`;
-  const resp = await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-  if (!resp.ok) { toast('❌ Erreur lors de l\'enregistrement'); return; }
+  const resp = await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).catch(() => null);
+  if (!resp || !resp.ok) { toast('❌ Erreur lors de l\'enregistrement'); return; }
   fermerModal('modal-depense');
   toast(id ? '✅ Dépense modifiée' : '✅ Dépense ajoutée');
   chargerBudget();
