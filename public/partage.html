@@ -793,6 +793,8 @@ async function _initPartage() {
     // Stocker les participants dans un Map pour accès sûr depuis les boutons
     window._partagePartsMap = {};
     parts.forEach(p => { window._partagePartsMap[p.id] = p; });
+    // Alimenter participantsActuels dès le départ pour le formulaire de dépense
+    participantsActuels = parts;
     pEl.innerHTML = parts.map(p =>
       '<button class="id-part-btn" onclick="_idParticipant(window._partagePartsMap[' + p.id + '])">' +
         '<div class="avatar" style="background:' + (p.couleur||'#F97316').replace(/[^#a-zA-Z0-9]/g,'') +
