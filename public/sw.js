@@ -1,5 +1,5 @@
 // ─── Cache config ────────────────────────────────────────────────────────────
-const CACHE_VERSION = 'cgo-v15';
+const CACHE_VERSION = 'cgo-v16';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

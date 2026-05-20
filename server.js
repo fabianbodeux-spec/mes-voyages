@@ -1040,10 +1040,17 @@ app.post('/api/partage/:token/depenses', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const { titre, montant, date, categorie, payeur_id, participants_ids } = req.body;
     if (!titre || !montant) return res.status(400).json({ error: 'Titre et montant requis' });
+    if (parseFloat(montant) <= 0) return res.status(400).json({ error: 'Le montant doit être positif' });
+    // Valider que participants_ids est un JSON valide si fourni
+    let safeParts = '[]';
+    if (participants_ids) {
+      try { JSON.parse(participants_ids); safeParts = participants_ids; }
+      catch(e) { return res.status(400).json({ error: 'participants_ids invalide' }); }
+    }
     const item = await run(() => db.depenses.create(voyage.id, {
-      titre, montant, date, categorie: categorie || 'autre',
+      titre: titre.trim(), montant: parseFloat(montant), date, categorie: categorie || 'autre',
       payeur_id: payeur_id || null,
-      participants_ids: participants_ids || '[]'
+      participants_ids: safeParts
     }));
     res.json(item);
   } catch(e) { res.status(500).json({ error: e.message }); }

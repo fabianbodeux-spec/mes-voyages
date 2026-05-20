@@ -1066,6 +1066,9 @@ async function _depenseOuvrir(id = null) {
 
 // ── Dépense : sauvegarder ──
 async function _depenseSauvegarder() {
+  const id = document.getElementById('dep-id').value;
+  if (id) { toast('⚠️ La modification de dépense n\'est pas disponible via le lien de partage'); return; }
+
   const titre   = document.getElementById('dep-titre').value.trim();
   const montant = parseFloat(document.getElementById('dep-montant').value);
   if (!titre || isNaN(montant) || montant <= 0) { toast('⚠️ Remplis le titre et le montant'); return; }

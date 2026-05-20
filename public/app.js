@@ -2546,6 +2546,8 @@ async function genererSuggestions() {
 // ─── BUDGET ──────────────────────────────────────────
 
 async function chargerBudget() {
+  const depContainer = document.getElementById('liste-depenses');
+  if (depContainer) depContainer.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted)">Chargement…</div>';
   const [participants, depenses] = await Promise.all([
     fetch(`${API}/api/voyages/${voyageActuel}/participants`).then(r => r.ok ? r.json() : []).catch(() => []),
     fetch(`${API}/api/voyages/${voyageActuel}/depenses`).then(r => r.ok ? r.json() : []).catch(() => [])
@@ -2646,13 +2648,15 @@ function afficherBilan(depenses, participants) {
   participants.forEach(p => { net[p.id] = 0; });
 
   depenses.forEach(d => {
-    const parts = parseIds(d.participants_ids);
+    // Exclure les participants/payeurs supprimés du voyage
+    const parts = parseIds(d.participants_ids).filter(pid => net[+pid] !== undefined);
     if (!parts.length) return;
     const share = parseFloat(d.montant) / parts.length;
+    if (!isFinite(share)) return; // montant invalide ou division par 0
     parts.forEach(pid => {
       if (+pid !== +d.payeur_id) {
-        net[d.payeur_id] = (net[d.payeur_id] || 0) + share;
-        net[pid] = (net[pid] || 0) - share;
+        if (net[+d.payeur_id] !== undefined) net[+d.payeur_id] += share;
+        net[+pid] -= share;
       }
     });
   });
@@ -2760,9 +2764,14 @@ async function ouvrirModalDepense(id = null) {
   document.getElementById('dep-id').value = id || '';
   document.getElementById('dep-date').value = new Date().toISOString().split('T')[0];
 
-  const participants = participantsActuels;
+  // Charger les participants à la volée si l'onglet budget n'a jamais été ouvert
+  if (participantsActuels.length === 0) {
+    participantsActuels = await fetch(`${API}/api/voyages/${voyageActuel}/participants`)
+      .then(r => r.ok ? r.json() : []).catch(() => []);
+  }
+  const participants = Array.isArray(participantsActuels) ? participantsActuels : [];
   if (participants.length === 0) {
-    toast('⚠️ Ajoute d\'abord les participants');
+    toast('⚠️ Ajoute d\'abord les participants au voyage');
     return;
   }
 
@@ -2788,7 +2797,9 @@ async function ouvrirModalDepense(id = null) {
     document.getElementById('dep-montant').value = '';
     document.getElementById('dep-categorie').value = 'autre';
   } else {
-    const dep = await fetch(`${API}/api/voyages/${voyageActuel}/depenses`).then(r => r.json()).then(list => list.find(d => d.id === id));
+    const dep = await fetch(`${API}/api/voyages/${voyageActuel}/depenses`)
+      .then(r => r.ok ? r.json() : []).catch(() => [])
+      .then(list => list.find(d => d.id === id));
     if (dep) {
       document.getElementById('dep-titre').value = dep.titre;
       document.getElementById('dep-montant').value = dep.montant;
@@ -2839,7 +2850,8 @@ async function sauvegarderDepense() {
 
 async function supprimerDepense(id) {
   if (!confirm('Supprimer cette dépense ?')) return;
-  await fetch(`${API}/api/depenses/${id}`, { method: 'DELETE' });
+  const resp = await fetch(`${API}/api/depenses/${id}`, { method: 'DELETE' }).catch(() => null);
+  if (!resp || !resp.ok) { toast('❌ Erreur lors de la suppression'); return; }
   toast('🗑️ Dépense supprimée');
   chargerBudget();
 }
