@@ -263,6 +263,7 @@ let voyageActuel = null;
 let _shareTokenCourant = null; // token de partage du voyage ouvert
 let _adminSousOnglet = 'reservations';
 let _chatPollAdmin = null;
+let _budgetPollAdmin = null;
 let filtreActuel = 'tous';
 let participantsActuels = [];
 let participantBagageActuel = null;
@@ -439,8 +440,15 @@ function changerOnglet(tab, btn) {
   if (tab === 'accueil') (window.chargerAccueil || chargerAccueil)();
   if (tab === 'preparation') (window.chargerPreparationAdmin || chargerPreparationAdmin)();
   if (tab === 'programme') (window.chargerProgramme || chargerProgramme)();
-  if (tab === 'budget') (window.chargerBudget || chargerBudget)();
-  // Trip & Tricks supprimé
+  if (tab === 'budget') {
+    const _fnBudget = window.chargerBudget || chargerBudget;
+    _fnBudget();
+    clearInterval(_budgetPollAdmin);
+    _budgetPollAdmin = setInterval(_fnBudget, 20000);
+  } else {
+    clearInterval(_budgetPollAdmin);
+    _budgetPollAdmin = null;
+  }
   if (tab === 'admin') (window.chargerAdmin || chargerAdmin)();
   if (tab === 'discussion') {
     const _fnChat = window.chargerCommentairesAdmin || chargerCommentairesAdmin;
@@ -2609,8 +2617,11 @@ function afficherDepenses(depenses, participants) {
     <div style="padding:0 16px 12px;display:flex;flex-direction:column;gap:8px">
       ${depenses.map(d => {
         const payeur = byId[d.payeur_id];
-        const parts = parseIds(d.participants_ids);
-        const share = parts.length > 0 ? (parseFloat(d.montant) / parts.length).toFixed(2) : '—';
+        const rawParts = parseIds(d.participants_ids);
+        const allParts = rawParts.length > 0 ? rawParts : participants.map(p => p.id);
+        const isTous = rawParts.length === 0;
+        const share = allParts.length > 0 ? (parseFloat(d.montant) / allParts.length).toFixed(2) : '—';
+        const partsLabel = isTous ? `Tous · ${share}€/pers.` : `${allParts.length} pers. · ${share}€/pers.`;
         return `
         <div class="depense-card">
           <div class="depense-cat">${icones[d.categorie] || cgoIcon('document',32)}</div>
@@ -2619,7 +2630,7 @@ function afficherDepenses(depenses, participants) {
             <div class="depense-meta">
               ${d.date ? `<span>${formatDate(d.date)}</span>` : ''}
               ${payeur ? `<span style="display:inline-flex;align-items:center;gap:4px"><span class="avatar-xs" style="background:${payeur.couleur}">${h(payeur.nom[0])}</span>${h(payeur.nom)} a payé</span>` : ''}
-              <span>${parts.length} pers. · ${share}€/pers.</span>
+              <span>${partsLabel}</span>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
@@ -2637,7 +2648,10 @@ function afficherDepenses(depenses, participants) {
 function afficherBilan(depenses, participants) {
   const section = document.getElementById('section-bilan');
   const container = document.getElementById('bilan-content');
-  if (participants.length < 2 || depenses.length === 0) { section.style.display = 'none'; return; }
+  if (depenses.length === 0) { section.style.display = 'none'; return; }
+  // Vérifier qu'au moins une dépense a un payeur défini
+  const hasPayeur = depenses.some(d => d.payeur_id != null);
+  if (!hasPayeur) { section.style.display = 'none'; return; }
   section.style.display = 'block';
 
   const byId = {};
@@ -2648,11 +2662,13 @@ function afficherBilan(depenses, participants) {
   participants.forEach(p => { net[p.id] = 0; });
 
   depenses.forEach(d => {
-    // Exclure les participants/payeurs supprimés du voyage
-    const parts = parseIds(d.participants_ids).filter(pid => net[+pid] !== undefined);
+    if (d.payeur_id == null) return; // ignore expenses without a payeur
+    const rawParts = parseIds(d.participants_ids);
+    const parts = (rawParts.length > 0 ? rawParts : participants.map(p => p.id))
+      .filter(pid => net[+pid] !== undefined);
     if (!parts.length) return;
     const share = parseFloat(d.montant) / parts.length;
-    if (!isFinite(share)) return; // montant invalide ou division par 0
+    if (!isFinite(share)) return;
     parts.forEach(pid => {
       if (+pid !== +d.payeur_id) {
         if (net[+d.payeur_id] !== undefined) net[+d.payeur_id] += share;

@@ -309,8 +309,9 @@
       </div>
       <div class="budget-section" id="section-bilan" style="display:none">
         <div class="budget-section-header">
-          <span class="budget-section-title">⚖️ Bilan — qui doit quoi</span>
+          <span class="budget-section-title">⚖️ Remboursements</span>
         </div>
+        <div id="mon-solde-banner"></div>
         <div id="bilan-content"></div>
       </div>
     </div>
@@ -728,6 +729,10 @@ function _he(str) {
 
 const _partageToken = location.pathname.replace(/^\/(partage|share)\//, '');
 
+// ── PWA : capturer beforeinstallprompt au plus tôt ──
+let _pwaInstallEvent = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); _pwaInstallEvent = e; });
+
 // "Retour" = retour à l'écran d'identification
 window.afficherAccueil = function() {
   const nom = _partageIdentite?.nom;
@@ -812,6 +817,12 @@ async function _initPartage() {
       const stored = localStorage.getItem('partage_id_' + _partageToken);
       if (stored) storedIdentite = JSON.parse(stored);
     } catch(e) {}
+
+    // Valider l'identité stockée : vérifier que le participant existe encore
+    if (storedIdentite?.participant_id && !parts.find(p => p.id === storedIdentite.participant_id)) {
+      localStorage.removeItem('partage_id_' + _partageToken);
+      storedIdentite = null;
+    }
 
     // Attendre 2.3s puis cacher le splash
     const elapsed = performance.now(); // l'API a déjà pris du temps
@@ -909,6 +920,7 @@ function _idParNom() {
 }
 
 function _idLectureSeule() {
+  localStorage.setItem('partage_id_' + _partageToken, JSON.stringify({ nom: null, skipped: true }));
   _lancerPartage({ nom: null });
 }
 
@@ -977,8 +989,11 @@ window.chargerBudget = async function() {
         <div style="padding:0 16px 12px;display:flex;flex-direction:column;gap:8px">
           ${depenses.map(dep => {
             const payeur = byId[dep.payeur_id];
-            const parts = parseIds(dep.participants_ids);
-            const share = parts.length > 0 ? (parseFloat(dep.montant) / parts.length).toFixed(2) : '—';
+            const rawParts = parseIds(dep.participants_ids);
+            const allParts = rawParts.length > 0 ? rawParts : participants.map(p => p.id);
+            const isTous = rawParts.length === 0;
+            const share = allParts.length > 0 ? (parseFloat(dep.montant) / allParts.length).toFixed(2) : '—';
+            const partsLabel = isTous ? `Tous · ${share}€/pers.` : `${allParts.length} pers. · ${share}€/pers.`;
             return `
             <div class="depense-card">
               <div class="depense-cat">${icones[dep.categorie] || '💳'}</div>
@@ -987,7 +1002,7 @@ window.chargerBudget = async function() {
                 <div class="depense-meta">
                   ${dep.date ? `<span>${formatDate(dep.date)}</span>` : ''}
                   ${payeur ? `<span style="display:inline-flex;align-items:center;gap:4px"><span class="avatar-xs" style="background:${payeur.couleur}">${_he(payeur.nom[0])}</span>${_he(payeur.nom)} a payé</span>` : ''}
-                  <span>${parts.length} pers. · ${share}€/pers.</span>
+                  <span>${partsLabel}</span>
                 </div>
               </div>
               <span class="depense-montant">${parseFloat(dep.montant).toFixed(2)}€</span>
@@ -999,6 +1014,56 @@ window.chargerBudget = async function() {
 
   // ── Bilan (qui doit quoi) — réutilise la fonction de app.js ──
   afficherBilan(depenses, participants);
+
+  // ── Mon solde — encadré personnalisé pour le participant connecté ──
+  const monSoldeBanner = document.getElementById('mon-solde-banner');
+  if (monSoldeBanner) {
+    const monId = _partageIdentite?.participant_id;
+    if (monId && participants.length > 0 && depenses.length > 0) {
+      // Recalculer le solde net du participant connecté
+      const netSoldes = {};
+      participants.forEach(p => { netSoldes[p.id] = 0; });
+      depenses.forEach(dep => {
+        if (dep.payeur_id == null) return;
+        const rawP = parseIds(dep.participants_ids);
+        const pts = (rawP.length > 0 ? rawP : participants.map(p => p.id))
+          .filter(pid => netSoldes[+pid] !== undefined);
+        if (!pts.length) return;
+        const share = parseFloat(dep.montant) / pts.length;
+        if (!isFinite(share)) return;
+        pts.forEach(pid => {
+          if (+pid !== +dep.payeur_id) {
+            if (netSoldes[+dep.payeur_id] !== undefined) netSoldes[+dep.payeur_id] += share;
+            netSoldes[+pid] -= share;
+          }
+        });
+      });
+      const solde = netSoldes[monId];
+      if (solde !== undefined) {
+        const estPositif = solde > 0.01;
+        const estNegatif = solde < -0.01;
+        const couleur = estPositif ? '#10B981' : estNegatif ? '#EF4444' : '#6366F1';
+        const msg = estPositif
+          ? `Tu dois recevoir <strong>${solde.toFixed(2)} €</strong>`
+          : estNegatif
+          ? `Tu dois <strong>${Math.abs(solde).toFixed(2)} €</strong>`
+          : `Tu es à l'équilibre <strong>0,00 €</strong>`;
+        const emoji = estPositif ? '💚' : estNegatif ? '🔴' : '✅';
+        monSoldeBanner.innerHTML = `
+          <div style="margin:0 16px 12px;padding:12px 16px;background:${couleur}15;border:1.5px solid ${couleur}40;border-radius:12px;display:flex;align-items:center;gap:10px">
+            <span style="font-size:1.3rem">${emoji}</span>
+            <div>
+              <div style="font-size:.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Mon solde</div>
+              <div style="font-size:.9rem;color:${couleur};font-weight:700">${msg}</div>
+            </div>
+          </div>`;
+      } else {
+        monSoldeBanner.innerHTML = '';
+      }
+    } else {
+      monSoldeBanner.innerHTML = '';
+    }
+  }
 };
 
 // ── Override : ouvrirDocViewer → télécharge via route publique partage ──
@@ -1089,13 +1154,13 @@ async function _depenseSauvegarder() {
     date: document.getElementById('dep-date').value,
     categorie: document.getElementById('dep-categorie').value
   };
-  const id  = document.getElementById('dep-id').value;
   // Route publique partage pour les participants (pas de JWT requis)
-  const url = id ? `/api/depenses/${id}` : `/api/partage/${_partageToken}/depenses`;
-  const resp = await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).catch(() => null);
+  // id est toujours vide ici (on est passé par le guard ligne 1070)
+  const url = `/api/partage/${_partageToken}/depenses`;
+  const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).catch(() => null);
   if (!resp || !resp.ok) { toast('❌ Erreur lors de l\'enregistrement'); return; }
   fermerModal('modal-depense');
-  toast(id ? '✅ Dépense modifiée' : '✅ Dépense ajoutée');
+  toast('✅ Dépense ajoutée');
   chargerBudget();
 }
 
@@ -1129,9 +1194,10 @@ function _lancerPartage(identite) {
   const _targetTab = new URLSearchParams(window.location.search).get('tab');
   if (_targetTab) {
     const tabBtn = document.querySelector(`[data-tab="${_targetTab}"]`);
-    if (tabBtn) { setTimeout(() => changerOnglet(_targetTab, tabBtn), 80); return; }
+    if (tabBtn) { setTimeout(() => changerOnglet(_targetTab, tabBtn), 80); setTimeout(_showPwaInstallBanner, 3000); return; }
   }
   changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
+  setTimeout(_showPwaInstallBanner, 3000);
 }
 
 // Écoute les messages du service worker (clic sur notification)
@@ -1287,7 +1353,7 @@ function _geoArreter() {
 // Override changerOnglet pour gérer docs + discussion + géo
 const _origChanterOnglet = window.changerOnglet;
 window.changerOnglet = function(tab, btn) {
-  _origChanterOnglet(tab, btn);
+  _origChanterOnglet(tab, btn); // gère aussi _budgetPollAdmin via app.js
   if (tab === 'docs') chargerDocs();
   if (tab === 'preparation') chargerPreparation();
   if (tab === 'discussion') {
@@ -2298,38 +2364,45 @@ function _toast(msg, duree = 2500) {
   }, duree);
 }
 
-// ── PWA Install Prompt ─────────────────────────────────────────────────────
-(function _pwaInstallPrompt() {
-  if (localStorage.getItem('pwa_dismissed')) return;
+// ── PWA Install Banner — déclenchée après identification ──────────────────
+function _showPwaInstallBanner() {
+  // Déjà installé en mode standalone → ne pas afficher
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
+  // Déjà refusé → ne pas afficher
+  if (localStorage.getItem('pwa_dismissed_partage')) return;
+
   const banner = document.getElementById('pwa-install-banner');
   const installBtn = document.getElementById('pwa-install-btn');
+  const desc = document.getElementById('pwa-install-desc');
   if (!banner || !installBtn) return;
-  let _deferredPrompt = null;
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    _deferredPrompt = e;
+
+  const isIOS = !!navigator.userAgent.match(/iPhone|iPad/);
+
+  if (_pwaInstallEvent) {
+    // Chrome / Android / Edge — prompt natif disponible
+    if (desc) desc.textContent = 'Rejoins tes amis directement depuis ton écran d\'accueil. Accès hors ligne inclus. 🌍';
+    installBtn.textContent = 'Installer';
     banner.style.display = 'block';
-    installBtn.addEventListener('click', async () => {
+    // Connecter le bouton Installer à _pwaInstallEvent
+    installBtn.onclick = async () => {
       banner.style.display = 'none';
-      _deferredPrompt.prompt();
-      const { outcome } = await _deferredPrompt.userChoice;
-      _deferredPrompt = null;
-      if (outcome === 'accepted') localStorage.setItem('pwa_dismissed', '1');
-    }, { once: true });
-  });
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  if (isIOS) {
-    const desc = document.getElementById('pwa-install-desc');
-    if (desc) desc.textContent = 'Appuie sur ⬆️ Partager → « Sur l\'écran d\'accueil »';
+      _pwaInstallEvent.prompt();
+      const { outcome } = await _pwaInstallEvent.userChoice;
+      _pwaInstallEvent = null;
+      if (outcome === 'accepted') localStorage.setItem('pwa_dismissed_partage', '1');
+    };
+  } else if (isIOS) {
+    // iOS Safari — pas de prompt natif, instructions manuelles
+    if (desc) desc.textContent = 'Appuie sur ↑ Partager → « Sur l\'écran d\'accueil » pour accéder au voyage hors ligne. 🌍';
     installBtn.textContent = 'Compris';
-    setTimeout(() => { banner.style.display = 'block'; }, 3500);
-    installBtn.addEventListener('click', () => {
+    banner.style.display = 'block';
+    installBtn.onclick = () => {
       banner.style.display = 'none';
-      localStorage.setItem('pwa_dismissed', '1');
-    }, { once: true });
+      localStorage.setItem('pwa_dismissed_partage', '1');
+    };
   }
-})();
+  // Si ni _pwaInstallEvent ni iOS → on ne montre pas la bannière
+}
 
 </script>
 
@@ -2345,7 +2418,7 @@ function _toast(msg, duree = 2500) {
       <div id="pwa-install-desc" style="font-size:.76rem;color:var(--text-muted);line-height:1.4">Accède au voyage en un tap, même hors connexion.</div>
     </div>
     <button id="pwa-install-btn" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:9px 16px;font-size:.82rem;font-weight:800;cursor:pointer;white-space:nowrap;font-family:var(--font-body)">Installer</button>
-    <button onclick="document.getElementById('pwa-install-banner').style.display='none';localStorage.setItem('pwa_dismissed','1')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.4rem;padding:4px;line-height:1">×</button>
+    <button onclick="document.getElementById('pwa-install-banner').style.display='none';localStorage.setItem('pwa_dismissed_partage','1')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.4rem;padding:4px;line-height:1">×</button>
   </div>
 </div>
 
