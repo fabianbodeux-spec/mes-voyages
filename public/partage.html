@@ -1158,7 +1158,12 @@ async function _depenseSauvegarder() {
   // id est toujours vide ici (on est passé par le guard ligne 1070)
   const url = `/api/partage/${_partageToken}/depenses`;
   const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).catch(() => null);
-  if (!resp || !resp.ok) { toast('❌ Erreur lors de l\'enregistrement'); return; }
+  if (!resp) { toast('❌ Pas de connexion au serveur'); return; }
+  if (!resp.ok) {
+    const errBody = await resp.json().catch(() => ({}));
+    toast('❌ ' + (errBody.error || 'Erreur ' + resp.status));
+    return;
+  }
   fermerModal('modal-depense');
   toast('✅ Dépense ajoutée');
   chargerBudget();
