@@ -274,158 +274,135 @@ if (USE_POSTGRES) {
   const { Pool } = require('pg');
   pgPool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
-  // Initialiser les tables
-  pgPool.query(`
-    CREATE TABLE IF NOT EXISTS voyages (
+  // Initialiser les tables — chaque instruction est exécutée séparément
+  // pour qu'une erreur sur l'une ne bloque pas les suivantes.
+  (async () => {
+    const m = (sql) => pgPool.query(sql).catch(e => console.error('[MIGRATION ERR]', e.message, '|', sql.trim().slice(0, 80)));
+    await m(`CREATE TABLE IF NOT EXISTS voyages (
       id SERIAL PRIMARY KEY, nom TEXT NOT NULL, destination TEXT NOT NULL,
       date_debut TEXT, date_fin TEXT, description TEXT, couleur TEXT DEFAULT '#3B82F6',
       created_at TEXT DEFAULT now()::text
-    );
-    CREATE TABLE IF NOT EXISTS reservations (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS reservations (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, type TEXT, titre TEXT,
       date_debut TEXT, date_fin TEXT, heure_debut TEXT, heure_fin TEXT,
       lieu TEXT, adresse TEXT, numero_confirmation TEXT, notes TEXT, lien TEXT,
       created_at TEXT DEFAULT now()::text
-    );
-    CREATE TABLE IF NOT EXISTS agenda (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS agenda (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, date TEXT, heure TEXT,
       titre TEXT, description TEXT, lieu TEXT, type TEXT DEFAULT 'activite',
       lien TEXT, created_at TEXT DEFAULT now()::text
-    );
-    CREATE TABLE IF NOT EXISTS documents (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS documents (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, nom TEXT,
       type_fichier TEXT, taille INTEGER, categorie TEXT DEFAULT 'autre',
       event_id INTEGER, reservation_id INTEGER, contenu TEXT, created_at TEXT DEFAULT now()::text
-    );
-    ALTER TABLE agenda ADD COLUMN IF NOT EXISTS lien TEXT;
-    ALTER TABLE agenda ADD COLUMN IF NOT EXISTS description TEXT;
-    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS lien TEXT;
-    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS heure_debut TEXT;
-    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS heure_fin TEXT;
-    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS adresse TEXT;
-    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS numero_confirmation TEXT;
-    ALTER TABLE documents ADD COLUMN IF NOT EXISTS event_id INTEGER;
-    ALTER TABLE documents ADD COLUMN IF NOT EXISTS reservation_id INTEGER;
-    ALTER TABLE voyages ADD COLUMN IF NOT EXISTS share_token TEXT UNIQUE;
-    CREATE TABLE IF NOT EXISTS participants (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS participants (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       nom TEXT, couleur TEXT DEFAULT '#6366F1',
       created_at TEXT DEFAULT now()::text
-    );
-    CREATE TABLE IF NOT EXISTS depenses (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS depenses (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       titre TEXT, montant NUMERIC(10,2), payeur_id INTEGER,
       participants_ids TEXT, date TEXT, categorie TEXT DEFAULT 'autre',
       created_at TEXT DEFAULT now()::text
-    );
-    CREATE TABLE IF NOT EXISTS bagages (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS bagages (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       participant_id INTEGER NOT NULL, nom TEXT, categorie TEXT DEFAULT 'divers',
       checked BOOLEAN DEFAULT FALSE, created_at TEXT DEFAULT now()::text
-    );
-    ALTER TABLE bagages ADD COLUMN IF NOT EXISTS checked BOOLEAN DEFAULT FALSE;
-    CREATE TABLE IF NOT EXISTS push_subscriptions (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS push_subscriptions (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       endpoint TEXT UNIQUE, p256dh TEXT, auth TEXT,
       created_at TEXT DEFAULT now()::text
-    );
-    CREATE TABLE IF NOT EXISTS demandes (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS demandes (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       auteur TEXT, onglet TEXT, element_type TEXT,
       element_id INTEGER, element_nom TEXT, message TEXT,
       statut TEXT DEFAULT 'en_attente', created_at TEXT DEFAULT now()::text
-    );
-    CREATE TABLE IF NOT EXISTS attributions (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS attributions (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       participant_id INTEGER NOT NULL, titre TEXT NOT NULL,
       contenu TEXT, document_id INTEGER,
       created_at TEXT DEFAULT now()::text
-    );
-    CREATE TABLE IF NOT EXISTS messages_prives (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS messages_prives (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       participant_id INTEGER NOT NULL, auteur TEXT NOT NULL DEFAULT 'Organisateur',
       message TEXT NOT NULL, lu BOOLEAN DEFAULT FALSE,
       created_at TEXT DEFAULT now()::text
-    );
-    ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS participant_id INTEGER;
-    ALTER TABLE participants ADD COLUMN IF NOT EXISTS pin TEXT;
-    CREATE TABLE IF NOT EXISTS commentaires (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS commentaires (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       auteur TEXT NOT NULL, message TEXT NOT NULL,
       created_at TEXT DEFAULT now()::text
-    );
-    CREATE TABLE IF NOT EXISTS docs_participants (
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS docs_participants (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       participant_id INTEGER NOT NULL, nom TEXT NOT NULL,
       type_fichier TEXT, taille INTEGER, categorie TEXT DEFAULT 'autre',
       contenu TEXT, created_at TEXT DEFAULT now()::text
-    );
-    CREATE TABLE IF NOT EXISTS locations (
-      id SERIAL PRIMARY KEY,
-      voyage_id INTEGER NOT NULL,
-      device_id TEXT NOT NULL,
-      participant_id INTEGER,
-      nom TEXT NOT NULL,
-      couleur TEXT DEFAULT '#6366F1',
-      lat NUMERIC(10,6) NOT NULL,
-      lng NUMERIC(10,6) NOT NULL,
-      updated_at TIMESTAMPTZ DEFAULT now(),
-      UNIQUE(voyage_id, device_id)
-    );
-    ALTER TABLE depenses ADD COLUMN IF NOT EXISTS participants_ids TEXT;
-    ALTER TABLE depenses ADD COLUMN IF NOT EXISTS payeur_id INTEGER;
-    ALTER TABLE voyages ADD COLUMN IF NOT EXISTS statut TEXT DEFAULT 'actif';
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      nom TEXT,
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS locations (
+      id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, device_id TEXT NOT NULL,
+      participant_id INTEGER, nom TEXT NOT NULL, couleur TEXT DEFAULT '#6366F1',
+      lat NUMERIC(10,6) NOT NULL, lng NUMERIC(10,6) NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now(), UNIQUE(voyage_id, device_id)
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY, email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL, nom TEXT,
       created_at TIMESTAMPTZ DEFAULT now()
-    );
-    ALTER TABLE voyages ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES users(id);
-    CREATE TABLE IF NOT EXISTS hype_votes (
-      id SERIAL PRIMARY KEY,
-      voyage_id INTEGER NOT NULL,
-      auteur TEXT NOT NULL,
-      score SMALLINT NOT NULL CHECK (score BETWEEN 1 AND 5),
-      emoji TEXT,
-      updated_at TIMESTAMPTZ DEFAULT now(),
-      UNIQUE(voyage_id, auteur)
-    );
-    CREATE TABLE IF NOT EXISTS participant_profiles (
-      id SERIAL PRIMARY KEY,
-      voyage_id INTEGER NOT NULL,
-      auteur TEXT NOT NULL,
-      participant_id INTEGER,
-      couleur TEXT DEFAULT '#6B7280',
-      truc_en_voyage TEXT,
-      chaud_pour TEXT,
-      refuse TEXT,
-      updated_at TIMESTAMPTZ DEFAULT now(),
-      UNIQUE(voyage_id, auteur)
-    );
-    CREATE TABLE IF NOT EXISTS wishlist (
-      id SERIAL PRIMARY KEY,
-      voyage_id INTEGER NOT NULL,
-      auteur TEXT NOT NULL,
-      titre TEXT NOT NULL,
-      description TEXT,
-      type TEXT DEFAULT 'activite',
-      url TEXT,
-      likes TEXT DEFAULT '[]',
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS hype_votes (
+      id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, auteur TEXT NOT NULL,
+      score SMALLINT NOT NULL CHECK (score BETWEEN 1 AND 5), emoji TEXT,
+      updated_at TIMESTAMPTZ DEFAULT now(), UNIQUE(voyage_id, auteur)
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS participant_profiles (
+      id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, auteur TEXT NOT NULL,
+      participant_id INTEGER, couleur TEXT DEFAULT '#6B7280',
+      truc_en_voyage TEXT, chaud_pour TEXT, refuse TEXT,
+      updated_at TIMESTAMPTZ DEFAULT now(), UNIQUE(voyage_id, auteur)
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS wishlist (
+      id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, auteur TEXT NOT NULL,
+      titre TEXT NOT NULL, description TEXT, type TEXT DEFAULT 'activite',
+      url TEXT, likes TEXT DEFAULT '[]', created_at TIMESTAMPTZ DEFAULT now()
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS sondages (
+      id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL, titre TEXT NOT NULL,
+      created_by TEXT NOT NULL, statut TEXT DEFAULT 'ouvert',
+      options JSONB DEFAULT '[]', votes JSONB DEFAULT '[]',
       created_at TIMESTAMPTZ DEFAULT now()
-    );
-    CREATE TABLE IF NOT EXISTS sondages (
-      id SERIAL PRIMARY KEY,
-      voyage_id INTEGER NOT NULL,
-      titre TEXT NOT NULL,
-      created_by TEXT NOT NULL,
-      statut TEXT DEFAULT 'ouvert',
-      options JSONB DEFAULT '[]',
-      votes JSONB DEFAULT '[]',
-      created_at TIMESTAMPTZ DEFAULT now()
-    );
-  `).catch(console.error);
+    )`);
+    // Migrations ALTER TABLE — colonnes ajoutées au fil des versions
+    await m(`ALTER TABLE agenda ADD COLUMN IF NOT EXISTS lien TEXT`);
+    await m(`ALTER TABLE agenda ADD COLUMN IF NOT EXISTS description TEXT`);
+    await m(`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS lien TEXT`);
+    await m(`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS heure_debut TEXT`);
+    await m(`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS heure_fin TEXT`);
+    await m(`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS adresse TEXT`);
+    await m(`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS numero_confirmation TEXT`);
+    await m(`ALTER TABLE documents ADD COLUMN IF NOT EXISTS event_id INTEGER`);
+    await m(`ALTER TABLE documents ADD COLUMN IF NOT EXISTS reservation_id INTEGER`);
+    await m(`ALTER TABLE voyages ADD COLUMN IF NOT EXISTS share_token TEXT`);
+    await m(`ALTER TABLE bagages ADD COLUMN IF NOT EXISTS checked BOOLEAN DEFAULT FALSE`);
+    await m(`ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS participant_id INTEGER`);
+    await m(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS pin TEXT`);
+    // Colonnes critiques pour CrewiCash (budget partagé entre participants)
+    await m(`ALTER TABLE depenses ADD COLUMN IF NOT EXISTS participants_ids TEXT`);
+    await m(`ALTER TABLE depenses ADD COLUMN IF NOT EXISTS payeur_id INTEGER`);
+    await m(`ALTER TABLE voyages ADD COLUMN IF NOT EXISTS statut TEXT DEFAULT 'actif'`);
+    await m(`ALTER TABLE voyages ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES users(id)`);
+    console.log('[DB] Migrations PostgreSQL OK');
+  })();
 }
 
 const pgDB = pgPool ? {

@@ -194,26 +194,6 @@ async function checkVoyageOwnership(voyageId, userId) {
   return voyage && voyage.owner_id === userId;
 }
 
-// ─── DIAGNOSTIC (Railway debug) ────────────────────────────────────────────
-app.get('/api/diag', async (req, res) => {
-  if (!IS_CLOUD) return res.json({ mode: 'local', ok: true });
-  try {
-    const tables = await db._pool.query(
-      `SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name`
-    );
-    const cols = await db._pool.query(
-      `SELECT column_name, data_type FROM information_schema.columns WHERE table_name='agenda' ORDER BY ordinal_position`
-    );
-    const test = await db._pool.query(
-      `INSERT INTO agenda(voyage_id,date,titre,type) VALUES(0,'2000-01-01','__diag_test__','activite') RETURNING id`
-    );
-    await db._pool.query(`DELETE FROM agenda WHERE id=$1`, [test.rows[0].id]);
-    res.json({ ok: true, tables: tables.rows.map(r => r.table_name), agenda_cols: cols.rows });
-  } catch(e) {
-    res.status(500).json({ ok: false, error: e.message, detail: e.detail || null, hint: e.hint || null });
-  }
-});
-
 // ─── VOYAGES ───────────────────────────────────────────────────────────────
 
 app.get('/api/voyages', authMiddleware, async (req, res) => {
@@ -1053,7 +1033,7 @@ app.post('/api/partage/:token/depenses', async (req, res) => {
       participants_ids: safeParts
     }));
     res.json(item);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[DEPENSE CREATE]', e.message, e.detail || ''); res.status(500).json({ error: e.message }); }
 });
 
 // ── Téléchargement public d'un document (réservation / agenda) ────────────
