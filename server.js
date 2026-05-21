@@ -1241,6 +1241,24 @@ app.get('/share/:token', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'partage.html'));
 });
 
+// ─── DIAGNOSTIC (Railway debug) ─────────────────────────────────────────────
+app.get('/api/diag/depenses/:token', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.json({ ok: false, step: 'voyage', error: 'token introuvable en DB' });
+    // Test INSERT complet
+    const test = await run(() => db.depenses.create(voyage.id, {
+      titre: '__diag_test__', montant: 0.01, date: new Date().toISOString().split('T')[0],
+      categorie: 'autre', payeur_id: null, participants_ids: '[]'
+    }));
+    // Supprimer l'enregistrement de test
+    await run(() => db.depenses.delete(test.id));
+    res.json({ ok: true, voyage_id: voyage.id, mode: IS_CLOUD ? 'postgresql' : 'json' });
+  } catch(e) {
+    res.json({ ok: false, step: 'insert', error: e.message });
+  }
+});
+
 // ─── DÉMARRAGE ─────────────────────────────────────────────────────────────
 
 app.listen(PORT, '0.0.0.0', () => {
