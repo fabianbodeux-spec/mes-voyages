@@ -372,6 +372,8 @@ if (USE_POSTGRES) {
       updated_at TIMESTAMPTZ DEFAULT now(),
       UNIQUE(voyage_id, device_id)
     );
+    ALTER TABLE depenses ADD COLUMN IF NOT EXISTS participants_ids TEXT;
+    ALTER TABLE depenses ADD COLUMN IF NOT EXISTS payeur_id INTEGER;
     ALTER TABLE voyages ADD COLUMN IF NOT EXISTS statut TEXT DEFAULT 'actif';
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
