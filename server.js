@@ -1242,20 +1242,27 @@ app.get('/share/:token', (req, res) => {
 });
 
 // ─── DIAGNOSTIC (Railway debug) ─────────────────────────────────────────────
-app.get('/api/diag/depenses/:token', async (req, res) => {
+app.get('/api/diag', async (req, res) => {
+  const mode = IS_CLOUD ? 'postgresql' : 'json';
+  if (!IS_CLOUD) return res.json({ ok: true, mode, info: 'mode local - pas de PostgreSQL' });
   try {
-    const voyage = await run(() => db.voyages.getByToken(req.params.token));
-    if (!voyage) return res.json({ ok: false, step: 'voyage', error: 'token introuvable en DB' });
-    // Test INSERT complet
-    const test = await run(() => db.depenses.create(voyage.id, {
-      titre: '__diag_test__', montant: 0.01, date: new Date().toISOString().split('T')[0],
-      categorie: 'autre', payeur_id: null, participants_ids: '[]'
-    }));
-    // Supprimer l'enregistrement de test
-    await run(() => db.depenses.delete(test.id));
-    res.json({ ok: true, voyage_id: voyage.id, mode: IS_CLOUD ? 'postgresql' : 'json' });
+    const pool = db._pool || null;
+    if (!pool) return res.json({ ok: false, mode, error: 'pgPool non disponible' });
+    // Vérifier les colonnes de la table depenses
+    const cols = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='depenses' ORDER BY ordinal_position`);
+    const colNames = cols.rows.map(r => r.column_name);
+    // Tester un INSERT minimal avec voyage_id=0 (échouera sur FK mais pas sur colonnes)
+    let insertTest = 'non testé';
+    try {
+      await pool.query(`INSERT INTO depenses(voyage_id,titre,montant,payeur_id,participants_ids,date,categorie) VALUES(0,'__diag__',0.01,null,'[]','2026-01-01','autre')`);
+      await pool.query(`DELETE FROM depenses WHERE titre='__diag__'`);
+      insertTest = 'ok';
+    } catch(e2) {
+      insertTest = e2.message;
+    }
+    res.json({ ok: true, mode, colonnes: colNames, insert_test: insertTest });
   } catch(e) {
-    res.json({ ok: false, step: 'insert', error: e.message });
+    res.json({ ok: false, mode, error: e.message });
   }
 });
 
