@@ -2776,6 +2776,8 @@ async function supprimerParticipant(id) {
 }
 
 async function ouvrirModalDepense(id = null) {
+  // Défensif : si un Event est passé à la place d'un id (handler direct sur click)
+  if (id instanceof Event || (id !== null && typeof id === 'object')) id = null;
   document.getElementById('modal-depense-titre').textContent = id ? 'Modifier la dépense' : 'Nouvelle dépense';
   document.getElementById('dep-id').value = id || '';
   document.getElementById('dep-date').value = new Date().toISOString().split('T')[0];
@@ -3539,7 +3541,7 @@ function _bindStaticHandlers() {
   _on('btn-ajouter-agenda',         'click', () => ouvrirModalAgenda());
   _on('btn-generer-suggestions',    'click', genererSuggestions);
   _on('btn-ajouter-article-bagages','click', ouvrirModalAjoutArticle);
-  _on('btn-ajouter-depense',        'click', ouvrirModalDepense);
+  _on('btn-ajouter-depense',        'click', () => ouvrirModalDepense());
   _on('btn-message-prive',          'click', ouvrirMessagePrive);
 
   // ── Discussion ────────────────────────────────────────────────────────────
