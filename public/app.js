@@ -2851,11 +2851,29 @@ async function sauvegarderDepense() {
   };
 
   const id = document.getElementById('dep-id').value;
+  if (!id && !voyageActuel) { toast('⚠️ Aucun voyage sélectionné'); return; }
   const url = id ? `${API}/api/depenses/${id}` : `${API}/api/voyages/${voyageActuel}/depenses`;
   const method = id ? 'PUT' : 'POST';
+
+  const btn = document.getElementById('btn-sauvegarder-depense');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+
   const resp = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).catch(() => null);
-  if (!resp || !resp.ok) {
-    toast('❌ Erreur lors de l\'enregistrement — vérifie ta connexion');
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer'; }
+
+  if (!resp) {
+    toast('❌ Serveur injoignable — vérifie ta connexion');
+    return;
+  }
+  if (resp.status === 401) {
+    fermerModal('modal-depense');
+    toast('⚠️ Session expirée — reconnecte-toi');
+    return;
+  }
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    toast('❌ ' + (body.error || 'Erreur ' + resp.status));
     return;
   }
 
