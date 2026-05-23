@@ -2899,13 +2899,14 @@ async function chargerAdmin() {
   container.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>`;
 
   const safe = url => fetch(url).then(r => r.ok ? r.json() : []).catch(() => []);
-  const [reservations, documents, demandes, attributions, participants, docsParticipants] = await Promise.all([
+  const [reservations, documents, demandes, attributions, participants, docsParticipants, photosAdmin] = await Promise.all([
     fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
     fetch(`${API}/api/voyages/${voyageActuel}/documents`).then(r => r.json()),
     safe(`${API}/api/voyages/${voyageActuel}/demandes`),
     safe(`${API}/api/voyages/${voyageActuel}/attributions`),
     safe(`${API}/api/voyages/${voyageActuel}/participants`),
-    safe(`${API}/api/voyages/${voyageActuel}/docs-participants`)
+    safe(`${API}/api/voyages/${voyageActuel}/docs-participants`),
+    _shareTokenCourant ? safe(`${API}/api/partage/${_shareTokenCourant}/photos`) : Promise.resolve([])
   ]);
 
   // Badge sur l'onglet Admin si demandes en attente
@@ -3009,6 +3010,9 @@ async function chargerAdmin() {
       </button>
       <button class="adm-sub-btn" data-tab="docs-participants" onclick="_activerSousOngletAdmin('docs-participants')">
         <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>Docs invités
+      </button>
+      <button class="adm-sub-btn" data-tab="photos" onclick="_activerSousOngletAdmin('photos')">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>Photos${photosAdmin.length > 0 ? `<span class="adm-sub-badge">${photosAdmin.length}</span>` : ''}
       </button>
     </nav>
 
@@ -3136,6 +3140,36 @@ async function chargerAdmin() {
       </div>
     </div>
 
+    <!-- ── Section Photos ── -->
+    <div id="adm-sub-photos">
+      <div class="adm-stats">
+        <div class="adm-stat"><span class="adm-stat-n">${photosAdmin.length}</span><span class="adm-stat-l">Photos partagées</span></div>
+      </div>
+      <div class="adm-section">
+        <div class="adm-section-head">
+          <span class="adm-section-title">📸 Album photos — modération</span>
+        </div>
+        ${photosAdmin.length === 0
+          ? `<div class="adm-empty" style="padding:20px 16px"><p style="margin:0;font-size:.83rem;color:var(--text-muted)">Aucune photo pour l'instant.</p></div>`
+          : `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:8px 12px">
+              ${photosAdmin.map(p => `
+                <div style="position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--bg)">
+                  <img src="${API}/api/photos/${p.id}/img" alt="${h(p.caption||'')}" loading="lazy"
+                    style="width:100%;height:100%;object-fit:cover">
+                  <div style="position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .2s"
+                    onmouseenter="this.style.background='rgba(0,0,0,.3)'" onmouseleave="this.style.background='rgba(0,0,0,0)'">
+                  </div>
+                  <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.6));padding:14px 5px 4px;font-size:.6rem;color:#fff;font-weight:600;display:flex;align-items:center;gap:3px">
+                    <div style="width:7px;height:7px;border-radius:50%;background:${p.couleur};flex-shrink:0"></div>
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${h(p.auteur)}</span>
+                  </div>
+                  <button onclick="supprimerPhotoAdmin(${p.id})" title="Supprimer"
+                    style="position:absolute;top:4px;right:4px;background:rgba(239,68,68,.9);border:none;color:#fff;width:22px;height:22px;border-radius:50%;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900">✕</button>
+                </div>`).join('')}
+             </div>`}
+      </div>
+    </div>
+
     <div style="height:24px"></div>
   `;
 
@@ -3144,13 +3178,23 @@ async function chargerAdmin() {
 
 function _activerSousOngletAdmin(tab) {
   _adminSousOnglet = tab;
-  ['reservations', 'documents', 'demandes', 'attributions', 'docs-participants'].forEach(s => {
+  ['reservations', 'documents', 'demandes', 'attributions', 'docs-participants', 'photos'].forEach(s => {
     const el = document.getElementById(`adm-sub-${s}`);
     if (el) el.style.display = s === tab ? '' : 'none';
   });
   document.querySelectorAll('.adm-sub-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
+}
+
+async function supprimerPhotoAdmin(id) {
+  if (!confirm('Supprimer cette photo définitivement ?')) return;
+  try {
+    const r = await fetch(`${API}/api/photos/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+    toast('🗑️ Photo supprimée');
+    chargerAdmin();
+  } catch(e) { toast('❌ ' + e.message); }
 }
 
 async function traiterDemande(id, statut) {

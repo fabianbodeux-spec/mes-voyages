@@ -27,6 +27,7 @@ const FICHIERS = {
   participant_profiles: path.join(DATA_DIR, 'participant_profiles.json'),
   wishlist:             path.join(DATA_DIR, 'wishlist.json'),
   sondages:             path.join(DATA_DIR, 'sondages.json'),
+  photos:               path.join(DATA_DIR, 'photos.json'),
 };
 
 function charger(cle) {
@@ -72,6 +73,7 @@ const localDB = {
       sauvegarder('participant_profiles', charger('participant_profiles').filter(p => p.voyage_id !== +id));
       sauvegarder('wishlist', charger('wishlist').filter(w => w.voyage_id !== +id));
       sauvegarder('sondages', charger('sondages').filter(s => s.voyage_id !== +id));
+      sauvegarder('photos', charger('photos').filter(p => p.voyage_id !== +id));
       sauvegarder('voyages', charger('voyages').filter(v => v.id !== +id));
     }
   },
@@ -266,6 +268,12 @@ const localDB = {
     },
     delete: (id) => sauvegarder('sondages', charger('sondages').filter(s => s.id !== +id))
   },
+  photos: {
+    getByVoyage: (vid) => charger('photos').filter(p => p.voyage_id === +vid).sort((a,b) => b.created_at.localeCompare(a.created_at)),
+    getById: (id) => charger('photos').find(p => p.id === +id),
+    create: (vid, data) => { const list = charger('photos'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('photos', list); return item; },
+    delete: (id) => sauvegarder('photos', charger('photos').filter(p => p.id !== +id))
+  },
 };
 
 // ─── MODE CLOUD : PostgreSQL ───────────────────────────────────────────────
@@ -407,6 +415,12 @@ if (USE_POSTGRES) {
     await m(`ALTER TABLE depenses ADD COLUMN IF NOT EXISTS payeur_id INTEGER`);
     await m(`ALTER TABLE voyages ADD COLUMN IF NOT EXISTS statut TEXT DEFAULT 'actif'`);
     await m(`ALTER TABLE voyages ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES users(id)`);
+    await m(`CREATE TABLE IF NOT EXISTS photos (
+      id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
+      auteur TEXT NOT NULL, couleur TEXT DEFAULT '#6366F1',
+      caption TEXT, contenu TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )`);
     console.log('[DB] Migrations PostgreSQL OK');
   })();
 }
@@ -441,6 +455,7 @@ const pgDB = pgPool ? {
       await pgPool.query('DELETE FROM participant_profiles WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM wishlist WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM sondages WHERE voyage_id=$1', [id]);
+      await pgPool.query('DELETE FROM photos WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM voyages WHERE id=$1', [id]);
     }
   },
@@ -642,6 +657,15 @@ const pgDB = pgPool ? {
     },
     fermer: async (id) => { await pgPool.query("UPDATE sondages SET statut='fermé' WHERE id=$1", [id]); return true; },
     delete: async (id) => pgPool.query('DELETE FROM sondages WHERE id=$1', [id])
+  },
+  photos: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT id,voyage_id,auteur,couleur,caption,created_at FROM photos WHERE voyage_id=$1 ORDER BY created_at DESC', [vid])).rows,
+    getById: async (id) => (await pgPool.query('SELECT * FROM photos WHERE id=$1', [id])).rows[0],
+    create: async (vid, data) => (await pgPool.query(
+      'INSERT INTO photos(voyage_id,auteur,couleur,caption,contenu) VALUES($1,$2,$3,$4,$5) RETURNING id,voyage_id,auteur,couleur,caption,created_at',
+      [vid, data.auteur, data.couleur||'#6366F1', data.caption||null, data.contenu]
+    )).rows[0],
+    delete: async (id) => pgPool.query('DELETE FROM photos WHERE id=$1', [id])
   },
 } : null;
 

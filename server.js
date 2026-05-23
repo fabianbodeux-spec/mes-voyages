@@ -1237,6 +1237,62 @@ app.get('/share/:token', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'partage.html'));
 });
 
+// ─── PHOTOS PARTAGÉES ────────────────────────────────────────────────────────
+
+// Liste des photos d'un voyage (pas le contenu base64 — juste les métadonnées)
+app.get('/api/partage/:token/photos', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    const photos = await run(() => db.photos.getByVoyage(voyage.id));
+    res.json(photos);
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// Upload d'une photo par un participant
+app.post('/api/partage/:token/photos', upload.single('photo'), async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    if (!req.file) return res.status(400).json({ error: 'Fichier manquant' });
+    if (req.file.size > 10 * 1024 * 1024) return res.status(413).json({ error: 'Photo trop lourde (max 10 Mo)' });
+
+    const auteur = (req.body.auteur || 'Anonyme').trim().slice(0, 50);
+    const couleur = req.body.couleur || '#6366F1';
+    const caption = (req.body.caption || '').trim().slice(0, 200) || null;
+    const contenu = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+    const photo = await run(() => db.photos.create(voyage.id, { auteur, couleur, caption, contenu }));
+    res.status(201).json({ id: photo.id, auteur: photo.auteur, couleur: photo.couleur, caption: photo.caption, created_at: photo.created_at });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// Servir le contenu image (data URL → image réelle pour les <img src>)
+app.get('/api/photos/:id/img', async (req, res) => {
+  try {
+    const photo = await run(() => db.photos.getById(req.params.id));
+    if (!photo) return res.status(404).send('Introuvable');
+    const match = photo.contenu.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return res.status(500).send('Données corrompues');
+    const buf = Buffer.from(match[2], 'base64');
+    res.set('Content-Type', match[1]);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(buf);
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).send('Erreur'); }
+});
+
+// Suppression d'une photo — admin uniquement
+app.delete('/api/photos/:id', authMiddleware, async (req, res) => {
+  try {
+    const photo = await run(() => db.photos.getById(req.params.id));
+    if (!photo) return res.status(404).json({ error: 'Photo introuvable' });
+    const ok = await checkVoyageOwnership(photo.voyage_id, req.user.id);
+    if (!ok) return res.status(403).json({ error: 'Accès refusé' });
+    await run(() => db.photos.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
 // ─── DIAGNOSTIC (Railway debug) ─────────────────────────────────────────────
 app.get('/api/diag', async (req, res) => {
   const mode = IS_CLOUD ? 'postgresql' : 'json';

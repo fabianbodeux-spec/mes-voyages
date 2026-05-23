@@ -249,6 +249,10 @@
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></span>
       <span>Docs</span>
     </button>
+    <button class="tab-btn" data-tab="photos" onclick="changerOnglet('photos', this); chargerPhotos()">
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></span>
+      <span>Photos</span>
+    </button>
   </nav>
 
   <main class="main-content tabs-content">
@@ -333,6 +337,42 @@
     <!-- DOCS & INFOS (fusion réservations, documents, infos privées) -->
     <div id="tab-docs" class="tab-panel">
       <div id="docs-content"></div>
+    </div>
+
+    <!-- PHOTOS PARTAGÉES -->
+    <div id="tab-photos" class="tab-panel">
+      <div style="padding:16px">
+
+        <!-- Upload zone -->
+        <div id="photo-upload-zone" class="photo-upload-zone" onclick="document.getElementById('photo-file-input').click()">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--accent);margin-bottom:8px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5v-9m-4.5 4.5 4.5-4.5 4.5 4.5M3 16.5A2.25 2.25 0 0 0 5.25 18.75h13.5A2.25 2.25 0 0 0 21 16.5"/></svg>
+          <span style="font-size:.9rem;font-weight:600">Ajouter une photo</span>
+          <span style="font-size:.75rem;color:var(--text-muted);margin-top:2px">JPEG · PNG · HEIC — max 10 Mo</span>
+        </div>
+        <input type="file" id="photo-file-input" accept="image/*" style="display:none" onchange="previewPhotoUpload(this)">
+
+        <!-- Preview avant envoi -->
+        <div id="photo-upload-preview" style="display:none;margin-top:12px;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow)">
+          <img id="photo-preview-img" src="" alt="preview" style="width:100%;border-radius:10px;max-height:220px;object-fit:cover">
+          <div style="margin-top:10px">
+            <input type="text" id="photo-caption-input" placeholder="Légende (optionnelle)…" maxlength="200"
+              style="width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--border-solid);background:var(--bg);color:var(--text);font-size:.9rem;box-sizing:border-box">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button type="button" onclick="annulerUploadPhoto()" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-solid);background:transparent;color:var(--text);font-size:.88rem;cursor:pointer">Annuler</button>
+            <button type="button" onclick="envoyerPhoto()" id="photo-send-btn" style="flex:2;padding:10px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:.88rem;font-weight:700;cursor:pointer">📤 Envoyer</button>
+          </div>
+        </div>
+
+        <!-- Grille photos -->
+        <div id="photos-grid" class="photos-grid" style="margin-top:16px"></div>
+        <div id="photos-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--text-muted)">
+          <div style="font-size:2.5rem;margin-bottom:8px">📷</div>
+          <div style="font-weight:600">Pas encore de photos</div>
+          <div style="font-size:.82rem;margin-top:4px">Soyez le premier à en partager une !</div>
+        </div>
+
+      </div>
     </div>
 
     <!-- PRÉPARATION -->
@@ -2432,6 +2472,109 @@ function _showPwaInstallBanner() {
   requestAnimationFrame(() => requestAnimationFrame(() => banner.classList.add('pwa-visible')));
 }
 
+// ─── ALBUM PHOTOS ─────────────────────────────────────────────────────────
+
+let _photosSelectedFile = null;
+
+function previewPhotoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    _toast('⚠️ Photo trop lourde (max 10 Mo)'); return;
+  }
+  _photosSelectedFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('photo-preview-img').src = e.target.result;
+    document.getElementById('photo-upload-preview').style.display = 'block';
+    document.getElementById('photo-upload-zone').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function annulerUploadPhoto() {
+  _photosSelectedFile = null;
+  document.getElementById('photo-upload-preview').style.display = 'none';
+  document.getElementById('photo-upload-zone').style.display = '';
+  document.getElementById('photo-caption-input').value = '';
+}
+
+async function envoyerPhoto() {
+  if (!_photosSelectedFile) return;
+  const btn = document.getElementById('photo-send-btn');
+  btn.disabled = true; btn.textContent = '⏳ Envoi…';
+
+  try {
+    const fd = new FormData();
+    fd.append('photo', _photosSelectedFile);
+    fd.append('auteur', _partageIdentite?.nom || 'Anonyme');
+    fd.append('couleur', _partageIdentite?.couleur || '#6366F1');
+    const caption = document.getElementById('photo-caption-input').value.trim();
+    if (caption) fd.append('caption', caption);
+
+    const resp = await fetch(`/api/partage/${_partageToken}/photos`, { method: 'POST', body: fd });
+    if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.error || resp.status); }
+
+    _toast('✅ Photo partagée !');
+    annulerUploadPhoto();
+    await chargerPhotos();
+    changerOnglet('photos', document.querySelector('[data-tab="photos"]'));
+  } catch(e) {
+    _toast('❌ Erreur : ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '📤 Envoyer';
+  }
+}
+
+async function chargerPhotos() {
+  try {
+    const photos = await fetch(`/api/partage/${_partageToken}/photos`).then(r => r.json());
+    const grid = document.getElementById('photos-grid');
+    const empty = document.getElementById('photos-empty');
+    grid.innerHTML = '';
+
+    if (!Array.isArray(photos) || photos.length === 0) {
+      empty.style.display = ''; grid.style.display = 'none'; return;
+    }
+    empty.style.display = 'none'; grid.style.display = '';
+
+    photos.forEach(p => {
+      const el = document.createElement('div');
+      el.className = 'photo-thumb';
+      el.onclick = () => ouvrirLightbox(p);
+      el.innerHTML = `
+        <img src="/api/photos/${p.id}/img" alt="${p.caption || ''}" loading="lazy">
+        <div class="photo-thumb-info">
+          <div class="photo-thumb-dot" style="background:${p.couleur}"></div>
+          <span>${escHtml(p.auteur)}</span>
+        </div>`;
+      grid.appendChild(el);
+    });
+  } catch(e) { console.error('[photos]', e); }
+}
+
+function ouvrirLightbox(p) {
+  const lb = document.getElementById('photo-lightbox');
+  document.getElementById('lightbox-img').src = `/api/photos/${p.id}/img`;
+  const d = new Date(p.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+  document.getElementById('lightbox-info').innerHTML =
+    `<strong>${escHtml(p.auteur)}</strong>${p.caption ? ' · ' + escHtml(p.caption) : ''}<br><span style="opacity:.6;font-size:.75rem">${d}</span>`;
+  lb.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function fermerLightbox() {
+  document.getElementById('photo-lightbox').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function escHtml(t) {
+  if (!t) return '';
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+
 </script>
 
 <style>
@@ -2594,7 +2737,68 @@ function _showPwaInstallBanner() {
   font-size: .75rem;
   vertical-align: middle;
 }
+
+/* ─── Album Photos ────────────────────────────────────────────── */
+.photo-upload-zone {
+  border: 2px dashed var(--border-solid);
+  border-radius: 14px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  background: var(--card);
+}
+.photo-upload-zone:active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--card));
+}
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.photo-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.photo-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .2s;
+}
+.photo-thumb:active img { transform: scale(.97); }
+.photo-thumb-info {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,.55));
+  padding: 18px 6px 5px;
+  font-size: .65rem;
+  color: #fff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.photo-thumb-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 </style>
+
+<!-- ═══ LIGHTBOX PHOTO ══════════════════════════════════════════════ -->
+<div id="photo-lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:3000;flex-direction:column;align-items:center;justify-content:center" onclick="fermerLightbox()">
+  <button onclick="fermerLightbox()" style="position:absolute;top:calc(env(safe-area-inset-top)+14px);right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+  <img id="lightbox-img" src="" alt="" style="max-width:calc(100vw - 32px);max-height:calc(100dvh - 140px);border-radius:12px;object-fit:contain">
+  <div id="lightbox-info" style="margin-top:12px;text-align:center;color:#fff;font-size:.85rem;padding:0 20px"></div>
+</div>
 
 <!-- Toast de feedback -->
 <div id="toast-partage" style="position:fixed;bottom:calc(env(safe-area-inset-bottom) + 80px);left:50%;transform:translateX(-50%) translateY(20px);background:#1C1917;color:#fff;padding:10px 20px;border-radius:20px;font-size:.85rem;font-weight:600;opacity:0;transition:opacity .25s,transform .25s;z-index:9999;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 32px);text-align:center"></div>
