@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="CrewiGo">
@@ -539,6 +539,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
+    <div class="modal-body">
     <form id="form-reservation">
       <div class="form-group">
         <label>Type de réservation *</label>
@@ -597,6 +598,7 @@
       <input type="hidden" id="r-type" value="transport">
       <input type="hidden" id="r-id">
     </form>
+    </div>
     <div class="modal-footer">
       <button type="button" class="btn-secondary" data-modal-close="modal-reservation">Annuler</button>
       <button type="submit" form="form-reservation" class="btn-primary">Enregistrer</button>
@@ -613,6 +615,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
+    <div class="modal-body">
     <form id="form-agenda" novalidate>
       <div class="form-row">
         <div class="form-group">
@@ -654,6 +657,7 @@
       </div>
       <input type="hidden" id="a-id">
     </form>
+    </div>
     <div class="modal-footer">
       <button type="button" class="btn-secondary" data-modal-close="modal-agenda">Annuler</button>
       <button type="submit" form="form-agenda" class="btn-primary">Enregistrer</button>
@@ -1002,7 +1006,7 @@
     <div style="background:var(--bg);border-radius:12px;padding:14px;word-break:break-all;font-size:.82rem;color:var(--text);border:1px solid var(--border-solid)" id="partage-url"></div>
     <div class="modal-footer" style="margin-top:16px">
       <button class="btn-secondary" data-modal-close="modal-partage">Fermer</button>
-      <button class="btn-primary" id="btn-copier-lien">📋 Copier le lien</button>
+      <button class="btn-primary" id="btn-copier-lien">🚀 Envoyer le lien</button>
     </div>
   </div>
 </div>

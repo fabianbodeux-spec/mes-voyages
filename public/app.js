@@ -3232,6 +3232,14 @@ async function partagerVoyage() {
 
 function copierLienPartage() {
   const url = document.getElementById('partage-url').textContent;
+  // Web Share API — ouvre le menu de partage natif (WhatsApp, SMS, etc.)
+  if (navigator.share) {
+    navigator.share({ title: 'CrewiGo — Rejoins le trip 🌍', url })
+      .then(() => toast('✅ Lien partagé !'))
+      .catch(() => {}); // annulation par l'utilisateur → silencieux
+    return;
+  }
+  // Fallback : copie dans le presse-papiers
   navigator.clipboard.writeText(url).then(() => {
     toast('✅ Lien copié ! Envoie-le par WhatsApp ou SMS');
   }).catch(() => {

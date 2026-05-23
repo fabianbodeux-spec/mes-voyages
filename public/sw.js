@@ -1,5 +1,5 @@
 // ─── Cache config ────────────────────────────────────────────────────────────
-const CACHE_VERSION = 'cgo-v21';
+const CACHE_VERSION = 'cgo-v22';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -89,6 +89,8 @@ self.addEventListener('push', event => {
   event.waitUntil(
     self.registration.showNotification(d.title, {
       body: d.body,
+      icon: '/logo-192.png',
+      badge: '/logo-192.png',
       tag: d.tag || 'demande',
       data: { url: d.url || '/' },
       requireInteraction: true

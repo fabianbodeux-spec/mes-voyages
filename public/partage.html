@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="CrewiGo">
@@ -354,6 +354,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
+    <div class="modal-body">
     <form id="form-reservation" onsubmit="sauvegarderReservation(event)">
       <div class="form-group">
         <label>Type de réservation *</label>
@@ -385,6 +386,7 @@
       <input type="hidden" id="r-type" value="transport">
       <input type="hidden" id="r-id">
     </form>
+    </div>
     <div class="modal-footer">
       <button type="button" class="btn-secondary" onclick="fermerModal('modal-reservation')">Annuler</button>
       <button type="submit" form="form-reservation" class="btn-primary">Enregistrer</button>
@@ -401,6 +403,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
+    <div class="modal-body">
     <form id="form-agenda" novalidate>
       <div class="form-row">
         <div class="form-group"><label>Date *</label><input type="date" id="a-date" required></div>
@@ -424,6 +427,7 @@
       <div class="form-group"><label>🔗 Lien</label><input type="text" id="a-lien" placeholder="https://..."></div>
       <input type="hidden" id="a-id">
     </form>
+    </div>
     <div class="modal-footer">
       <button type="button" class="btn-secondary" onclick="fermerModal('modal-agenda')">Annuler</button>
       <button type="submit" form="form-agenda" class="btn-primary">Enregistrer</button>
