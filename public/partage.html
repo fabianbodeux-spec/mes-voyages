@@ -2562,10 +2562,15 @@ function _showPwaInstallBanner() {
 }
 .pwa-ios-step {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   font-size: .8rem;
+  line-height: 1.45;
   color: var(--text);
+}
+.pwa-ios-step > div:last-child {
+  flex: 1;
+  min-width: 0;
 }
 .pwa-ios-step-num {
   width: 22px; height: 22px;
@@ -2576,6 +2581,7 @@ function _showPwaInstallBanner() {
   font-weight: 800;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  margin-top: 1px;
 }
 .pwa-share-icon {
   display: inline-flex;
@@ -2636,7 +2642,7 @@ function _showPwaInstallBanner() {
         </div>
         <div class="pwa-ios-step">
           <div class="pwa-ios-step-num">2</div>
-          <div>Fais défiler et choisis <strong>« Sur l'écran d'accueil »</strong></div>
+          <div>Choisis <strong>«&nbsp;Sur l'écran d'accueil&nbsp;»</strong></div>
         </div>
         <div class="pwa-ios-step">
           <div class="pwa-ios-step-num">3</div>
