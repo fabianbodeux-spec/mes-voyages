@@ -1201,10 +1201,10 @@ function _lancerPartage(identite) {
   const _targetTab = new URLSearchParams(window.location.search).get('tab');
   if (_targetTab) {
     const tabBtn = document.querySelector(`[data-tab="${_targetTab}"]`);
-    if (tabBtn) { setTimeout(() => changerOnglet(_targetTab, tabBtn), 80); setTimeout(_showPwaInstallBanner, 3000); return; }
+    if (tabBtn) { setTimeout(() => changerOnglet(_targetTab, tabBtn), 80); setTimeout(_showPwaInstallBanner, 25000); return; }
   }
   changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
-  setTimeout(_showPwaInstallBanner, 3000);
+  setTimeout(_showPwaInstallBanner, 25000);
 }
 
 // Écoute les messages du service worker (clic sur notification)
@@ -2380,59 +2380,269 @@ function _toast(msg, duree = 2500) {
 
 // ── PWA Install Banner — déclenchée après identification ──────────────────
 function _showPwaInstallBanner() {
-  // Déjà installé en mode standalone → ne pas afficher
+  // Déjà installé en mode standalone → jamais afficher
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
-  // Déjà refusé → ne pas afficher
-  if (localStorage.getItem('pwa_dismissed_partage')) return;
 
-  const banner = document.getElementById('pwa-install-banner');
-  const installBtn = document.getElementById('pwa-install-btn');
-  const desc = document.getElementById('pwa-install-desc');
-  if (!banner || !installBtn) return;
+  // Rejet intelligent : revient après 7 jours (pas de ban permanent)
+  const snoozed = localStorage.getItem('pwa_snoozed_until');
+  if (snoozed && Date.now() < +snoozed) return;
 
   const isIOS = !!navigator.userAgent.match(/iPhone|iPad/);
+  if (!_pwaInstallEvent && !isIOS) return; // Ni Chrome ni iOS → ne pas afficher
+
+  const banner = document.getElementById('pwa-install-banner');
+  const body   = document.getElementById('pwa-body-android');
+  const bodyIOS= document.getElementById('pwa-body-ios');
+  const installBtn = isIOS ? document.getElementById('pwa-install-btn-ios') : document.getElementById('pwa-install-btn');
+  if (!banner) return;
+
+  const _snooze = () => {
+    banner.classList.remove('pwa-visible');
+    setTimeout(() => { banner.style.display = 'none'; }, 400);
+    localStorage.setItem('pwa_snoozed_until', String(Date.now() + 7 * 86400_000));
+  };
+  document.getElementById('pwa-later-btn').onclick = _snooze;
 
   if (_pwaInstallEvent) {
-    // Chrome / Android / Edge — prompt natif disponible
-    if (desc) desc.textContent = 'Rejoins tes amis directement depuis ton écran d\'accueil. Accès hors ligne inclus. 🌍';
-    installBtn.textContent = 'Installer';
-    banner.style.display = 'block';
-    // Connecter le bouton Installer à _pwaInstallEvent
-    installBtn.onclick = async () => {
-      banner.style.display = 'none';
+    // ── Android / Chrome / Edge : prompt natif ──────────────────
+    if (body)    body.style.display  = 'block';
+    if (bodyIOS) bodyIOS.style.display = 'none';
+    if (installBtn) installBtn.onclick = async () => {
+      banner.classList.remove('pwa-visible');
+      setTimeout(() => { banner.style.display = 'none'; }, 400);
       _pwaInstallEvent.prompt();
       const { outcome } = await _pwaInstallEvent.userChoice;
       _pwaInstallEvent = null;
-      if (outcome === 'accepted') localStorage.setItem('pwa_dismissed_partage', '1');
+      // Si accepté → ban permanent (déjà installé)
+      if (outcome === 'accepted') localStorage.setItem('pwa_snoozed_until', String(Date.now() + 999 * 86400_000));
     };
-  } else if (isIOS) {
-    // iOS Safari — pas de prompt natif, instructions manuelles
-    if (desc) desc.textContent = 'Appuie sur ↑ Partager → « Sur l\'écran d\'accueil » pour accéder au voyage hors ligne. 🌍';
-    installBtn.textContent = 'Compris';
-    banner.style.display = 'block';
-    installBtn.onclick = () => {
-      banner.style.display = 'none';
-      localStorage.setItem('pwa_dismissed_partage', '1');
-    };
+  } else {
+    // ── iOS Safari : guide manuel ───────────────────────────────
+    if (body)    body.style.display  = 'none';
+    if (bodyIOS) bodyIOS.style.display = 'block';
+    if (installBtn) installBtn.onclick = _snooze;
   }
-  // Si ni _pwaInstallEvent ni iOS → on ne montre pas la bannière
+
+  // Animation d'entrée : légère pause puis slide-up
+  banner.style.display = 'block';
+  requestAnimationFrame(() => requestAnimationFrame(() => banner.classList.add('pwa-visible')));
 }
 
 </script>
 
+<style>
+/* ─── PWA Install Sheet ──────────────────────────────── */
+#pwa-install-banner {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 1500;
+  transform: translateY(100%);
+  transition: transform .35s cubic-bezier(0.4,0,0.2,1);
+}
+#pwa-install-banner.pwa-visible { transform: translateY(0); }
+
+.pwa-sheet {
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--border-solid);
+  box-shadow: 0 -8px 40px rgba(0,0,0,.18);
+  padding: 12px 20px calc(env(safe-area-inset-bottom) + 20px);
+  max-width: 480px;
+  margin: 0 auto;
+}
+.pwa-handle {
+  width: 36px; height: 4px;
+  background: var(--border-solid);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+.pwa-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.pwa-icon-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.pwa-icon-wrap img {
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(99,102,241,.35);
+  display: block;
+}
+.pwa-icon-wrap::after {
+  content: '✨';
+  position: absolute;
+  top: -6px; right: -8px;
+  font-size: 16px;
+  animation: pwa-sparkle 2s infinite;
+}
+@keyframes pwa-sparkle {
+  0%,100% { transform: scale(1) rotate(-10deg); opacity: 1; }
+  50%      { transform: scale(1.3) rotate(10deg); opacity: .7; }
+}
+.pwa-hero-text strong {
+  display: block;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -.02em;
+}
+.pwa-hero-text span {
+  font-size: .78rem;
+  color: var(--text-muted);
+}
+.pwa-perks {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.pwa-perks li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .82rem;
+  color: var(--text);
+  line-height: 1.3;
+}
+.pwa-perk-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.pwa-install-cta {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: .95rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: var(--font-body);
+  letter-spacing: -.01em;
+  margin-bottom: 10px;
+  transition: opacity .15s;
+}
+.pwa-install-cta:active { opacity: .8; }
+.pwa-later {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: .78rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  padding: 4px;
+}
+/* Guide iOS */
+.pwa-ios-steps {
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pwa-ios-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .8rem;
+  color: var(--text);
+}
+.pwa-ios-step-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.pwa-share-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border-solid);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: .75rem;
+  vertical-align: middle;
+}
+</style>
+
 <!-- Toast de feedback -->
 <div id="toast-partage" style="position:fixed;bottom:calc(env(safe-area-inset-bottom) + 80px);left:50%;transform:translateX(-50%) translateY(20px);background:#1C1917;color:#fff;padding:10px 20px;border-radius:20px;font-size:.85rem;font-weight:600;opacity:0;transition:opacity .25s,transform .25s;z-index:9999;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 32px);text-align:center"></div>
 
-<!-- Bannière installation PWA -->
-<div id="pwa-install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:1500;padding:12px 16px;padding-bottom:calc(env(safe-area-inset-bottom) + 12px);background:var(--card);border-top:1px solid var(--border);box-shadow:0 -4px 20px rgba(0,0,0,.15)">
-  <div style="display:flex;align-items:center;gap:12px;max-width:480px;margin:0 auto">
-    <img src="/logo-icon.png" style="width:44px;height:44px;border-radius:12px;flex-shrink:0" alt="CrewiGo">
-    <div style="flex:1;min-width:0">
-      <div style="font-weight:800;font-size:.9rem">Installer CrewiGo</div>
-      <div id="pwa-install-desc" style="font-size:.76rem;color:var(--text-muted);line-height:1.4">Accède au voyage en un tap, même hors connexion.</div>
+<!-- ═══ PWA Install Sheet ══════════════════════════════ -->
+<div id="pwa-install-banner">
+  <div class="pwa-sheet">
+    <div class="pwa-handle"></div>
+
+    <div class="pwa-hero">
+      <div class="pwa-icon-wrap">
+        <img src="/logo-icon.png" alt="CrewiGo">
+      </div>
+      <div class="pwa-hero-text">
+        <strong>Ajoute CrewiGo à ton écran</strong>
+        <span>Rejoins le voyage en un tap</span>
+      </div>
     </div>
-    <button id="pwa-install-btn" style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:9px 16px;font-size:.82rem;font-weight:800;cursor:pointer;white-space:nowrap;font-family:var(--font-body)">Installer</button>
-    <button onclick="document.getElementById('pwa-install-banner').style.display='none';localStorage.setItem('pwa_dismissed_partage','1')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.4rem;padding:4px;line-height:1">×</button>
+
+    <!-- Perks Android/Chrome -->
+    <div id="pwa-body-android">
+      <ul class="pwa-perks">
+        <li>
+          <div class="pwa-perk-icon" style="background:#EFF6FF">🔔</div>
+          <div><strong>Alertes en temps réel</strong> — reçois une notif quand une dépense ou un changement arrive</div>
+        </li>
+        <li>
+          <div class="pwa-perk-icon" style="background:#F0FDF4">✈️</div>
+          <div><strong>Accès hors connexion</strong> — consulte l'itinéraire même sans réseau, à l'aéroport</div>
+        </li>
+        <li>
+          <div class="pwa-perk-icon" style="background:#FFF7ED">⚡</div>
+          <div><strong>Un tap</strong> — ton voyage directement depuis l'écran d'accueil, comme une vraie app</div>
+        </li>
+      </ul>
+      <button id="pwa-install-btn" class="pwa-install-cta">Installer l'application</button>
+    </div>
+
+    <!-- Guide iOS Safari -->
+    <div id="pwa-body-ios" style="display:none">
+      <div class="pwa-ios-steps">
+        <div class="pwa-ios-step">
+          <div class="pwa-ios-step-num">1</div>
+          <div>Appuie sur <span class="pwa-share-icon">⬆ Partager</span> en bas de Safari</div>
+        </div>
+        <div class="pwa-ios-step">
+          <div class="pwa-ios-step-num">2</div>
+          <div>Fais défiler et choisis <strong>« Sur l'écran d'accueil »</strong></div>
+        </div>
+        <div class="pwa-ios-step">
+          <div class="pwa-ios-step-num">3</div>
+          <div>Confirme avec <strong>Ajouter</strong> — c'est prêt 🎉</div>
+        </div>
+      </div>
+      <button id="pwa-install-btn-ios" class="pwa-install-cta">C'est fait !</button>
+    </div>
+
+    <button id="pwa-later-btn" class="pwa-later">Pas maintenant</button>
   </div>
 </div>
 
