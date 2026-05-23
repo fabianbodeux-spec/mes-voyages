@@ -272,7 +272,13 @@ const localDB = {
 let pgPool = null;
 if (USE_POSTGRES) {
   const { Pool } = require('pg');
-  pgPool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+  pgPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    max: 20,                     // connexions simultanées (Railway autorise 25)
+    idleTimeoutMillis: 30000,    // libère une connexion inactive après 30s
+    connectionTimeoutMillis: 5000 // échec propre si la DB est indisponible après 5s
+  });
 
   // Initialiser les tables — chaque instruction est exécutée séparément
   // pour qu'une erreur sur l'une ne bloque pas les suivantes.
