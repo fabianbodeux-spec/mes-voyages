@@ -612,29 +612,31 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <div class="form-group"><label>Description *</label><input type="text" id="dep-titre" placeholder="Ex: Restaurant, Essence, Villa..."></div>
-    <div class="form-row">
-      <div class="form-group"><label>Montant (€) *</label><input type="number" id="dep-montant" placeholder="0.00" step="0.01" min="0"></div>
-      <div class="form-group"><label>Date</label><input type="date" id="dep-date"></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Description *</label><input type="text" id="dep-titre" placeholder="Ex: Restaurant, Essence, Villa..."></div>
+      <div class="form-row">
+        <div class="form-group"><label>Montant (€) *</label><input type="number" id="dep-montant" placeholder="0.00" step="0.01" min="0"></div>
+        <div class="form-group"><label>Date</label><input type="date" id="dep-date"></div>
+      </div>
+      <div class="form-group">
+        <label>Catégorie</label>
+        <select id="dep-categorie">
+          <option value="hebergement">🏠 Hébergement</option>
+          <option value="transport">✈️ Transport</option>
+          <option value="restauration">🍽️ Restauration</option>
+          <option value="activite">🎯 Activité</option>
+          <option value="courses">🛒 Courses</option>
+          <option value="autre" selected>📦 Autre</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Payé par *</label><div id="dep-payeur-list" class="participants-selector"></div></div>
+      <div class="form-group">
+        <label>Partagé entre</label>
+        <div id="dep-participants-list" class="participants-selector"></div>
+        <p style="font-size:.72rem;color:var(--text-muted);margin-top:6px">Tous cochés = partage égal entre tout le monde</p>
+      </div>
+      <input type="hidden" id="dep-id">
     </div>
-    <div class="form-group">
-      <label>Catégorie</label>
-      <select id="dep-categorie">
-        <option value="hebergement">🏠 Hébergement</option>
-        <option value="transport">✈️ Transport</option>
-        <option value="restauration">🍽️ Restauration</option>
-        <option value="activite">🎯 Activité</option>
-        <option value="courses">🛒 Courses</option>
-        <option value="autre" selected>📦 Autre</option>
-      </select>
-    </div>
-    <div class="form-group"><label>Payé par *</label><div id="dep-payeur-list" class="participants-selector"></div></div>
-    <div class="form-group">
-      <label>Partagé entre</label>
-      <div id="dep-participants-list" class="participants-selector"></div>
-      <p style="font-size:.72rem;color:var(--text-muted);margin-top:6px">Tous cochés = partage égal entre tout le monde</p>
-    </div>
-    <input type="hidden" id="dep-id">
     <div class="modal-footer">
       <button class="btn-secondary" onclick="fermerModal('modal-depense')">Annuler</button>
       <button class="btn-primary" onclick="_depenseSauvegarder()">Enregistrer</button>
@@ -1343,6 +1345,13 @@ function _geoDemarrer() {
     const b = document.getElementById('geo-toggle-btn');
     if (b) { b.textContent = 'Partager ma position'; b.style.background = '#3B82F6'; }
     _geoActive = false;
+    if (err.code === 1) {
+      toast('📍 Localisation refusée — autorise-la dans les réglages de ton navigateur');
+    } else if (err.code === 2) {
+      toast('📍 Position indisponible — vérifie que la localisation est activée');
+    } else {
+      toast('📍 Délai dépassé — réessaie en extérieur pour un meilleur signal');
+    }
   }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
 }
 
