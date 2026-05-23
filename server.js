@@ -453,8 +453,20 @@ app.get('/api/voyages/:id/depenses', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/voyages/:id/depenses', authMiddleware, async (req, res) => {
-  try { const item = await run(() => db.depenses.create(req.params.id, req.body)); res.json({ id: item.id }); }
-  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+  try {
+    const item = await run(() => db.depenses.create(req.params.id, req.body));
+    res.json({ id: item.id });
+  } catch(e) {
+    console.error('[DEPENSE POST]', e.message);
+    const msg = e.message || '';
+    if (msg.includes('column') || msg.includes('does not exist'))
+      return res.status(500).json({ error: 'Colonne manquante — rechargez la page' });
+    if (msg.includes('not-null') || msg.includes('null value'))
+      return res.status(400).json({ error: 'Champ obligatoire manquant' });
+    if (msg.includes('syntax') || msg.includes('invalid input'))
+      return res.status(400).json({ error: 'Données invalides (' + msg.split('\n')[0].slice(0,60) + ')' });
+    res.status(500).json({ error: msg.split('\n')[0].slice(0, 100) || 'Erreur interne' });
+  }
 });
 
 app.put('/api/depenses/:id', authMiddleware, async (req, res) => {
@@ -465,7 +477,11 @@ app.put('/api/depenses/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Accès refusé' });
     await run(() => db.depenses.update(req.params.id, req.body));
     res.json({ ok: true });
-  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+  } catch(e) {
+    console.error('[DEPENSE PUT]', e.message);
+    const msg = e.message || '';
+    res.status(500).json({ error: msg.split('\n')[0].slice(0, 100) || 'Erreur interne' });
+  }
 });
 
 app.delete('/api/depenses/:id', authMiddleware, async (req, res) => {
