@@ -722,21 +722,23 @@ body {
 .btn-back { background: transparent; }
 
 .btn-primary {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   background: var(--accent);
   color: white;
   border: none;
   border-radius: var(--radius);
-  padding: 10px 18px;
+  padding: 12px 18px;
+  min-height: 44px;
   font-size: 0.84rem;
   font-weight: 600;
   font-family: 'Satoshi', var(--font-body);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.08s, opacity 0.1s;
   letter-spacing: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 .btn-primary:hover { background: var(--accent-dark); }
-.btn-primary:active { opacity: 0.85; }
+.btn-primary:active { opacity: 0.82; transform: scale(0.98); }
 
 .btn-secondary {
   background: transparent;
@@ -967,32 +969,37 @@ body {
 
 .tab-btn {
   flex: 1;
-  min-width: 64px;
+  min-width: 58px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 9px 6px 8px;
+  padding: 9px 4px 8px;
   border: none;
   background: transparent;
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 0.58rem;
+  font-size: 0.65rem;
   font-weight: 500;
   font-family: 'Satoshi', var(--font-body);
   border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, transform 0.08s, opacity 0.08s;
   white-space: nowrap;
   letter-spacing: 0;
   text-transform: none;
   position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
 .tab-btn.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
-  font-weight: 600;
+  font-weight: 700;
 }
 .tab-btn:not(.active):hover { color: var(--text); }
+.tab-btn:active {
+  opacity: 0.65;
+  transform: scale(0.93);
+}
 
 /* ─── TAB SVG ICONS ──────────────────────────────────────────── */
 .tab-icon { font-size: 1rem; }
@@ -2493,13 +2500,15 @@ textarea { resize: vertical; line-height: 1.6; }
 #partage-id-badge {
   font-size: 0.6rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: #F97316;
-  color: white;
+  background: transparent;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
   padding: 3px 8px;
   border-radius: 4px;
   flex-shrink: 0;
+  opacity: 0.9;
 }
 
 /* ─── ADMIN SOUS-ONGLETS ─────────────────────────────────────── */

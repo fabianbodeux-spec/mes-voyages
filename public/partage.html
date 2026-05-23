@@ -179,8 +179,13 @@
     <h2 class="id-voyage-nom" id="id-voyage-nom">Trip partagé</h2>
     <p class="id-sous-titre" id="id-sous-titre-main">Qui êtes-vous ?</p>
     <div id="id-participants" class="id-parts"></div>
-    <p class="id-ou" id="id-ou-text">ou entrez votre prénom</p>
-    <div class="id-form" id="id-nom-form">
+    <!-- Formulaire prénom masqué par défaut → affiché si pas de participants ou via lien -->
+    <button id="id-nouveau-btn" onclick="_afficherFormulairePrenom()"
+      style="background:none;border:none;color:var(--text-muted);font-size:.82rem;cursor:pointer;padding:8px 0;font-family:var(--font-body);text-decoration:underline;display:none">
+      Vous n'êtes pas dans la liste ?
+    </button>
+    <div class="id-form" id="id-nom-form" style="display:none">
+      <p class="id-ou" style="margin:0 0 10px;font-size:.84rem;color:var(--text-muted)">Entrez votre prénom</p>
       <input id="id-nom-input" class="id-input" placeholder="Votre prénom…"
              onkeydown="if(event.key==='Enter')_idParNom()">
       <button class="btn-primary" onclick="_idParNom()">Continuer →</button>
@@ -223,11 +228,11 @@
   </header>
 
   <nav class="tab-nav">
-    <button class="tab-btn active" data-tab="accueil" onclick="changerOnglet('accueil', this)">
+    <button class="tab-btn" data-tab="accueil" onclick="changerOnglet('accueil', this)">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>
       <span>Basecamp</span>
     </button>
-    <button class="tab-btn" data-tab="programme" onclick="changerOnglet('programme', this)">
+    <button class="tab-btn active" data-tab="programme" onclick="changerOnglet('programme', this)">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
       <span>Road Map</span>
     </button>
@@ -258,15 +263,15 @@
   <main class="main-content tabs-content">
 
     <!-- ACCUEIL -->
-    <div id="tab-accueil" class="tab-panel active">
-      <!-- Géolocalisation groupe -->
-      <div id="geo-section" style="padding:12px 16px 0">
+    <div id="tab-accueil" class="tab-panel">
+      <!-- Géolocalisation groupe — masquée par défaut si aucune position active -->
+      <div id="geo-section" style="padding:12px 16px 0;display:none">
         <div style="background:var(--card);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)">
             <span style="font-weight:700;font-size:.95rem">📍 Groupe</span>
             <button id="geo-toggle-btn" onclick="_togglePartagerPosition()"
-              style="background:#3B82F6;color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:var(--font-body)">
-              Partager ma position
+              style="background:var(--accent);color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:var(--font-body)">
+              📍 Partager ma position
             </button>
           </div>
           <div id="geo-map" style="height:200px;background:#e5e7eb"></div>
@@ -279,7 +284,7 @@
     </div>
 
     <!-- PROGRAMME -->
-    <div id="tab-programme" class="tab-panel">
+    <div id="tab-programme" class="tab-panel active">
       <div class="panel-actions">
         <button class="btn-primary" onclick="ouvrirModalAgenda()">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -855,7 +860,14 @@ async function _initPartage() {
         (p.has_pin ? '<span style="font-size:.85rem;opacity:.6" title="Session protégée">🔒</span>' : '') +
       '</button>'
     ).join('');
-    if (!parts.length) document.getElementById('id-ou-text').style.display = 'none';
+    // Afficher le bouton "pas dans la liste" seulement si des participants existent
+    const nouveauBtn = document.getElementById('id-nouveau-btn');
+    if (nouveauBtn) nouveauBtn.style.display = parts.length > 0 ? '' : 'none';
+    // Si aucun participant, afficher directement le formulaire prénom
+    if (!parts.length) {
+      const nomForm = document.getElementById('id-nom-form');
+      if (nomForm) nomForm.style.display = '';
+    }
 
     // Identité déjà stockée ?
     let storedIdentite = null;
@@ -905,11 +917,24 @@ let _pinPendingParticipant = null;
 
 function _idMainShow(visible) {
   document.getElementById('id-sous-titre-main').style.display = visible ? '' : 'none';
-  document.getElementById('id-participants').style.display   = visible ? '' : 'none';
-  document.getElementById('id-ou-text').style.display        = visible ? '' : 'none';
-  document.getElementById('id-nom-form').style.display       = visible ? '' : 'none';
-  document.getElementById('id-skip-btn').style.display       = visible ? '' : 'none';
-  document.getElementById('id-pin-form').style.display       = visible ? 'none' : '';
+  document.getElementById('id-participants').style.display    = visible ? '' : 'none';
+  const nouveauBtn = document.getElementById('id-nouveau-btn');
+  if (nouveauBtn) nouveauBtn.style.display = visible && (window._partagePartsMap && Object.keys(window._partagePartsMap).length > 0) ? '' : 'none';
+  document.getElementById('id-skip-btn').style.display        = visible ? '' : 'none';
+  document.getElementById('id-pin-form').style.display        = visible ? 'none' : '';
+  // Le formulaire prénom reste masqué quand on revient au panel principal (sauf si 0 participants)
+  if (visible && window._partagePartsMap && Object.keys(window._partagePartsMap).length > 0) {
+    document.getElementById('id-nom-form').style.display = 'none';
+  }
+}
+
+function _afficherFormulairePrenom() {
+  const nouveauBtn = document.getElementById('id-nouveau-btn');
+  const nomForm = document.getElementById('id-nom-form');
+  if (nouveauBtn) nouveauBtn.style.display = 'none';
+  if (nomForm) { nomForm.style.display = ''; }
+  const input = document.getElementById('id-nom-input');
+  if (input) setTimeout(() => input.focus(), 80);
 }
 
 function _idParticipant(p) {
@@ -1247,7 +1272,8 @@ function _lancerPartage(identite) {
     const tabBtn = document.querySelector(`[data-tab="${_targetTab}"]`);
     if (tabBtn) { setTimeout(() => changerOnglet(_targetTab, tabBtn), 80); setTimeout(_showPwaInstallBanner, 25000); return; }
   }
-  changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
+  // Road Map en premier : c'est ce que les participants viennent voir en priorité
+  changerOnglet('programme', document.querySelector('[data-tab="programme"]'));
   setTimeout(_showPwaInstallBanner, 25000);
 }
 
@@ -1325,6 +1351,10 @@ function _appliquerPositions(locs) {
     const bounds = L.latLngBounds(locs.map(l => [parseFloat(l.lat), parseFloat(l.lng)]));
     if (bounds.isValid()) _geoMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
   }
+  // Afficher/masquer la section géo selon s'il y a des positions actives ou si je partage
+  const geoSection = document.getElementById('geo-section');
+  if (geoSection) geoSection.style.display = (locs.length > 0 || _geoActive) ? '' : 'none';
+
   const listEl = document.getElementById('geo-list');
   if (!listEl) return;
   listEl.innerHTML = locs.length === 0
@@ -1369,8 +1399,11 @@ function _togglePartagerPosition() {
 
 function _geoDemarrer() {
   if (!navigator.geolocation) { alert('Géolocalisation non disponible.'); return; }
+  // Révéler la section géo immédiatement dès l'activation
+  const geoSection = document.getElementById('geo-section');
+  if (geoSection) geoSection.style.display = '';
   const btn = document.getElementById('geo-toggle-btn');
-  if (btn) { btn.textContent = 'Localisation…'; btn.style.background = '#F59E0B'; }
+  if (btn) { btn.textContent = '⏳ Localisation…'; btn.style.background = '#F59E0B'; }
   _geoWatchId = navigator.geolocation.watchPosition(async pos => {
     _geoActive = true;
     const { latitude: lat, longitude: lng } = pos.coords;

@@ -3008,13 +3008,26 @@ async function chargerAdmin() {
       <button class="adm-sub-btn" data-tab="attributions" onclick="_activerSousOngletAdmin('attributions')">
         <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>Attributions
       </button>
-      <button class="adm-sub-btn" data-tab="docs-participants" onclick="_activerSousOngletAdmin('docs-participants')">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>Docs invités
-      </button>
       <button class="adm-sub-btn" data-tab="photos" onclick="_activerSousOngletAdmin('photos')">
         <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>Photos${photosAdmin.length > 0 ? `<span class="adm-sub-badge">${photosAdmin.length}</span>` : ''}
       </button>
+      <button class="adm-sub-btn adm-sub-btn--more" onclick="_toggleAdminMore(this)"
+        style="opacity:.65">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>Plus
+      </button>
     </nav>
+
+    <!-- Boutons avancés (repliés par défaut) -->
+    <div id="adm-more-btns" style="display:none;padding:0 12px 8px;display:none">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;padding:8px 0">
+        <button class="adm-sub-btn" data-tab="attributions" onclick="_activerSousOngletAdmin('attributions')" style="flex:0 0 auto">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>Attributions
+        </button>
+        <button class="adm-sub-btn" data-tab="docs-participants" onclick="_activerSousOngletAdmin('docs-participants')" style="flex:0 0 auto">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>Docs invités
+        </button>
+      </div>
+    </div>
 
     <!-- ── Section Réservations ── -->
     <div id="adm-sub-reservations">
@@ -3185,6 +3198,20 @@ function _activerSousOngletAdmin(tab) {
   document.querySelectorAll('.adm-sub-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
+  // Si l'onglet actif est un onglet "avancé", ouvrir automatiquement la section Plus
+  const advancedTabs = ['attributions', 'docs-participants'];
+  if (advancedTabs.includes(tab)) {
+    const more = document.getElementById('adm-more-btns');
+    if (more) more.style.display = '';
+  }
+}
+
+function _toggleAdminMore(btn) {
+  const more = document.getElementById('adm-more-btns');
+  if (!more) return;
+  const isOpen = more.style.display !== 'none';
+  more.style.display = isOpen ? 'none' : '';
+  btn.classList.toggle('active', !isOpen);
 }
 
 async function supprimerPhotoAdmin(id) {
