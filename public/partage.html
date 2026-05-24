@@ -375,8 +375,17 @@
           </div>
         </div>
 
+        <!-- Mémoires (archivé) -->
+        <div id="memories-section" style="display:none"></div>
+
+        <!-- Tri -->
+        <div id="photos-sort-bar" class="photos-sort-chips" style="display:none">
+          <button class="sort-chip active" id="sort-chip-recent" onclick="_setPhotoSort('recent')">Plus récentes</button>
+          <button class="sort-chip" id="sort-chip-likes" onclick="_setPhotoSort('likes')">♥ Plus likées</button>
+        </div>
+
         <!-- Grille photos -->
-        <div id="photos-grid" class="photos-grid" style="margin-top:16px"></div>
+        <div id="photos-grid" class="photos-grid" style="margin-top:8px"></div>
         <div id="photos-empty" class="empty-state" style="display:none">
           <div class="empty-state-visual">
             <svg viewBox="0 0 120 100" width="140" height="116" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1391,12 +1400,60 @@ function _chargerHub() {
       </div>
     </div>`;
 
+  // CrewiRewind — banner fin de voyage
+  let seasonBannerHtml = '';
+  const statut = voyage?.statut;
+  if (statut === 'completed' && voyage.completed_at) {
+    const daysSince = Math.floor((Date.now() - new Date(voyage.completed_at).getTime()) / 86400000);
+    const daysLeft = Math.max(0, 3 - daysSince);
+    const dateLimit = new Date(new Date(voyage.completed_at).getTime() + 3 * 86400000);
+    const dateLimitStr = dateLimit.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    seasonBannerHtml = `
+    <div class="hub-season-banner">
+      <div class="hub-season-banner__head">
+        <span class="hub-season-banner__icon">🎬</span>
+        <span class="hub-season-banner__title">Le voyage est terminé</span>
+        ${daysLeft > 0 ? `<span class="hub-season-banner__countdown">J-${daysLeft}</span>` : ''}
+      </div>
+      <p class="hub-season-banner__sub">
+        Votez pour vos meilleures photos avant le <strong>${dateLimitStr}</strong>
+      </p>
+      <button class="hub-season-banner__cta" onclick="changerOnglet('photos',document.querySelector('[data-tab=\\'photos\\']'));chargerPhotos()">
+        Voir les photos →
+      </button>
+    </div>`;
+  } else if (statut === 'archived') {
+    seasonBannerHtml = `
+    <div class="hub-season-banner" style="background:rgba(107,114,128,.08);border-color:rgba(107,114,128,.22)">
+      <div class="hub-season-banner__head">
+        <span class="hub-season-banner__icon">📦</span>
+        <span class="hub-season-banner__title">Voyage archivé</span>
+        <span class="hub-season-banner__countdown" style="background:rgba(107,114,128,.15);color:#6B7280">ARCHIVÉ</span>
+      </div>
+      <p class="hub-season-banner__sub">Ces souvenirs sont immortalisés dans le CrewiRewind.</p>
+      <button class="hub-season-banner__cta" style="background:#6B7280" onclick="changerOnglet('photos',document.querySelector('[data-tab=\\'photos\\']'));chargerPhotos()">
+        Voir les mémoires →
+      </button>
+    </div>`;
+  }
+
+  // Résumé IA
+  const aiCardHtml = voyage?.memory_summary ? `
+    <div class="hub-ai-card">
+      <div class="hub-ai-card__title">✨ Le Récap' du Trip</div>
+      <div class="hub-ai-card__text">${_he(voyage.memory_summary)}</div>
+    </div>` : '';
+
   container.innerHTML = `
+    ${seasonBannerHtml}
+
     <!-- Greeting + statut -->
     <div class="hub-card hub-welcome" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
       <div style="font-size:.95rem;line-height:1.4">${greeting}</div>
       ${statusBadge}
     </div>
+
+    ${aiCardHtml}
 
     <!-- Équipage -->
     <div class="hub-card">
@@ -2713,34 +2770,143 @@ async function envoyerPhoto() {
   }
 }
 
+let _photosCache = [];
+let _photosLikes = {};
+let _photosSortBy = 'recent';
+
 async function chargerPhotos() {
   try {
-    const photos = await fetch(`/api/partage/${_partageToken}/photos`).then(r => r.json());
-    const grid = document.getElementById('photos-grid');
-    const empty = document.getElementById('photos-empty');
-    grid.innerHTML = '';
+    const voyage = window._hubVoyage;
+    const [photos, likes] = await Promise.all([
+      fetch(`/api/partage/${_partageToken}/photos`).then(r => r.json()),
+      fetch(`/api/partage/${_partageToken}/photos/likes`).then(r => r.json()).catch(() => ({}))
+    ]);
+    _photosCache = Array.isArray(photos) ? photos : [];
+    _photosLikes = likes || {};
 
-    if (!Array.isArray(photos) || photos.length === 0) {
-      empty.style.display = ''; grid.style.display = 'none'; return;
+    // Afficher mémoires si archivé
+    if (voyage?.statut === 'archived') {
+      await _chargerMemoires();
     }
-    empty.style.display = 'none'; grid.style.display = '';
 
-    const monNom = _partageIdentite?.nom || null;
-    photos.forEach(p => {
-      const isMine = monNom && p.auteur === monNom;
-      const el = document.createElement('div');
-      el.className = 'photo-thumb';
-      el.onclick = () => ouvrirLightbox(p);
-      el.innerHTML = `
-        <img src="/api/photos/${p.id}/img" alt="${escHtml(p.caption || '')}" loading="lazy">
-        <div class="photo-thumb-info">
-          <div class="photo-thumb-dot" style="background:${p.couleur}"></div>
-          <span>${escHtml(p.auteur)}</span>
-        </div>
-        ${isMine ? `<button class="photo-del-btn" title="Supprimer" onclick="event.stopPropagation();supprimerPhotoPartage(${p.id},'${escHtml(p.auteur)}')">✕</button>` : ''}`;
-      grid.appendChild(el);
-    });
+    // Afficher les chips de tri si photos > 0 et voyage avec likes possibles
+    const sortBar = document.getElementById('photos-sort-bar');
+    if (sortBar) {
+      sortBar.style.display = (_photosCache.length > 0 && ['actif','active','completed','archived'].includes(voyage?.statut)) ? '' : 'none';
+    }
+
+    _renderPhotos(_photosCache);
   } catch(e) { console.error('[photos]', e); }
+}
+
+function _setPhotoSort(mode) {
+  _photosSortBy = mode;
+  document.getElementById('sort-chip-recent')?.classList.toggle('active', mode === 'recent');
+  document.getElementById('sort-chip-likes')?.classList.toggle('active', mode === 'likes');
+  _renderPhotos(_photosCache);
+}
+
+function _renderPhotos(photosIn) {
+  const grid = document.getElementById('photos-grid');
+  const empty = document.getElementById('photos-empty');
+  grid.innerHTML = '';
+
+  const voyage = window._hubVoyage;
+  const votingOpen = voyage && ['actif', 'active', 'completed'].includes(voyage.statut);
+
+  if (!photosIn.length) {
+    empty.style.display = ''; grid.style.display = 'none'; return;
+  }
+  empty.style.display = 'none'; grid.style.display = '';
+
+  let photos = [...photosIn];
+  if (_photosSortBy === 'likes') {
+    photos.sort((a, b) => {
+      const la = (_photosLikes[a.id]?.count || 0);
+      const lb = (_photosLikes[b.id]?.count || 0);
+      return lb - la || b.created_at.localeCompare(a.created_at);
+    });
+  }
+
+  const monNom = _partageIdentite?.nom || null;
+  photos.forEach(p => {
+    const isMine = monNom && p.auteur === monNom;
+    const likeData = _photosLikes[p.id] || { count: 0, auteurs: [] };
+    const iLiked = monNom && likeData.auteurs.includes(monNom);
+    const el = document.createElement('div');
+    el.className = 'photo-thumb';
+    el.style.position = 'relative';
+    el.onclick = () => ouvrirLightbox(p);
+    el.innerHTML = `
+      <img src="/api/photos/${p.id}/img" alt="${escHtml(p.caption || '')}" loading="lazy">
+      <div class="photo-thumb-info">
+        <div class="photo-thumb-dot" style="background:${p.couleur}"></div>
+        <span>${escHtml(p.auteur)}</span>
+      </div>
+      ${isMine ? `<button class="photo-del-btn" title="Supprimer" onclick="event.stopPropagation();supprimerPhotoPartage(${p.id},'${escHtml(p.auteur)}')">✕</button>` : ''}
+      ${votingOpen ? `
+        <div class="pic-like-overlay" onclick="event.stopPropagation()">
+          <button class="pic-like-btn${iLiked?' liked':''}" id="like-btn-${p.id}" onclick="_likerPhoto(${p.id})">♥</button>
+          <span class="pic-like-count" id="like-count-${p.id}" style="${likeData.count>0?'':'display:none'}">${likeData.count}</span>
+        </div>` : likeData.count > 0 ? `
+        <div class="pic-like-overlay">
+          <span style="font-size:.7rem;color:#F97316;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.5)">♥ ${likeData.count}</span>
+        </div>` : ''}`;
+    grid.appendChild(el);
+  });
+}
+
+async function _likerPhoto(photoId) {
+  const monNom = _partageIdentite?.nom;
+  if (!monNom) { _toast('⚠️ Identifie-toi pour liker'); return; }
+  try {
+    const r = await fetch(`/api/partage/${_partageToken}/photos/${photoId}/like`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auteur: monNom })
+    }).then(res => res.json());
+    if (!_photosLikes[photoId]) _photosLikes[photoId] = { count: 0, auteurs: [] };
+    _photosLikes[photoId].count = r.count;
+    if (r.liked) {
+      _photosLikes[photoId].auteurs = [...new Set([..._photosLikes[photoId].auteurs, monNom])];
+    } else {
+      _photosLikes[photoId].auteurs = _photosLikes[photoId].auteurs.filter(a => a !== monNom);
+    }
+    const btn = document.getElementById(`like-btn-${photoId}`);
+    const cnt = document.getElementById(`like-count-${photoId}`);
+    if (btn) { btn.classList.toggle('liked', r.liked); btn.classList.add('pulse'); setTimeout(() => btn.classList.remove('pulse'), 280); }
+    if (cnt) { cnt.textContent = r.count; cnt.style.display = r.count > 0 ? '' : 'none'; }
+    const lbBtn = document.getElementById('lightbox-like-btn');
+    if (lbBtn && +lbBtn.dataset.photoId === photoId) {
+      lbBtn.classList.toggle('liked', r.liked);
+      lbBtn.textContent = r.liked ? '♥ Liké' : '♡ Liker';
+      const lbCnt = document.getElementById('lightbox-like-count');
+      if (lbCnt) lbCnt.textContent = r.count > 0 ? `${r.count} like${r.count>1?'s':''}` : '';
+    }
+  } catch(e) { _toast('❌ Erreur réseau'); }
+}
+
+async function _chargerMemoires() {
+  const section = document.getElementById('memories-section');
+  if (!section) return;
+  try {
+    const mem = await fetch(`/api/partage/${_partageToken}/memory`).then(r => r.json());
+    if (!mem.available || !mem.top_photos?.length) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    const crowns = ['Le Choix de la Crew', 'Le Coup de Cœur', 'Le Souvenir'];
+    const topHtml = mem.top_photos.slice(0,3).map((p, i) => `
+      <div style="position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1">
+        <img src="/api/photos/${p.id}/img" alt="" style="width:100%;height:100%;object-fit:cover" onclick="ouvrirLightbox(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+        <span class="memories-crown">${crowns[i]||''}</span>
+      </div>`).join('');
+    section.innerHTML = `
+      <div style="font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+        ✨ Nos mémoires
+      </div>
+      <div class="memories-top-grid">${topHtml}</div>
+      ${mem.summary ? `<div class="hub-ai-card" style="margin-top:12px"><div class="hub-ai-card__title">✨ Le Récap' du Trip</div><div class="hub-ai-card__text">${escHtml(mem.summary)}</div></div>` : ''}
+      <div style="height:12px"></div>`;
+  } catch(e) { section.style.display = 'none'; }
 }
 
 let _lightboxPhoto = null;
@@ -2756,6 +2922,25 @@ function ouvrirLightbox(p) {
     `<strong>${escHtml(p.auteur)}</strong>${p.caption ? ' · ' + escHtml(p.caption) : ''}<br><span style="opacity:.6;font-size:.75rem">${d}</span>`;
   const delBtn = document.getElementById('lightbox-del-btn');
   if (delBtn) delBtn.style.display = isMine ? 'flex' : 'none';
+  // Bouton like dans la lightbox
+  const voyage = window._hubVoyage;
+  const votingOpen = voyage && ['actif', 'active', 'completed'].includes(voyage.statut);
+  const lbLikeBtn = document.getElementById('lightbox-like-btn');
+  const lbLikeCnt = document.getElementById('lightbox-like-count');
+  if (lbLikeBtn) {
+    if (votingOpen && monNom) {
+      const likeData = _photosLikes[p.id] || { count: 0, auteurs: [] };
+      const iLiked = likeData.auteurs.includes(monNom);
+      lbLikeBtn.dataset.photoId = p.id;
+      lbLikeBtn.classList.toggle('liked', iLiked);
+      lbLikeBtn.textContent = iLiked ? '♥ Liké' : '♡ Liker';
+      lbLikeBtn.style.display = 'inline-flex';
+      if (lbLikeCnt) lbLikeCnt.textContent = likeData.count > 0 ? `${likeData.count} like${likeData.count>1?'s':''}` : '';
+    } else {
+      lbLikeBtn.style.display = 'none';
+      if (lbLikeCnt) lbLikeCnt.textContent = '';
+    }
+  }
   lb.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 }
@@ -3090,6 +3275,139 @@ function escHtml(t) {
   opacity: 1;
 }
 
+/* ── CREWIREWIND — Likes ───────────────────────────────────── */
+.pic-like-overlay {
+  position: absolute;
+  bottom: 6px; right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: auto;
+}
+.pic-like-btn {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,.45);
+  color: rgba(255,255,255,.85);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  transition: background .15s, color .15s;
+  flex-shrink: 0;
+  font-family: inherit;
+  line-height: 1;
+}
+.pic-like-btn.liked,
+#lightbox-like-btn.liked {
+  color: #F97316;
+  background: rgba(249,115,22,.22);
+  border-color: rgba(249,115,22,.5);
+}
+@keyframes likeHeartbeat {
+  0%,100% { transform: scale(1); }
+  40%     { transform: scale(1.30); }
+  70%     { transform: scale(0.90); }
+}
+.pic-like-btn.pulse { animation: likeHeartbeat 280ms ease-out; }
+.pic-like-count {
+  font-size: .68rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,.5);
+  min-width: 14px;
+}
+
+/* ── CREWIREWIND — Sort chips ──────────────────────────────── */
+.photos-sort-chips { display: flex; gap: 8px; }
+.sort-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border-solid);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: .78rem; font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all .15s;
+}
+.sort-chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ── CREWIREWIND — Hub season banner ───────────────────────── */
+.hub-season-banner {
+  background: rgba(194,65,12,.08);
+  border: 1px solid rgba(194,65,12,.22);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 0 16px 12px;
+}
+.hub-season-banner__head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 6px;
+}
+.hub-season-banner__icon { font-size: 1.2rem; }
+.hub-season-banner__title {
+  font-size: .95rem; font-weight: 700;
+  color: var(--text); flex: 1;
+}
+.hub-season-banner__countdown {
+  background: rgba(194,65,12,.15);
+  color: #C2410C;
+  font-weight: 800; font-size: .76rem;
+  padding: 3px 9px; border-radius: 20px;
+  white-space: nowrap;
+}
+.hub-season-banner__sub {
+  font-size: .82rem; color: var(--text-muted);
+  margin: 0 0 12px; line-height: 1.4;
+}
+.hub-season-banner__cta {
+  width: 100%;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: 12px;
+  padding: 11px; font-weight: 700; font-size: .88rem;
+  cursor: pointer; font-family: var(--font-body);
+  transition: opacity .15s;
+}
+.hub-season-banner__cta:active { opacity: .85; }
+
+/* ── CREWIREWIND — AI summary card ─────────────────────────── */
+.hub-ai-card {
+  background: var(--card);
+  border: 1px solid var(--border-solid);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 0 16px 12px;
+}
+.hub-ai-card__title {
+  font-size: .72rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-muted); margin-bottom: 8px;
+}
+.hub-ai-card__text {
+  font-size: .88rem; line-height: 1.6; color: var(--text);
+}
+
+/* ── CREWIREWIND — Mémoires (photos archivées) ─────────────── */
+.memories-top-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.memories-crown {
+  position: absolute;
+  top: 5px; left: 5px;
+  background: #FBBF24; color: #78350F;
+  font-size: .56rem; font-weight: 800;
+  padding: 2px 7px; border-radius: 20px;
+  letter-spacing: .03em; z-index: 2;
+  white-space: nowrap;
+}
+
 /* ── HUB ──────────────────────────────────────────────────── */
 .hub-card {
   background: var(--card);
@@ -3151,10 +3469,17 @@ function escHtml(t) {
   <button onclick="fermerLightbox()" style="position:absolute;top:calc(env(safe-area-inset-top)+14px);right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
   <img id="lightbox-img" src="" alt="" style="max-width:calc(100vw - 32px);max-height:calc(100dvh - 140px);border-radius:12px;object-fit:contain" onclick="event.stopPropagation()">
   <div id="lightbox-info" style="margin-top:12px;text-align:center;color:#fff;font-size:.85rem;padding:0 20px" onclick="event.stopPropagation()"></div>
-  <button id="lightbox-del-btn" onclick="event.stopPropagation();_lightboxPhoto&&supprimerPhotoPartage(_lightboxPhoto.id,_lightboxPhoto.auteur)"
-    style="display:none;margin-top:14px;align-items:center;gap:7px;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.4);color:#EF4444;padding:9px 20px;border-radius:20px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit">
-    🗑️ Supprimer ma photo
-  </button>
+  <div style="display:flex;gap:10px;margin-top:14px;align-items:center" onclick="event.stopPropagation()">
+    <button id="lightbox-like-btn" data-photo-id="" onclick="event.stopPropagation();_likerPhoto(+this.dataset.photoId)"
+      style="display:none;align-items:center;gap:6px;background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.35);color:#F97316;padding:9px 20px;border-radius:20px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s,color .2s">
+      ♡ Liker
+    </button>
+    <span id="lightbox-like-count" style="color:rgba(255,255,255,.6);font-size:.78rem"></span>
+    <button id="lightbox-del-btn" onclick="event.stopPropagation();_lightboxPhoto&&supprimerPhotoPartage(_lightboxPhoto.id,_lightboxPhoto.auteur)"
+      style="display:none;align-items:center;gap:7px;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.4);color:#EF4444;padding:9px 20px;border-radius:20px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit">
+      🗑️ Supprimer
+    </button>
+  </div>
 </div>
 
 <!-- Toast de feedback -->

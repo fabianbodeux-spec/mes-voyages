@@ -28,6 +28,9 @@ const FICHIERS = {
   wishlist:             path.join(DATA_DIR, 'wishlist.json'),
   sondages:             path.join(DATA_DIR, 'sondages.json'),
   photos:               path.join(DATA_DIR, 'photos.json'),
+  photo_likes:          path.join(DATA_DIR, 'photo_likes.json'),
+  trip_memory_emails:   path.join(DATA_DIR, 'trip_memory_emails.json'),
+  trip_top_photos:      path.join(DATA_DIR, 'trip_top_photos.json'),
 };
 
 function charger(cle) {
@@ -60,6 +63,8 @@ const localDB = {
     getByToken: (token) => charger('voyages').find(v => v.share_token === token),
     setToken: (id, token) => { const list = charger('voyages'); const idx = list.findIndex(v => v.id === +id); if (idx !== -1) { list[idx].share_token = token; sauvegarder('voyages', list); } return true; },
     setStatut: (id, statut) => { const list = charger('voyages'); const idx = list.findIndex(v => v.id === +id); if (idx !== -1) { list[idx].statut = statut; sauvegarder('voyages', list); } return true; },
+    setStatutFull: (id, statut, extra = {}) => { const list = charger('voyages'); const idx = list.findIndex(v => v.id === +id); if (idx !== -1) { list[idx].statut = statut; Object.assign(list[idx], extra); sauvegarder('voyages', list); } return true; },
+    setMemorySummary: (id, summary) => { const list = charger('voyages'); const idx = list.findIndex(v => v.id === +id); if (idx !== -1) { list[idx].memory_summary = summary; sauvegarder('voyages', list); } return true; },
     create: (data) => { const list = charger('voyages'); const item = { ...data, id: nextId(list), created_at: new Date().toISOString() }; list.push(item); sauvegarder('voyages', list); return item; },
     update: (id, data) => { const list = charger('voyages'); const idx = list.findIndex(v => v.id === +id); if (idx===-1) return false; list[idx] = { ...list[idx], ...data }; sauvegarder('voyages', list); return true; },
     delete: (id) => {
@@ -74,6 +79,9 @@ const localDB = {
       sauvegarder('wishlist', charger('wishlist').filter(w => w.voyage_id !== +id));
       sauvegarder('sondages', charger('sondages').filter(s => s.voyage_id !== +id));
       sauvegarder('photos', charger('photos').filter(p => p.voyage_id !== +id));
+      sauvegarder('photo_likes', charger('photo_likes').filter(l => l.voyage_id !== +id));
+      sauvegarder('trip_memory_emails', charger('trip_memory_emails').filter(e => e.voyage_id !== +id));
+      sauvegarder('trip_top_photos', charger('trip_top_photos').filter(t => t.voyage_id !== +id));
       sauvegarder('voyages', charger('voyages').filter(v => v.id !== +id));
     }
   },
@@ -272,7 +280,33 @@ const localDB = {
     getByVoyage: (vid) => charger('photos').filter(p => p.voyage_id === +vid).sort((a,b) => b.created_at.localeCompare(a.created_at)),
     getById: (id) => charger('photos').find(p => p.id === +id),
     create: (vid, data) => { const list = charger('photos'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('photos', list); return item; },
-    delete: (id) => sauvegarder('photos', charger('photos').filter(p => p.id !== +id))
+    delete: (id) => { sauvegarder('photo_likes', charger('photo_likes').filter(l => l.photo_id !== +id)); sauvegarder('photos', charger('photos').filter(p => p.id !== +id)); }
+  },
+  photo_likes: {
+    getByVoyage: (vid) => charger('photo_likes').filter(l => l.voyage_id === +vid),
+    toggle: (photoId, voyageId, auteur) => {
+      const list = charger('photo_likes');
+      const idx = list.findIndex(l => l.photo_id === +photoId && l.auteur === auteur);
+      if (idx !== -1) { list.splice(idx, 1); sauvegarder('photo_likes', list); return false; }
+      list.push({ id: nextId(list), photo_id: +photoId, voyage_id: +voyageId, auteur, created_at: new Date().toISOString() });
+      sauvegarder('photo_likes', list);
+      return true;
+    }
+  },
+  trip_memory_emails: {
+    getByVoyage: (vid) => charger('trip_memory_emails').find(e => e.voyage_id === +vid),
+    create: (vid, data) => { const list = charger('trip_memory_emails'); const item = { ...data, id: nextId(list), voyage_id: +vid, sent_at: new Date().toISOString() }; list.push(item); sauvegarder('trip_memory_emails', list); return item; }
+  },
+  trip_top_photos: {
+    getByVoyage: (vid) => charger('trip_top_photos').find(t => t.voyage_id === +vid),
+    upsert: (vid, data) => {
+      const list = charger('trip_top_photos');
+      const idx = list.findIndex(t => t.voyage_id === +vid);
+      const item = { voyage_id: +vid, photo_ids: data.photo_ids, scored_at: new Date().toISOString() };
+      if (idx === -1) { list.push({ ...item, id: nextId(list) }); } else { list[idx] = { ...list[idx], ...item }; }
+      sauvegarder('trip_top_photos', list);
+      return true;
+    }
   },
 };
 
@@ -421,6 +455,32 @@ if (USE_POSTGRES) {
       caption TEXT, contenu TEXT NOT NULL,
       created_at TIMESTAMPTZ DEFAULT now()
     )`);
+    // CrewiRewind — colonnes voyage
+    await m(`ALTER TABLE voyages ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ`);
+    await m(`ALTER TABLE voyages ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ`);
+    await m(`ALTER TABLE voyages ADD COLUMN IF NOT EXISTS memory_summary TEXT`);
+    // CrewiRewind — nouvelles tables
+    await m(`CREATE TABLE IF NOT EXISTS photo_likes (
+      id SERIAL PRIMARY KEY,
+      photo_id  INTEGER NOT NULL,
+      voyage_id INTEGER NOT NULL,
+      auteur    TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(photo_id, auteur)
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS trip_memory_emails (
+      id SERIAL PRIMARY KEY,
+      voyage_id INTEGER NOT NULL UNIQUE,
+      sent_at   TIMESTAMPTZ DEFAULT now(),
+      recipients TEXT,
+      status    TEXT DEFAULT 'sent'
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS trip_top_photos (
+      id SERIAL PRIMARY KEY,
+      voyage_id INTEGER NOT NULL UNIQUE,
+      photo_ids TEXT NOT NULL,
+      scored_at TIMESTAMPTZ DEFAULT now()
+    )`);
     console.log('[DB] Migrations PostgreSQL OK');
   })();
 }
@@ -442,6 +502,15 @@ const pgDB = pgPool ? {
     getByToken: async (token) => (await pgPool.query('SELECT * FROM voyages WHERE share_token=$1', [token])).rows[0],
     setToken: async (id, token) => { await pgPool.query('UPDATE voyages SET share_token=$1 WHERE id=$2', [token, id]); return true; },
     setStatut: async (id, statut) => { await pgPool.query('UPDATE voyages SET statut=$1 WHERE id=$2', [statut, id]); return true; },
+    setStatutFull: async (id, statut, extra = {}) => {
+      const sets = ['statut=$1']; const params = [statut]; let i = 2;
+      if (extra.completed_at !== undefined) { sets.push(`completed_at=$${i++}`); params.push(extra.completed_at); }
+      if (extra.archived_at  !== undefined) { sets.push(`archived_at=$${i++}`);  params.push(extra.archived_at); }
+      params.push(id);
+      await pgPool.query(`UPDATE voyages SET ${sets.join(',')} WHERE id=$${i}`, params);
+      return true;
+    },
+    setMemorySummary: async (id, summary) => { await pgPool.query('UPDATE voyages SET memory_summary=$1 WHERE id=$2', [summary, id]); return true; },
     create: async (data) => (await pgPool.query('INSERT INTO voyages(nom,destination,date_debut,date_fin,description,couleur,owner_id) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *', [data.nom,data.destination,data.date_debut,data.date_fin,data.description,data.couleur||'#3B82F6',data.owner_id||null])).rows[0],
     update: async (id, data) => { await pgPool.query('UPDATE voyages SET nom=$1,destination=$2,date_debut=$3,date_fin=$4,description=$5,couleur=$6 WHERE id=$7', [data.nom,data.destination,data.date_debut,data.date_fin,data.description,data.couleur,id]); return true; },
     delete: async (id) => {
@@ -456,6 +525,9 @@ const pgDB = pgPool ? {
       await pgPool.query('DELETE FROM wishlist WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM sondages WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM photos WHERE voyage_id=$1', [id]);
+      await pgPool.query('DELETE FROM photo_likes WHERE voyage_id=$1', [id]);
+      await pgPool.query('DELETE FROM trip_memory_emails WHERE voyage_id=$1', [id]);
+      await pgPool.query('DELETE FROM trip_top_photos WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM voyages WHERE id=$1', [id]);
     }
   },
@@ -665,7 +737,34 @@ const pgDB = pgPool ? {
       'INSERT INTO photos(voyage_id,auteur,couleur,caption,contenu) VALUES($1,$2,$3,$4,$5) RETURNING id,voyage_id,auteur,couleur,caption,created_at',
       [vid, data.auteur, data.couleur||'#6366F1', data.caption||null, data.contenu]
     )).rows[0],
-    delete: async (id) => pgPool.query('DELETE FROM photos WHERE id=$1', [id])
+    delete: async (id) => { await pgPool.query('DELETE FROM photo_likes WHERE photo_id=$1', [id]); await pgPool.query('DELETE FROM photos WHERE id=$1', [id]); }
+  },
+  photo_likes: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM photo_likes WHERE voyage_id=$1 ORDER BY created_at DESC', [vid])).rows,
+    toggle: async (photoId, voyageId, auteur) => {
+      const existing = (await pgPool.query('SELECT id FROM photo_likes WHERE photo_id=$1 AND auteur=$2', [photoId, auteur])).rows[0];
+      if (existing) { await pgPool.query('DELETE FROM photo_likes WHERE id=$1', [existing.id]); return false; }
+      await pgPool.query('INSERT INTO photo_likes(photo_id,voyage_id,auteur) VALUES($1,$2,$3)', [photoId, voyageId, auteur]);
+      return true;
+    }
+  },
+  trip_memory_emails: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM trip_memory_emails WHERE voyage_id=$1', [vid])).rows[0],
+    create: async (vid, data) => (await pgPool.query(
+      'INSERT INTO trip_memory_emails(voyage_id,recipients,status) VALUES($1,$2,$3) RETURNING *',
+      [vid, data.recipients || null, 'sent']
+    )).rows[0]
+  },
+  trip_top_photos: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM trip_top_photos WHERE voyage_id=$1', [vid])).rows[0],
+    upsert: async (vid, data) => {
+      await pgPool.query(
+        `INSERT INTO trip_top_photos(voyage_id,photo_ids) VALUES($1,$2)
+         ON CONFLICT (voyage_id) DO UPDATE SET photo_ids=EXCLUDED.photo_ids, scored_at=now()`,
+        [vid, data.photo_ids]
+      );
+      return true;
+    }
   },
 } : null;
 

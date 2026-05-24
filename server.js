@@ -55,7 +55,7 @@ app.use(helmet({
       styleSrc:      ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "api.fontshare.com", "https://api.fontshare.com"],
       fontSrc:       ["'self'", "api.fontshare.com", "https://api.fontshare.com"],
       imgSrc:        ["'self'", "data:", "blob:", "upload.wikimedia.org", "commons.wikimedia.org", "api.qrserver.com", "*.tile.openstreetmap.org", "*.wikimedia.org"],
-      connectSrc:    ["'self'", "api.fontshare.com", "fr.wikipedia.org", "commons.wikimedia.org", "geocoding-api.open-meteo.com", "api.open-meteo.com", "nominatim.openstreetmap.org"],
+      connectSrc:    ["'self'", "api.fontshare.com", "fr.wikipedia.org", "commons.wikimedia.org", "geocoding-api.open-meteo.com", "api.open-meteo.com", "nominatim.openstreetmap.org", "api.anthropic.com"],
       workerSrc:     ["'self'", "blob:", "cdn.jsdelivr.net"],
       frameSrc:      ["'none'"],
       objectSrc:     ["'none'"],
@@ -240,10 +240,14 @@ app.delete('/api/voyages/:id', authMiddleware, async (req, res) => {
 app.patch('/api/voyages/:id/statut', authMiddleware, async (req, res) => {
   try {
     const { statut } = req.body;
-    if (!['actif', 'terminé'].includes(statut)) return res.status(400).json({ error: 'Statut invalide' });
+    const VALID = ['actif', 'terminé', 'draft', 'planned', 'active', 'completed', 'archived'];
+    if (!VALID.includes(statut)) return res.status(400).json({ error: 'Statut invalide' });
     const voyage = await run(() => db.voyages.getById(req.params.id));
     if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
-    await run(() => db.voyages.setStatut(req.params.id, statut));
+    const extra = {};
+    if (statut === 'completed' && !voyage.completed_at) extra.completed_at = new Date().toISOString();
+    if (statut === 'archived' && !voyage.archived_at)   extra.archived_at  = new Date().toISOString();
+    await run(() => db.voyages.setStatutFull(req.params.id, statut, extra));
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
@@ -1308,6 +1312,125 @@ app.delete('/api/partage/:token/photos/:id', async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+// ─── CREWIREWIND — Likes photos ────────────────────────────────────────────
+
+const { toggleLike, getLikesForVoyage, scorePhotos } = require('./services/photoLikes');
+
+// GET tous les likes d'un voyage (public, token)
+app.get('/api/partage/:token/photos/likes', async (req, res) => {
+  try {
+    const v = await run(() => db.voyages.getByToken(req.params.token));
+    if (!v) return res.status(404).json({ error: 'Voyage introuvable' });
+    res.json(await getLikesForVoyage(v.id));
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// POST toggle like (public, token) — bloqué si archivé
+app.post('/api/partage/:token/photos/:id/like', async (req, res) => {
+  try {
+    const v = await run(() => db.voyages.getByToken(req.params.token));
+    if (!v) return res.status(404).json({ error: 'Voyage introuvable' });
+    if (v.statut === 'archived') return res.status(403).json({ error: 'La période de vote est terminée' });
+    const { auteur } = req.body;
+    if (!auteur) return res.status(400).json({ error: 'auteur requis' });
+    const photo = await run(() => db.photos.getById(+req.params.id));
+    if (!photo || photo.voyage_id !== v.id) return res.status(404).json({ error: 'Photo introuvable' });
+    const result = await toggleLike(+req.params.id, v.id, auteur);
+    res.json(result);
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// ─── CREWIREWIND — Top photos, résumé IA, email, mémoires ──────────────────
+
+// GET top photos scorées (admin)
+app.get('/api/voyages/:id/top-photos', authMiddleware, async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getById(req.params.id));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    const topIds = await scorePhotos(voyage.id);
+    await run(() => db.trip_top_photos.upsert(voyage.id, { photo_ids: JSON.stringify(topIds) }));
+    const photos = await run(() => db.photos.getByVoyage(voyage.id));
+    const top = topIds.map(id => photos.find(p => p.id === id)).filter(Boolean);
+    res.json({ photo_ids: topIds, photos: top });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// POST résumé IA (admin, derrière ENABLE_AI_SUMMARY)
+app.post('/api/voyages/:id/summary', authMiddleware, async (req, res) => {
+  if (process.env.ENABLE_AI_SUMMARY !== 'true')
+    return res.status(503).json({ error: 'Résumé IA désactivé (ENABLE_AI_SUMMARY)' });
+  try {
+    const voyage = await run(() => db.voyages.getById(req.params.id));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    const participants = await run(() => db.participants.getByVoyage(req.params.id));
+    const photos = await run(() => db.photos.getByVoyage(req.params.id));
+    const topRec = await run(() => db.trip_top_photos.getByVoyage(voyage.id));
+    const topIds = topRec ? JSON.parse(topRec.photo_ids || '[]') : [];
+    const { generateSummary } = require('./services/tripSummaryAI');
+    const summary = await generateSummary(voyage, participants, photos, topIds);
+    await run(() => db.voyages.setMemorySummary(voyage.id, summary));
+    res.json({ summary });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: e.message }); }
+});
+
+// POST email souvenir (admin)
+app.post('/api/voyages/:id/send-memory-email', authMiddleware, async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getById(req.params.id));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    const participants = await run(() => db.participants.getByVoyage(req.params.id));
+    const photos = await run(() => db.photos.getByVoyage(req.params.id));
+    const topRec = await run(() => db.trip_top_photos.getByVoyage(voyage.id));
+    const topIds = topRec ? JSON.parse(topRec.photo_ids || '[]') : [];
+    const { sendMemoryEmail } = require('./services/tripMemoryEmail');
+    await sendMemoryEmail(voyage, participants, topIds, photos);
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: e.message }); }
+});
+
+// GET mémoires publiques (token) — résumé + top photos si completed|archived
+app.get('/api/partage/:token/memory', async (req, res) => {
+  try {
+    const v = await run(() => db.voyages.getByToken(req.params.token));
+    if (!v) return res.status(404).json({ error: 'Voyage introuvable' });
+    if (!['completed', 'archived'].includes(v.statut))
+      return res.json({ available: false });
+    const topRec = await run(() => db.trip_top_photos.getByVoyage(v.id));
+    const topIds = topRec ? JSON.parse(topRec.photo_ids || '[]') : [];
+    const photos = await run(() => db.photos.getByVoyage(v.id));
+    const top = topIds.map(id => photos.find(p => p.id === id)).filter(Boolean);
+    const likes = await getLikesForVoyage(v.id);
+    res.json({
+      available: true,
+      statut: v.statut,
+      completed_at: v.completed_at,
+      archived_at: v.archived_at,
+      summary: v.memory_summary || null,
+      top_photos: top,
+      likes
+    });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// GET voyages archivés (admin)
+app.get('/api/voyages/archives', authMiddleware, async (req, res) => {
+  try {
+    const all = IS_CLOUD
+      ? (await db._pool.query("SELECT * FROM voyages WHERE statut='archived' AND owner_id=$1 ORDER BY archived_at DESC", [req.user.id])).rows
+      : db.voyages.getAll().filter(v => v.statut === 'archived').sort((a, b) => (b.archived_at || '').localeCompare(a.archived_at || ''));
+    res.json(all);
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// POST cron tick manuel (debug)
+app.post('/api/admin/cron/tick', authMiddleware, async (req, res) => {
+  try {
+    const { runDailyJob } = require('./services/tripClosure');
+    await runDailyJob();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── DIAGNOSTIC (Railway debug) ─────────────────────────────────────────────
 app.get('/api/diag', async (req, res) => {
   const mode = IS_CLOUD ? 'postgresql' : 'json';
@@ -1332,6 +1455,13 @@ app.get('/api/diag', async (req, res) => {
     res.json({ ok: false, mode, error: e.message });
   }
 });
+
+// ─── CREWIREWIND — Cron clôture automatique ────────────────────────────────
+if (process.env.ENABLE_TRIP_CLOSURE !== 'false') {
+  const { runDailyJob } = require('./services/tripClosure');
+  runDailyJob().catch(e => console.error('[CrewiRewind] Boot job:', e.message));
+  setInterval(() => runDailyJob().catch(e => console.error('[CrewiRewind] Cron:', e.message)), 24 * 60 * 60 * 1000);
+}
 
 // ─── DÉMARRAGE ─────────────────────────────────────────────────────────────
 
