@@ -82,15 +82,20 @@
       background: none; border: none; cursor: pointer;
       text-decoration: underline; font-family: var(--font-body);
     }
-    /* ── Layout fix : screen-voyage doit remplir exactement 100vh ── */
+    /* ── Layout fix : screen-voyage = exactement la hauteur visible ── */
+    html, body { height: 100%; }
     #screen-voyage {
-      height: 100vh;
+      height: 100vh;          /* fallback */
+      height: 100dvh;         /* dynamic viewport — corrige Safari mobile */
       overflow: hidden;
     }
     #screen-voyage .main-content {
       flex: 1;
       overflow-y: auto;
       min-height: 0;
+      /* Espace sous le contenu pour l'indicateur iPhone */
+      padding-bottom: env(safe-area-inset-bottom, 16px);
+      -webkit-overflow-scrolling: touch;
     }
     /* ── Partage badge ─────────────────────────── */
     #partage-id-badge {
