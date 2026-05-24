@@ -6,7 +6,7 @@
   <title>CrewiGO — Roam together.</title>
   <meta name="description" content="L'app PWA pour planifier vos voyages en groupe. Planning collaboratif, budget partagé, chat intégré. Sans App Store." />
   <meta property="og:title" content="CrewiGO — Roam together." />
-  <meta property="og:description" content="Planifiez vos aventures en groupe. Budget partagé, chat intégré, installe depuis ton navigateur." />
+  <meta property="og:description" content="Ton trip, ton crew, tout en un. Planning, budget, chat, photos — sans télécharger d'app. Gratuit." />
   <meta property="og:image" content="/logo-icon.png" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="icon" type="image/png" href="/logo-icon.png" />
@@ -936,16 +936,54 @@
       margin-top: 4px;
     }
 
+    /* ─── CREWIPICS SECTION ─── */
+    .crewipics-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+    }
+    .crewipics-text { max-width: 460px; }
+    .crewipics-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      grid-template-rows: repeat(2, 140px);
+      gap: 10px;
+    }
+    .pic-cell { position: relative; }
+    .pic-large {
+      grid-row: 1 / 3;
+    }
+
+    /* ─── 4-steps grid ─── */
+    .steps-grid--4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .steps-grid--4::before {
+      left: calc(12.5% + 16px);
+      right: calc(12.5% + 16px);
+    }
+
+    /* ─── features 3 cols ─── */
+    @media (min-width: 600px) and (max-width: 900px) {
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
     /* ─── RESPONSIVE ─── */
     @media (max-width: 640px) {
       .section-inner { padding: 80px 20px; }
-      .trust-item { padding: 8px 12px; font-size: 0.8rem; }
+      .trust-bar-inner { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .trust-bar-inner::-webkit-scrollbar { display: none; }
+      .trust-item { padding: 8px 12px; font-size: 0.8rem; flex-shrink: 0; }
       .features-grid { grid-template-columns: 1fr; }
       .steps-grid { grid-template-columns: 1fr; }
-      .steps-grid::before { display: none; }
+      .steps-grid--4 { grid-template-columns: 1fr; }
+      .steps-grid::before, .steps-grid--4::before { display: none; }
       .install-platforms { flex-direction: column; align-items: center; }
       .platform-card { width: 100%; max-width: 320px; }
       .phone-mockup { display: none; }
+      .crewipics-inner { grid-template-columns: 1fr; gap: 40px; }
+      .crewipics-grid { grid-template-rows: repeat(2, 110px); }
     }
 
     @media (min-width: 768px) {
@@ -1259,7 +1297,7 @@
     <div class="nav-actions">
       <a href="/app?auth=login" class="nav-link">Se connecter</a>
       <a href="/app?auth=register" class="nav-cta">
-        Commencer
+        C'est gratuit →
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </a>
     </div>
@@ -1275,15 +1313,15 @@
         </span>
       </div>
 
-      <div class="hero-badge reveal">PWA · Gratuit · iOS &amp; Android</div>
+      <div class="hero-badge reveal">Sans téléchargement · Gratuit · iOS &amp; Android</div>
 
       <h1 class="hero-headline reveal reveal-delay-1">
-        crew <em>we</em> <span>GO</span>
+        crew <em style="-webkit-text-fill-color:rgba(255,255,255,0.3);color:rgba(255,255,255,0.3)">we</em> <span>GO</span>
       </h1>
 
       <p class="hero-sub reveal reveal-delay-2">
-        <strong>Votre voyage commence maintenant.</strong><br />
-        Planifiez, dépensez, chattez — tout en un pour voyager ensemble.
+        <strong>Fini les 14 groupes WhatsApp.</strong><br />
+        Tout ton trip en un seul endroit — planning, budget, chat. Sans rien télécharger.
       </p>
 
       <div class="hero-ctas reveal reveal-delay-3">
@@ -1388,19 +1426,19 @@
     <div class="trust-bar-inner">
       <div class="trust-item reveal">
         <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        Sans App Store
+        Zéro App Store
       </div>
       <div class="trust-item reveal reveal-delay-1">
-        <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
-        iPhone &amp; Android
+        <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        Temps réel · équipe synchro
       </div>
       <div class="trust-item reveal reveal-delay-2">
         <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-        Gratuit
+        100% gratuit
       </div>
       <div class="trust-item reveal reveal-delay-3">
-        <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-        Open Beta
+        <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Disponible maintenant
       </div>
     </div>
   </div>
@@ -1413,7 +1451,7 @@
       <div class="features-header">
         <p class="section-eyebrow reveal">Features</p>
         <h2 class="section-title reveal">Tout ce qu'il faut<br />pour partir ensemble.</h2>
-        <p class="section-sub reveal">Everything your group needs to plan, split and enjoy the trip — without the chaos.</p>
+        <p class="section-sub reveal">Planning, budget, chat, photos — ton crew au même endroit, sans friction.</p>
       </div>
 
       <div class="features-grid">
@@ -1423,9 +1461,9 @@
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
           </div>
-          <div class="feature-tag">Planning</div>
+          <div class="feature-tag">Road Map</div>
           <div class="feature-title">Programme jour par jour</div>
-          <p class="feature-desc">Construisez votre roadmap en groupe en temps réel. Ajoutez des étapes, des activités, des notes. Chacun contribue, tout le monde est aligné. Build your shared itinerary — every step, every day.</p>
+          <p class="feature-desc">Construis ta roadmap en groupe en temps réel. Ajoute des étapes, des activités, des réservations. Chacun contribue, tout le crew est aligné.</p>
         </div>
 
         <!-- CrewiCash -->
@@ -1435,7 +1473,7 @@
           </div>
           <div class="feature-tag feature-tag--brand"><span class="brand-dot"></span>CrewiCash</div>
           <div class="feature-title">Budget partagé &amp; split auto</div>
-          <p class="feature-desc">Un budget commun, des dépenses tracées, des remboursements calculés automatiquement. Fini les tablettes Excel et les "tu me dois combien ?". One pool, zero awkward money talk.</p>
+          <p class="feature-desc">Un budget commun, des dépenses tracées, des remboursements calculés automatiquement. Fini le tableau Excel et les "tu me dois combien ?".</p>
         </div>
 
         <!-- CrewiChat -->
@@ -1445,19 +1483,90 @@
           </div>
           <div class="feature-tag feature-tag--brand"><span class="brand-dot"></span>CrewiChat</div>
           <div class="feature-title">Chat groupe + push notifs</div>
-          <p class="feature-desc">Discutez dans le groupe ou en privé, recevez des notifications push même sans l'app ouverte. Tout reste dans le voyage — pas de WhatsApp à gérer. Real-time chat, built right in.</p>
+          <p class="feature-desc">Discute en groupe ou en privé, reçois des notifications push même sans l'app ouverte. Tout reste dans le voyage — zéro groupe WhatsApp de plus.</p>
+        </div>
+
+        <!-- CrewiPics -->
+        <div class="feature-card reveal reveal-delay-3">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+          </div>
+          <div class="feature-tag feature-tag--brand"><span class="brand-dot"></span>CrewiPics</div>
+          <div class="feature-title">Album partagé, en direct</div>
+          <p class="feature-desc">Chaque membre uploade ses photos pendant le trip. Un seul album pour tout le crew. Plus jamais "envoie-moi tes photos sur Drive".</p>
+        </div>
+
+        <!-- Géolocalisation -->
+        <div class="feature-card reveal">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          </div>
+          <div class="feature-tag">Hub · Géo en temps réel</div>
+          <div class="feature-title">Où est ton crew, maintenant</div>
+          <p class="feature-desc">La carte du Hub affiche la position de chaque membre en temps réel. Pratique à l'aéroport, en ville, ou quand quelqu'un a disparu dans un marché.</p>
         </div>
 
         <!-- PWA -->
-        <div class="feature-card pwa-card reveal reveal-delay-3">
+        <div class="feature-card pwa-card reveal reveal-delay-1">
           <div class="feature-icon" style="background:rgba(249,115,22,0.2);border-color:rgba(249,115,22,0.4);">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-1.99.9-1.99 2v18c0 1.1.89 2 1.99 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/><circle cx="12" cy="17" r="1"/></svg>
           </div>
-          <div class="feature-tag">PWA · Progressive Web App</div>
-          <div class="feature-title">Sans App Store. Point.</div>
-          <p class="feature-desc">Installez CrewiGO directement depuis votre navigateur sur iOS ou Android. Aucun téléchargement, aucun compte Apple ou Google requis. One tap. Done. No store, no friction, no waiting.</p>
+          <div class="feature-tag">PWA · Sans App Store</div>
+          <div class="feature-title">Installe depuis le navigateur. Point.</div>
+          <p class="feature-desc">Installe CrewiGO directement depuis ton navigateur sur iOS ou Android. Aucun téléchargement, aucun compte Apple ou Google requis. Un tap. C'est fait.</p>
         </div>
 
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ─── CREWIPICS SPOTLIGHT ─── -->
+  <section class="crewipics-section" id="crewipics">
+    <div class="section-inner crewipics-inner">
+      <div class="crewipics-text reveal">
+        <p class="section-eyebrow">CrewiPics — Nouveau</p>
+        <h2 class="section-title">Vos meilleurs moments,<br />pour tout le crew.</h2>
+        <p class="section-sub">Pendant le trip, chaque membre ajoute ses photos à l'album partagé. Le voyage se raconte en temps réel — pas besoin d'attendre le retour pour partager.</p>
+        <a href="/app?auth=register" class="btn-primary" style="display:inline-flex;margin-top:32px;text-decoration:none">
+          Essayer gratuitement
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+      <div class="crewipics-grid reveal reveal-delay-1" aria-hidden="true">
+        <!-- Grille de photos simulées -->
+        <div class="pic-cell pic-large" style="background:linear-gradient(135deg,#1a1a1a,#222);border-radius:16px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
+          <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(249,115,22,0.15),rgba(139,92,246,0.1))"></div>
+          <span style="font-size:2.8rem;position:relative;z-index:1">🗼</span>
+          <div class="pic-avatar" style="position:absolute;bottom:10px;left:10px;width:24px;height:24px;border-radius:50%;background:#F97316;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid #000">F</div>
+        </div>
+        <div class="pic-cell" style="background:linear-gradient(135deg,#1a1a1a,#1e1e1e);border-radius:12px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+          <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(16,185,129,0.12),transparent)"></div>
+          <span style="font-size:1.8rem;position:relative;z-index:1">🍜</span>
+          <div class="pic-avatar" style="position:absolute;bottom:8px;left:8px;width:20px;height:20px;border-radius:50%;background:#10B981;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid #000">L</div>
+        </div>
+        <div class="pic-cell" style="background:linear-gradient(135deg,#1a1a1a,#1e1e1e);border-radius:12px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+          <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(59,130,246,0.12),transparent)"></div>
+          <span style="font-size:1.8rem;position:relative;z-index:1">⛩️</span>
+          <div class="pic-avatar" style="position:absolute;bottom:8px;left:8px;width:20px;height:20px;border-radius:50%;background:#3B82F6;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid #000">S</div>
+        </div>
+        <div class="pic-cell" style="background:linear-gradient(135deg,#1a1a1a,#1e1e1e);border-radius:12px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+          <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(249,115,22,0.1),transparent)"></div>
+          <span style="font-size:1.8rem;position:relative;z-index:1">🎌</span>
+          <div class="pic-avatar" style="position:absolute;bottom:8px;left:8px;width:20px;height:20px;border-radius:50%;background:#8B5CF6;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid #000">M</div>
+        </div>
+        <div class="pic-cell" style="background:linear-gradient(135deg,#1a1a1a,#1e1e1e);border-radius:12px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+          <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(16,185,129,0.1),transparent)"></div>
+          <span style="font-size:1.8rem;position:relative;z-index:1">🌸</span>
+          <div class="pic-avatar" style="position:absolute;bottom:8px;left:8px;width:20px;height:20px;border-radius:50%;background:#F97316;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid #000">F</div>
+        </div>
+        <div class="pic-cell" style="background:linear-gradient(135deg,#141414,#1a1a1a);border-radius:12px;display:flex;align-items:center;justify-content:center;border:1px dashed rgba(249,115,22,0.3);">
+          <div style="text-align:center">
+            <div style="font-size:1.4rem;margin-bottom:4px">📷</div>
+            <div style="font-size:9px;color:rgba(249,115,22,0.7);font-weight:700">+ Ajouter</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -1468,17 +1577,17 @@
   <section class="how" id="how">
     <div class="section-inner">
       <div>
-        <p class="section-eyebrow reveal">CrewiGO — Comment ça marche</p>
-        <h2 class="section-title reveal">Prêt en 3 étapes.</h2>
-        <p class="section-sub reveal">From zero to GO in minutes — no setup headaches, no installs to manage.</p>
+        <p class="section-eyebrow reveal">Comment ça marche</p>
+        <h2 class="section-title reveal">De zéro à GO<br />en 4 étapes.</h2>
+        <p class="section-sub reveal">Pas de configuration, pas d'install à gérer. Ton crew est prêt en quelques minutes.</p>
       </div>
 
-      <div class="steps-grid">
+      <div class="steps-grid steps-grid--4">
         <div class="step-card reveal">
           <div class="step-number">1</div>
           <div>
-            <div class="step-title">Crée ton compte (30 sec)</div>
-            <p class="step-desc">Un email, un mot de passe — c'est tout. Ton profil est prêt en quelques secondes, gratuit et sans carte bancaire. Just sign up and GO.</p>
+            <div class="step-title">Crée ton compte</div>
+            <p class="step-desc">Un email, un mot de passe — c'est tout. Ton profil est prêt en quelques secondes, gratuit et sans carte bancaire.</p>
           </div>
         </div>
 
@@ -1486,15 +1595,23 @@
           <div class="step-number">2</div>
           <div>
             <div class="step-title">Crée ton voyage</div>
-            <p class="step-desc">Donne un nom, des dates, invite ton équipage. En quelques clics, l'espace de voyage est créé et partagé avec tout le crew. Create your trip, name your crew.</p>
+            <p class="step-desc">Donne un nom, des dates, une destination. En quelques clics, l'espace de voyage est créé et prêt à accueillir ton équipage.</p>
           </div>
         </div>
 
         <div class="step-card reveal reveal-delay-2">
           <div class="step-number">3</div>
           <div>
-            <div class="step-title">Planifiez &amp; Partez.</div>
-            <p class="step-desc">Chaque membre ajoute des étapes, vote, dépose des dépenses via <strong style="color:var(--accent)">CrewiCash</strong>, discute dans <strong style="color:var(--accent)">CrewiChat</strong>. Tout en poche — Roam together.</p>
+            <div class="step-title">Partage le lien</div>
+            <p class="step-desc">Un lien, et tout le crew est dedans en 10 secondes. Pas de compte obligatoire pour rejoindre — ils scannent, ils entrent.</p>
+          </div>
+        </div>
+
+        <div class="step-card reveal reveal-delay-3">
+          <div class="step-number">4</div>
+          <div>
+            <div class="step-title">Planifie &amp; Pars.</div>
+            <p class="step-desc">Chacun ajoute des étapes, dépose des dépenses via <strong style="color:var(--accent)">CrewiCash</strong>, discute dans <strong style="color:var(--accent)">CrewiChat</strong>, poste ses photos dans <strong style="color:var(--accent)">CrewiPics</strong>. Roam together.</p>
           </div>
         </div>
       </div>
@@ -1508,8 +1625,8 @@
     <div class="section-inner">
       <div class="install-header">
         <p class="section-eyebrow reveal">Installation</p>
-        <h2 class="section-title reveal">Installe l'app<br />en 10 secondes.</h2>
-        <p class="section-sub reveal">Scanne le QR code ou suis les instructions ci-dessous. No App Store. No Google Play. Just GO.</p>
+        <h2 class="section-title reveal">Ton app.<br />Zéro App Store.</h2>
+        <p class="section-sub reveal">Scanne le QR code ou suis les instructions ci-dessous. Pas de Google Play. Pas d'App Store. Just GO.</p>
       </div>
 
       <div class="install-content">
@@ -1539,7 +1656,7 @@
             <ul class="platform-steps">
               <li><div class="step-num-small">1</div>Ouvre <strong style="color:rgba(255,255,255,0.8)">crewigo.app</strong> dans Safari</li>
               <li><div class="step-num-small">2</div>Appuie sur le bouton Partager <strong style="color:rgba(255,255,255,0.8)">⬆</strong></li>
-              <li><div class="step-num-small">3</div>Sélectionne "Sur l'écran d'accueil"</li>
+              <li><div class="step-num-small">3</div>Sélectionne "Sur l'écran d'accueil" <em style="color:rgba(255,255,255,0.4)">(scroll vers le bas si besoin)</em></li>
               <li><div class="step-num-small">4</div>Confirme — l'icône apparaît !</div></li>
             </ul>
           </div>
@@ -1598,12 +1715,13 @@
     <p class="footer-tagline">Roam together.</p>
     <nav class="footer-links">
       <a href="#features">Features</a>
+      <a href="#crewipics">CrewiPics</a>
       <a href="#how">Comment ça marche</a>
       <a href="#install">Installer</a>
       <a href="/app?auth=login">Se connecter</a>
       <a href="/app?auth=register">Créer un compte</a>
     </nav>
-    <p class="footer-copy">© 2026 CrewiGO — Made with ❤️ for adventurous crews</p>
+    <p class="footer-copy">© 2026 CrewiGO — Built for crews who actually go.</p>
   </footer>
 
   <script>
@@ -1742,7 +1860,7 @@
             introOverlay.style.opacity = '0';
             setTimeout(() => { introOverlay.style.display = 'none'; }, 700);
           }, 480);
-        }, 3200);
+        }, 1800);
       }
     }
   </script>
