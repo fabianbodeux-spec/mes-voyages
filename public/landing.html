@@ -1329,7 +1329,7 @@
           Créer mon compte — c'est gratuit
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
-        <button id="pwa-install-btn-hero" class="btn-ghost" style="display:none">
+        <button id="pwa-install-btn-hero" class="btn-ghost">
           Installer l'app
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12M8 12l4 4 4-4"/></svg>
         </button>
@@ -1752,34 +1752,39 @@
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches
                         || window.navigator.standalone === true;
 
-      // Déjà installée → rien à faire
-      if (isStandalone) return;
-
       const btnHero    = document.getElementById('pwa-install-btn-hero');
       const btnSection = document.getElementById('pwa-install-btn-landing');
       const btnOpen    = document.getElementById('pwa-open-btn');
       const iosTooltip = document.getElementById('pwa-ios-tooltip');
+
+      // Déjà installée → remplacer le bouton hero par "Ouvrir l'app"
+      if (isStandalone) {
+        if (btnHero) btnHero.style.display = 'none';
+        return;
+      }
 
       function wasDismissed() {
         const ts = localStorage.getItem(STORAGE_KEY);
         return ts && (Date.now() - parseInt(ts, 10) < DISMISS_DAYS * 86400000);
       }
 
-      function showButtons() {
-        if (wasDismissed()) return;
-        if (btnHero)    { btnHero.style.display    = 'inline-flex'; }
+      // Le bouton hero est TOUJOURS visible (déjà sans display:none dans le HTML)
+      // Le bouton section s'affiche quand le prompt est dispo
+      function showSectionButton() {
         if (btnSection) { btnSection.style.display = 'inline-flex'; btnOpen.style.display = 'none'; }
       }
 
-      // ── iOS : instructions manuelles
+      // ── iOS : clic sur hero → tooltip instructions, clic section → idem
       if (isIOS) {
-        showButtons();
-        [btnHero, btnSection].forEach(function(btn) {
-          if (!btn) return;
-          btn.addEventListener('click', function() {
+        if (btnHero) btnHero.addEventListener('click', function() {
+          if (iosTooltip) iosTooltip.classList.toggle('visible');
+        });
+        if (btnSection) {
+          showSectionButton();
+          btnSection.addEventListener('click', function() {
             if (iosTooltip) iosTooltip.classList.toggle('visible');
           });
-        });
+        }
         return;
       }
 
@@ -1788,14 +1793,24 @@
 
       function onPrompt(e) {
         deferredPrompt = e;
-        showButtons();
+        if (!wasDismissed()) showSectionButton();
+      }
+
+      // Fallback hero button : scroll vers #install si pas de prompt dispo
+      if (btnHero) {
+        btnHero.addEventListener('click', function() {
+          if (deferredPrompt) {
+            triggerInstall();
+          } else {
+            document.getElementById('install')?.scrollIntoView({ behavior: 'smooth' });
+          }
+        });
       }
 
       // Récupérer l'événement s'il a été capturé en avance (dans <head>)
       if (window._pwaPrompt) {
         onPrompt(window._pwaPrompt);
       } else {
-        // Sinon s'abonner pour le recevoir quand il arrive
         window._pwaPromptReady = onPrompt;
         window.addEventListener('beforeinstallprompt', onPrompt);
       }
@@ -1820,7 +1835,7 @@
         if (btnOpen)    btnOpen.style.display    = 'inline-flex';
       }
 
-      if (btnHero)    btnHero.addEventListener('click',    triggerInstall);
+      // btnHero est déjà branché ci-dessus (fallback scroll ou triggerInstall)
       if (btnSection) btnSection.addEventListener('click', triggerInstall);
     })();
 
