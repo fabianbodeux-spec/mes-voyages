@@ -50,6 +50,19 @@
   /* Typography — Inter partout */
   --font-display: 'Satoshi', system-ui, -apple-system, sans-serif;
   --font-body:    'Satoshi', system-ui, -apple-system, sans-serif;
+
+  /* Accents secondaires — palette étendue */
+  --accent-blue:        #0EA5E9;
+  --accent-blue-dark:   #0284C7;
+  --accent-blue-glow:   rgba(14, 165, 233, 0.12);
+
+  --accent-green:       #10B981;
+  --accent-green-dark:  #059669;
+  --accent-green-glow:  rgba(16, 185, 129, 0.12);
+
+  --accent-violet:      #8B5CF6;
+  --accent-violet-dark: #7C3AED;
+  --accent-violet-glow: rgba(139, 92, 246, 0.12);
 }
 
 /* ─── BASE ───────────────────────────────────────────────────── */
@@ -968,19 +981,20 @@ body {
 .tab-nav::-webkit-scrollbar { display: none; }
 
 .tab-btn {
-  flex: 1;
-  min-width: 58px;
+  flex: 0 0 auto;
+  min-width: 52px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 9px 4px 8px;
+  justify-content: center;
+  gap: 0;
+  padding: 8px 6px 6px;
   border: none;
   background: transparent;
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 0.65rem;
-  font-weight: 500;
+  font-size: 0;                 /* label masqué par défaut */
+  font-weight: 600;
   font-family: 'Satoshi', var(--font-body);
   border-bottom: 2px solid transparent;
   transition: color 0.15s, border-color 0.15s, transform 0.08s, opacity 0.08s;
@@ -990,6 +1004,14 @@ body {
   position: relative;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Label visible seulement pour l'onglet actif ou les onglets primaires */
+.tab-btn.active,
+.tab-btn.tab-primary {
+  min-width: 62px;
+  font-size: 0.62rem;
+  gap: 3px;
+}
 .tab-btn.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
@@ -997,21 +1019,21 @@ body {
 }
 .tab-btn:not(.active):hover { color: var(--text); }
 .tab-btn:active {
-  opacity: 0.65;
-  transform: scale(0.93);
+  opacity: 0.62;
+  transform: scale(0.92);
 }
 
 /* ─── TAB SVG ICONS ──────────────────────────────────────────── */
 .tab-icon { font-size: 1rem; }
 
 .tab-svg-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.15s;
   flex-shrink: 0;
 }
 .tab-svg-icon svg {
@@ -1023,10 +1045,9 @@ body {
 }
 .tab-btn.active .tab-svg-icon {
   background: var(--accent);
+  transform: scale(1.05);
 }
-.tab-btn.active .tab-svg-icon svg {
-  fill: #ffffff;
-}
+.tab-btn.active .tab-svg-icon svg { fill: #ffffff; }
 .tab-btn:not(.active):hover .tab-svg-icon svg { fill: var(--text); }
 
 .tab-panel { display: none; }
@@ -1428,7 +1449,7 @@ body {
 .empty-state {
   display: flex; flex-direction: column; align-items: center;
   justify-content: center; padding: 56px 28px;
-  text-align: center; gap: 14px;
+  text-align: center;
 }
 .empty-icon {
   width: 64px; height: 64px;
@@ -1443,8 +1464,9 @@ body {
   font-weight: 700;
   color: var(--text);
   letter-spacing: -.02em;
+  margin: 0 0 6px;
 }
-.empty-state p { color: var(--text-muted); font-size: 0.84rem; line-height: 1.6; max-width: 260px; }
+.empty-state p { color: var(--text-muted); font-size: 0.84rem; line-height: 1.6; max-width: 260px; margin: 0 0 18px; }
 .hidden { display: none !important; }
 
 .empty-tab {
@@ -1455,6 +1477,53 @@ body {
 }
 .empty-tab-icon { font-size: 2.4rem; display: flex; justify-content: center; }
 .empty-tab p { font-size: 0.84rem; line-height: 1.6; max-width: 260px; }
+
+/* ─── EMPTY STATES ILLUSTRÉS ─────────────────────────────────── */
+/* (les classes .empty-state-* s'utilisent à l'intérieur de .empty-state) */
+.empty-state-visual {
+  margin-bottom: 20px;
+  animation: esFloat 3.8s ease-in-out infinite;
+}
+@keyframes esFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-7px); }
+}
+.empty-state-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+.empty-state-sub {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  max-width: 272px;
+  margin: 0 0 22px;
+}
+.empty-state-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 22px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 100px;
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(249,115,22,.28);
+  transition: transform .12s, box-shadow .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.empty-state-cta:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px rgba(249,115,22,.18);
+}
 
 /* ═══════════════════════════════════════════════════════════════
    MODALS

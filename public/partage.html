@@ -177,31 +177,30 @@
       </div>
     </div>
     <h2 class="id-voyage-nom" id="id-voyage-nom">Trip partagé</h2>
-    <p class="id-sous-titre" id="id-sous-titre-main">Qui êtes-vous ?</p>
+    <p class="id-sous-titre" id="id-sous-titre-main">T'es qui dans le crew&nbsp;?</p>
     <div id="id-participants" class="id-parts"></div>
     <!-- Formulaire prénom masqué par défaut → affiché si pas de participants ou via lien -->
     <button id="id-nouveau-btn" onclick="_afficherFormulairePrenom()"
       style="background:none;border:none;color:var(--text-muted);font-size:.82rem;cursor:pointer;padding:8px 0;font-family:var(--font-body);text-decoration:underline;display:none">
-      Vous n'êtes pas dans la liste ?
+      Mon prénom n'est pas là
     </button>
     <div class="id-form" id="id-nom-form" style="display:none">
-      <p class="id-ou" style="margin:0 0 10px;font-size:.84rem;color:var(--text-muted)">Entrez votre prénom</p>
-      <input id="id-nom-input" class="id-input" placeholder="Votre prénom…"
+      <input id="id-nom-input" class="id-input" placeholder="Ton prénom…"
              onkeydown="if(event.key==='Enter')_idParNom()">
-      <button class="btn-primary" onclick="_idParNom()">Continuer →</button>
+      <button class="btn-primary" onclick="_idParNom()">J'embarque →</button>
     </div>
-    <button class="id-skip" id="id-skip-btn" onclick="_idLectureSeule()">Accéder en lecture seule</button>
+    <button class="id-skip" id="id-skip-btn" onclick="_idLectureSeule()">Juste regarder</button>
 
     <!-- Formulaire PIN (affiché à la place si participant protégé) -->
     <div id="id-pin-form" style="display:none">
       <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:12px">
-        🔒 Accès protégé pour <strong id="id-pin-nom"></strong>
+        C'est le coin privé de <strong id="id-pin-nom"></strong>
       </p>
       <div class="id-form">
         <input id="id-pin-input" class="id-input" type="password" maxlength="8"
                placeholder="Code PIN…" inputmode="numeric" autocomplete="off"
                onkeydown="if(event.key==='Enter')_verifierPin()">
-        <button class="btn-primary" onclick="_verifierPin()">OK</button>
+        <button class="btn-primary" onclick="_verifierPin()">C'est moi →</button>
       </div>
       <p id="id-pin-erreur" style="color:#EF4444;font-size:.82rem;margin-top:6px;display:none">
         Code incorrect, réessaie.
@@ -228,35 +227,35 @@
   </header>
 
   <nav class="tab-nav">
-    <button class="tab-btn" data-tab="accueil" onclick="changerOnglet('accueil', this)">
-      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>
-      <span>Basecamp</span>
-    </button>
-    <button class="tab-btn active" data-tab="programme" onclick="changerOnglet('programme', this)">
+    <!-- Onglets PRIMAIRES : label toujours visible -->
+    <button class="tab-btn tab-primary active" data-tab="programme" onclick="changerOnglet('programme', this)">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
       <span>Road Map</span>
     </button>
-    <button class="tab-btn" data-tab="preparation" onclick="changerOnglet('preparation', this)">
-      <span class="tab-svg-icon">
-        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-      </span>
-      <span>Prépa</span>
+    <button class="tab-btn tab-primary" data-tab="accueil" onclick="changerOnglet('accueil', this)">
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>
+      <span>Hub</span>
     </button>
+    <button class="tab-btn tab-primary" data-tab="discussion" onclick="changerOnglet('discussion', this)">
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></span>
+      <span id="tab-discussion-label">CrewiChat</span>
+    </button>
+    <!-- Onglets SECONDAIRES : icône seule, label visible si actif -->
     <button class="tab-btn" data-tab="budget" onclick="changerOnglet('budget', this)">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg></span>
       <span>CrewiCash</span>
     </button>
-    <button class="tab-btn" data-tab="discussion" onclick="changerOnglet('discussion', this)">
-      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></span>
-      <span id="tab-discussion-label">CrewiChat</span>
+    <button class="tab-btn" data-tab="preparation" onclick="changerOnglet('preparation', this)">
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span>
+      <span>Prépa</span>
     </button>
     <button class="tab-btn" data-tab="docs" onclick="changerOnglet('docs', this)">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></span>
-      <span>Docs</span>
+      <span>Infos</span>
     </button>
     <button class="tab-btn" data-tab="photos" onclick="changerOnglet('photos', this); chargerPhotos()">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></span>
-      <span>Photos</span>
+      <span>CrewiPics</span>
     </button>
   </nav>
 
@@ -276,7 +275,7 @@
           </div>
           <div id="geo-map" style="height:200px;background:#e5e7eb"></div>
           <div id="geo-list" style="padding:8px 14px;min-height:36px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-            <span style="font-size:.8rem;color:var(--text-muted)">Aucun participant ne partage sa position</span>
+            <span style="font-size:.8rem;color:var(--text-muted)">Personne n'est localisé pour l'instant</span>
           </div>
         </div>
       </div>
@@ -350,9 +349,11 @@
 
         <!-- Upload zone -->
         <div id="photo-upload-zone" class="photo-upload-zone" onclick="document.getElementById('photo-file-input').click()">
-          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--accent);margin-bottom:8px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5v-9m-4.5 4.5 4.5-4.5 4.5 4.5M3 16.5A2.25 2.25 0 0 0 5.25 18.75h13.5A2.25 2.25 0 0 0 21 16.5"/></svg>
-          <span style="font-size:.9rem;font-weight:600">Ajouter une photo</span>
-          <span style="font-size:.75rem;color:var(--text-muted);margin-top:2px">JPEG · PNG · HEIC — max 10 Mo</span>
+          <span class="upload-pill">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Ajouter une photo
+          </span>
+          <span class="upload-hint">JPEG · PNG · HEIC — max 10 Mo</span>
         </div>
         <input type="file" id="photo-file-input" accept="image/*" style="display:none" onchange="previewPhotoUpload(this)">
 
@@ -365,16 +366,39 @@
           </div>
           <div style="display:flex;gap:8px;margin-top:10px">
             <button type="button" onclick="annulerUploadPhoto()" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-solid);background:transparent;color:var(--text);font-size:.88rem;cursor:pointer">Annuler</button>
-            <button type="button" onclick="envoyerPhoto()" id="photo-send-btn" style="flex:2;padding:10px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:.88rem;font-weight:700;cursor:pointer">📤 Envoyer</button>
+            <button type="button" onclick="envoyerPhoto()" id="photo-send-btn" style="flex:2;padding:10px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:.88rem;font-weight:700;cursor:pointer">📤 Partager</button>
           </div>
         </div>
 
         <!-- Grille photos -->
         <div id="photos-grid" class="photos-grid" style="margin-top:16px"></div>
-        <div id="photos-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--text-muted)">
-          <div style="font-size:2.5rem;margin-bottom:8px">📷</div>
-          <div style="font-weight:600">Pas encore de photos</div>
-          <div style="font-size:.82rem;margin-top:4px">Soyez le premier à en partager une !</div>
+        <div id="photos-empty" class="empty-state" style="display:none">
+          <div class="empty-state-visual">
+            <svg viewBox="0 0 120 100" width="140" height="116" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="es-pg" x1="0" y1="0" x2="120" y2="100" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#F97316" stop-opacity="0.14"/>
+                  <stop offset="100%" stop-color="#FB923C" stop-opacity="0.04"/>
+                </linearGradient>
+              </defs>
+              <rect x="18" y="26" width="52" height="58" rx="4" fill="white" opacity="0.05" transform="rotate(-8 18 26)"/>
+              <rect x="28" y="20" width="52" height="58" rx="4" fill="white" opacity="0.05" transform="rotate(4 28 20)"/>
+              <rect x="26" y="18" width="68" height="72" rx="6" fill="#2C2B28" stroke="#F97316" stroke-width="1.5" stroke-opacity="0.3"/>
+              <rect x="32" y="24" width="56" height="44" rx="3" fill="url(#es-pg)"/>
+              <polyline points="36,64 54,44 62,54 72,38 84,64" fill="none" stroke="#F97316" stroke-width="2" stroke-opacity="0.55" stroke-linejoin="round" stroke-linecap="round"/>
+              <circle cx="74" cy="32" r="5" fill="#F97316" opacity="0.4"/>
+              <rect x="42" y="72" width="36" height="6" rx="3" fill="white" opacity="0.07"/>
+              <circle cx="94" cy="22" r="12" fill="#F97316"/>
+              <line x1="94" y1="17" x2="94" y2="27" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="89" y1="22" x2="99" y2="22" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="empty-state-title">L'album est vierge</h3>
+          <p class="empty-state-sub">Capturez les premiers souvenirs du voyage. Vos photos apparaîtront ici pour tout le groupe.</p>
+          <button class="empty-state-cta" onclick="document.getElementById('photo-file-input').click()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+            Ajouter la première photo
+          </button>
         </div>
 
       </div>
@@ -1399,9 +1423,14 @@ function _togglePartagerPosition() {
 
 function _geoDemarrer() {
   if (!navigator.geolocation) { alert('Géolocalisation non disponible.'); return; }
-  // Révéler la section géo immédiatement dès l'activation
+  // Révéler la section géo avec animation
   const geoSection = document.getElementById('geo-section');
-  if (geoSection) geoSection.style.display = '';
+  if (geoSection) {
+    geoSection.style.display = '';
+    geoSection.classList.remove('geo-enter');
+    void geoSection.offsetWidth; // reflow
+    geoSection.classList.add('geo-enter');
+  }
   const btn = document.getElementById('geo-toggle-btn');
   if (btn) { btn.textContent = '⏳ Localisation…'; btn.style.background = '#F59E0B'; }
   _geoWatchId = navigator.geolocation.watchPosition(async pos => {
@@ -1420,7 +1449,7 @@ function _geoDemarrer() {
   }, err => {
     console.warn('Geo:', err);
     const b = document.getElementById('geo-toggle-btn');
-    if (b) { b.textContent = 'Partager ma position'; b.style.background = '#3B82F6'; }
+    if (b) { b.textContent = 'Partager ma position'; b.style.background = 'var(--accent)'; }
     _geoActive = false;
     if (err.code === 1) {
       toast('📍 Localisation refusée — autorise-la dans les réglages de ton navigateur');
@@ -1437,7 +1466,7 @@ function _geoArreter() {
   _geoActive = false;
   fetch(`/api/partage/${_partageToken}/location/${_geoDeviceId}`, { method: 'DELETE' }).catch(() => {});
   const b = document.getElementById('geo-toggle-btn');
-  if (b) { b.textContent = 'Partager ma position'; b.style.background = '#3B82F6'; }
+  if (b) { b.textContent = 'Partager ma position'; b.style.background = 'var(--accent)'; }
   _rafraichirPositions();
 }
 
@@ -1778,7 +1807,22 @@ window.chargerProgramme = async function() {
   });
 
   if (items.length === 0) {
-    container.innerHTML = '<div class="empty-tab"><div class="empty-tab-icon">📆</div><p>Aucun élément planifié</p></div>';
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-state-visual">
+        <svg width="96" height="96" viewBox="0 0 96 96" fill="none">
+          <circle cx="48" cy="48" r="40" fill="rgba(249,115,22,.08)"/>
+          <rect x="28" y="32" width="40" height="36" rx="6" fill="none" stroke="var(--accent)" stroke-width="2"/>
+          <line x1="28" y1="44" x2="68" y2="44" stroke="var(--accent)" stroke-width="1.5" opacity=".5"/>
+          <rect x="34" y="50" width="10" height="4" rx="2" fill="var(--accent)" opacity=".35"/>
+          <rect x="34" y="58" width="16" height="4" rx="2" fill="var(--accent)" opacity=".2"/>
+          <rect x="52" y="50" width="10" height="4" rx="2" fill="var(--accent)" opacity=".2"/>
+          <circle cx="36" cy="32" r="4" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>
+          <circle cx="60" cy="32" r="4" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>
+        </svg>
+      </div>
+      <p class="empty-state-title">Pas encore de programme</p>
+      <p class="empty-state-sub">L'admin prépare l'itinéraire — check plus tard !</p>
+    </div>`;
     return;
   }
 
@@ -2772,21 +2816,83 @@ function escHtml(t) {
 }
 
 /* ─── Album Photos ────────────────────────────────────────────── */
+/* ── Upload zone redesign ──────────────────────────────────── */
 .photo-upload-zone {
-  border: 2px dashed var(--border-solid);
-  border-radius: 14px;
-  padding: 24px 16px;
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 7px;
+  padding: 26px 20px;
+  border-radius: 18px;
+  border: none;
   cursor: pointer;
-  transition: border-color .2s, background .2s;
-  background: var(--card);
+  background: linear-gradient(135deg,
+    rgba(249,115,22,.09) 0%,
+    rgba(251,146,60,.04) 50%,
+    rgba(249,115,22,.07) 100%
+  );
+  box-shadow: inset 0 0 0 1.5px rgba(249,115,22,.28);
+  transition: box-shadow .2s, background .2s, transform .1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.photo-upload-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg,
+    transparent 30%,
+    rgba(249,115,22,.09) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: uploadShimmer 3s ease-in-out infinite;
+}
+@keyframes uploadShimmer {
+  0%   { background-position: -100% 0; }
+  60%  { background-position: 220% 0; }
+  100% { background-position: 220% 0; }
 }
 .photo-upload-zone:active {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--card));
+  transform: scale(0.98);
+  box-shadow: inset 0 0 0 2px rgba(249,115,22,.55);
+}
+.upload-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: .86rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 100px;
+  box-shadow: 0 4px 14px rgba(249,115,22,.30);
+  position: relative;
+  z-index: 1;
+}
+.upload-hint {
+  font-size: .71rem;
+  color: var(--text-muted);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Géolocalisation — animation entrée ─────────────────────── */
+@keyframes geoSlideDown {
+  from { opacity: 0; transform: translateY(-10px) scaleY(.95); transform-origin: top center; }
+  to   { opacity: 1; transform: translateY(0) scaleY(1); transform-origin: top center; }
+}
+#geo-section.geo-enter {
+  animation: geoSlideDown .38s cubic-bezier(.34,1.3,.64,1) both;
+}
+@keyframes geoPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(249,115,22,.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(249,115,22,0); }
+  100% { box-shadow: 0 0 0 0 rgba(249,115,22,0); }
 }
 .photos-grid {
   display: grid;
