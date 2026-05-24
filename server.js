@@ -1293,6 +1293,21 @@ app.delete('/api/photos/:id', authMiddleware, async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+// Suppression photo par le participant auteur (sans JWT)
+app.delete('/api/partage/:token/photos/:id', async (req, res) => {
+  try {
+    const v = await run(() => db.voyages.getByToken(req.params.token));
+    if (!v) return res.status(404).json({ error: 'Voyage introuvable' });
+    const photo = await run(() => db.photos.getById(+req.params.id));
+    if (!photo) return res.status(404).json({ error: 'Photo introuvable' });
+    if (photo.voyage_id !== v.id) return res.status(403).json({ error: 'Accès refusé' });
+    const { auteur } = req.body;
+    if (!auteur || photo.auteur !== auteur) return res.status(403).json({ error: 'Tu ne peux supprimer que tes propres photos' });
+    await run(() => db.photos.delete(+req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
 // ─── DIAGNOSTIC (Railway debug) ─────────────────────────────────────────────
 app.get('/api/diag', async (req, res) => {
   const mode = IS_CLOUD ? 'postgresql' : 'json';
