@@ -849,6 +849,7 @@ async function _initPartage() {
     }
     const d = await resp.json();
     voyageActuel = d.voyage.id;
+    window._hubVoyage = d.voyage; // Stocker pour le Hub
 
     // Remplir l'en-tête du voyage
     document.getElementById('voyage-nom').textContent = d.voyage.nom;
@@ -1296,6 +1297,8 @@ function _lancerPartage(identite) {
     const tabBtn = document.querySelector(`[data-tab="${_targetTab}"]`);
     if (tabBtn) { setTimeout(() => changerOnglet(_targetTab, tabBtn), 80); setTimeout(_showPwaInstallBanner, 25000); return; }
   }
+  // Construire le Hub (même si on n'est pas sur cet onglet)
+  _chargerHub();
   // Road Map en premier : c'est ce que les participants viennent voir en priorité
   changerOnglet('programme', document.querySelector('[data-tab="programme"]'));
   setTimeout(_showPwaInstallBanner, 25000);
@@ -1309,6 +1312,105 @@ if (navigator.serviceWorker) {
       if (tabBtn) changerOnglet(e.data.tab, tabBtn);
     }
   });
+}
+
+// ── HUB ────────────────────────────────────────────────────────────────────
+function _chargerHub() {
+  const container = document.getElementById('dash-content');
+  if (!container) return;
+
+  const voyage  = window._hubVoyage;
+  const parts   = participantsActuels || [];
+  const moi     = _partageIdentite;
+
+  // Calcul jours restants / en cours
+  let statusBadge = '';
+  if (voyage?.date_debut && voyage?.date_fin) {
+    const now   = new Date(); now.setHours(0,0,0,0);
+    const debut = new Date(voyage.date_debut); debut.setHours(0,0,0,0);
+    const fin   = new Date(voyage.date_fin);   fin.setHours(0,0,0,0);
+    const msJ   = 86400000;
+    if (now < debut) {
+      const j = Math.round((debut - now) / msJ);
+      statusBadge = `<span class="hub-badge hub-badge--coming">J-${j}</span>`;
+    } else if (now <= fin) {
+      const j = Math.round((now - debut) / msJ) + 1;
+      const total = Math.round((fin - debut) / msJ) + 1;
+      statusBadge = `<span class="hub-badge hub-badge--live">🟢 Jour ${j}/${total}</span>`;
+    } else {
+      statusBadge = `<span class="hub-badge hub-badge--done">✅ Terminé</span>`;
+    }
+  }
+
+  // Salutation
+  const greeting = moi?.nom
+    ? `Salut, <strong>${_he(moi.nom)}</strong> 👋`
+    : `Bienvenue dans le crew 👋`;
+
+  // L'équipage
+  const equipageHtml = parts.length === 0
+    ? `<span style="font-size:.82rem;color:var(--text-muted)">Aucun participant enregistré</span>`
+    : parts.map(p => `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:5px;min-width:44px">
+          <div class="avatar" style="width:38px;height:38px;font-size:.78rem;font-weight:800;background:${_he(p.couleur||'#6366F1')};color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            ${_he((p.nom||'?')[0].toUpperCase())}
+          </div>
+          <span style="font-size:.65rem;color:var(--text-muted);max-width:44px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">${_he(p.nom)}</span>
+        </div>`).join('');
+
+  // Actions rapides
+  const actions = [
+    { tab: 'discussion', icon: `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>`, label: 'CrewiChat', color: 'var(--accent-blue,#0EA5E9)', extra: 'chargerCommentaires()' },
+    { tab: 'budget',     icon: `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>`, label: 'CrewiCash', color: 'var(--accent-green,#10B981)' },
+    { tab: 'photos',     icon: `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>`, label: 'CrewiPics', color: 'var(--accent-violet,#8B5CF6)', extra: 'chargerPhotos()' },
+    { tab: 'preparation',icon: `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`, label: 'Prépa', color: '#F59E0B' }
+  ];
+
+  const actionsHtml = actions.map(a => `
+    <button class="hub-action-btn" onclick="changerOnglet('${a.tab}', document.querySelector('[data-tab=\\'${a.tab}\\']'));${a.extra||''}">
+      <div class="hub-action-icon" style="background:${a.color}22;color:${a.color}">${a.icon}</div>
+      <span class="hub-action-label">${a.label}</span>
+    </button>`).join('');
+
+  // Géoloc shortcut
+  const geoHtml = `
+    <div class="hub-card hub-geo-card">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-weight:700;font-size:.92rem;margin-bottom:2px">📍 Position du groupe</div>
+          <div style="font-size:.78rem;color:var(--text-muted)">${_geoActive ? 'Tu partages ta position' : 'Partage ta position au crew'}</div>
+        </div>
+        <button onclick="_togglePartagerPosition()" id="hub-geo-btn"
+          style="background:${_geoActive ? '#EF4444' : 'var(--accent)'};color:#fff;border:none;border-radius:20px;padding:8px 16px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:var(--font-body);white-space:nowrap;transition:background .2s">
+          ${_geoActive ? '🔴 Arrêter' : '📍 Partager'}
+        </button>
+      </div>
+    </div>`;
+
+  container.innerHTML = `
+    <!-- Greeting + statut -->
+    <div class="hub-card hub-welcome" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div style="font-size:.95rem;line-height:1.4">${greeting}</div>
+      ${statusBadge}
+    </div>
+
+    <!-- Équipage -->
+    <div class="hub-card">
+      <div class="hub-section-title">L'équipage</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px">${equipageHtml}</div>
+    </div>
+
+    <!-- Actions rapides -->
+    <div class="hub-card">
+      <div class="hub-section-title">Actions rapides</div>
+      <div class="hub-actions-grid" style="margin-top:10px">${actionsHtml}</div>
+    </div>
+
+    <!-- Géoloc shortcut -->
+    ${geoHtml}
+
+    <div style="height:16px"></div>
+  `;
 }
 
 // ── GÉOLOCALISATION GROUPE ──────────────────────────────────────────────────
@@ -1446,6 +1548,7 @@ function _geoDemarrer() {
     _rafraichirPositions();
     const b = document.getElementById('geo-toggle-btn');
     if (b) { b.textContent = '🔴 Arrêter le partage'; b.style.background = '#EF4444'; }
+    _chargerHub(); // Mettre à jour le bouton dans le Hub
   }, err => {
     console.warn('Geo:', err);
     const b = document.getElementById('geo-toggle-btn');
@@ -1468,6 +1571,7 @@ function _geoArreter() {
   const b = document.getElementById('geo-toggle-btn');
   if (b) { b.textContent = 'Partager ma position'; b.style.background = 'var(--accent)'; }
   _rafraichirPositions();
+  _chargerHub(); // Mettre à jour le bouton dans le Hub
 }
 
 // Override changerOnglet pour gérer docs + discussion + géo
@@ -1486,6 +1590,7 @@ window.changerOnglet = function(tab, btn) {
     _chatPollInterval = null;
   }
   if (tab === 'accueil') {
+    _chargerHub();
     // Init carte puis SSE dans le même tick — garantit que _geoMap existe
     // avant que le premier message SSE arrive
     setTimeout(() => {
@@ -2929,6 +3034,61 @@ function escHtml(t) {
   width: 8px; height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+/* ── HUB ──────────────────────────────────────────────────── */
+.hub-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 0 16px 12px;
+  box-shadow: var(--shadow);
+}
+.hub-welcome {
+  background: linear-gradient(135deg, var(--card), rgba(249,115,22,.06));
+  border: 1px solid rgba(249,115,22,.12);
+}
+.hub-section-title {
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+}
+.hub-badge {
+  display: inline-flex; align-items: center;
+  font-size: .72rem; font-weight: 800;
+  padding: 4px 10px; border-radius: 20px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.hub-badge--live    { background: rgba(16,185,129,.15); color: #10B981; }
+.hub-badge--coming  { background: rgba(249,115,22,.12); color: var(--accent); }
+.hub-badge--done    { background: rgba(255,255,255,.07); color: var(--text-muted); }
+.hub-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.hub-action-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  background: var(--bg); border: 1px solid var(--border-solid);
+  border-radius: 14px; padding: 12px 6px;
+  cursor: pointer; transition: transform .12s, border-color .15s;
+  font-family: var(--font-body); color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+.hub-action-btn:active { transform: scale(.92); }
+.hub-action-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.hub-action-label {
+  font-size: .68rem; font-weight: 700;
+  color: var(--text-muted); text-align: center;
+  line-height: 1.2;
+}
+.hub-geo-card {
+  border: 1px solid var(--border-solid);
 }
 </style>
 
