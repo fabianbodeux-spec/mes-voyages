@@ -552,6 +552,7 @@ function changerOnglet(tab, btn) {
     _budgetPollAdmin = null;
   }
   if (tab === 'admin') (window.chargerAdmin || chargerAdmin)();
+  if (tab === 'crewipics') chargerPhotosAdmin();
   if (tab === 'discussion') {
     const _fnChat = window.chargerCommentairesAdmin || chargerCommentairesAdmin;
     _fnChat();
@@ -3361,8 +3362,226 @@ async function supprimerPhotoAdmin(id) {
     const r = await fetch(`${API}/api/photos/${id}`, { method: 'DELETE' });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
     toast('🗑️ Photo supprimée');
-    chargerAdmin();
+    // Rafraîchir le bon onglet selon lequel est actif
+    if (document.getElementById('tab-crewipics')?.classList.contains('active')) {
+      chargerPhotosAdmin();
+    } else {
+      chargerAdmin();
+    }
   } catch(e) { toast('❌ ' + e.message); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  CREWIPICS — Album photo dans la vue admin
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let _adminPhotosCache  = [];
+let _adminPhotosLikes  = {};
+let _adminPhotosSortBy = 'recent';
+let _adminSelectedFile = null;
+let _adminLightboxPhoto = null;
+
+/** Retourne l'identité (nom + couleur) de l'admin dans le crew du voyage actuel.
+ *  Priorité : session participant (créée via rejoindreVoyage) > currentUser.nom */
+function _getAdminPhotoIdentite() {
+  if (!_shareTokenCourant) return { nom: currentUser?.nom || 'Organisateur', couleur: '#F97316' };
+  try {
+    const s = JSON.parse(localStorage.getItem('partage_id_' + _shareTokenCourant) || 'null');
+    if (s?.nom) return { nom: s.nom, couleur: s.couleur || '#F97316' };
+  } catch {}
+  return { nom: currentUser?.nom || 'Organisateur', couleur: '#F97316' };
+}
+
+/** Charge et affiche les photos CrewiPics dans la vue admin */
+async function chargerPhotosAdmin() {
+  const noSess = document.getElementById('crewipics-no-session');
+  const main   = document.getElementById('crewipics-main');
+  if (!noSess || !main) return;
+
+  // Afficher l'upload uniquement si une session participant existe
+  let hasSession = false;
+  if (_shareTokenCourant) {
+    try {
+      const s = JSON.parse(localStorage.getItem('partage_id_' + _shareTokenCourant) || 'null');
+      if (s?.nom) hasSession = true;
+    } catch {}
+  }
+  noSess.style.display = hasSession ? 'none' : '';
+  main.style.display   = hasSession ? ''     : 'none';
+
+  if (!_shareTokenCourant) return;
+  try {
+    const [photos, likes] = await Promise.all([
+      fetch(`${API}/api/partage/${_shareTokenCourant}/photos`).then(r => r.json()),
+      fetch(`${API}/api/partage/${_shareTokenCourant}/photos/likes`).then(r => r.json()).catch(() => ({}))
+    ]);
+    _adminPhotosCache = Array.isArray(photos) ? photos : [];
+    _adminPhotosLikes = likes || {};
+    const sortBar = document.getElementById('adm-photos-sort-bar');
+    if (sortBar) sortBar.style.display = _adminPhotosCache.length > 0 ? '' : 'none';
+    _renderPhotosAdmin(_adminPhotosCache);
+  } catch(e) { console.error('[crewipics admin]', e); }
+}
+
+function _setPhotoSortAdmin(mode) {
+  _adminPhotosSortBy = mode;
+  document.getElementById('adm-sort-chip-recent')?.classList.toggle('active', mode === 'recent');
+  document.getElementById('adm-sort-chip-likes')?.classList.toggle('active', mode === 'likes');
+  _renderPhotosAdmin(_adminPhotosCache);
+}
+
+function _renderPhotosAdmin(photosIn) {
+  const grid  = document.getElementById('adm-photos-grid');
+  const empty = document.getElementById('adm-photos-empty');
+  if (!grid) return;
+  grid.innerHTML = '';
+  if (!photosIn.length) {
+    if (empty) empty.style.display = '';
+    grid.style.display = 'none';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  grid.style.display = '';
+
+  let photos = [...photosIn];
+  if (_adminPhotosSortBy === 'likes') {
+    photos.sort((a, b) => {
+      const la = _adminPhotosLikes[a.id]?.count || 0;
+      const lb = _adminPhotosLikes[b.id]?.count || 0;
+      return lb - la || b.created_at.localeCompare(a.created_at);
+    });
+  }
+
+  const { nom: monNom } = _getAdminPhotoIdentite();
+  photos.forEach(p => {
+    const likeData = _adminPhotosLikes[p.id] || { count: 0, auteurs: [] };
+    const iLiked   = monNom && likeData.auteurs.includes(monNom);
+    const el       = document.createElement('div');
+    el.className   = 'photo-thumb';
+    el.innerHTML   = `
+      <img src="${API}/api/photos/${p.id}/img" alt="${h(p.caption||'')}" loading="lazy">
+      <div class="photo-thumb-info">
+        <div class="photo-thumb-dot" style="background:${p.couleur}"></div>
+        <span>${h(p.auteur)}</span>
+      </div>
+      <button class="photo-del-btn" title="Supprimer (admin)">✕</button>
+      <div class="pic-like-overlay">
+        <button class="pic-like-btn${iLiked?' liked':''}" id="adm-like-btn-${p.id}" type="button">♥</button>
+        <span class="pic-like-count" id="adm-like-count-${p.id}"
+              style="${likeData.count>0?'':'display:none'}">${likeData.count}</span>
+      </div>`;
+
+    // Like
+    const likeBtn = el.querySelector('.pic-like-btn');
+    if (likeBtn) {
+      const doLike = (e) => { e.stopPropagation(); _likerPhotoAdmin(p.id); };
+      likeBtn.addEventListener('click', doLike);
+      likeBtn.addEventListener('touchend', (e) => { e.stopPropagation(); e.preventDefault(); _likerPhotoAdmin(p.id); }, { passive: false });
+    }
+    // Supprimer (admin peut supprimer toute photo)
+    const delBtn = el.querySelector('.photo-del-btn');
+    if (delBtn) {
+      delBtn.addEventListener('click', (e) => { e.stopPropagation(); supprimerPhotoAdmin(p.id); });
+    }
+    // Lightbox
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.pic-like-overlay') || e.target.closest('.photo-del-btn')) return;
+      _ouvrirLightboxAdmin(p);
+    });
+    grid.appendChild(el);
+  });
+}
+
+function previewPhotoUploadAdmin(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { toast('❌ Fichier trop lourd (max 10 Mo)'); return; }
+  _adminSelectedFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('adm-photo-preview-img').src = e.target.result;
+    document.getElementById('adm-photo-upload-preview').style.display = '';
+    document.getElementById('adm-photo-upload-zone').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function annulerUploadPhotoAdmin() {
+  _adminSelectedFile = null;
+  document.getElementById('adm-photo-upload-preview').style.display = 'none';
+  document.getElementById('adm-photo-upload-zone').style.display = '';
+  document.getElementById('adm-photo-caption-input').value = '';
+}
+
+async function envoyerPhotoAdmin() {
+  if (!_adminSelectedFile) return;
+  const btn = document.getElementById('adm-photo-send-btn');
+  btn.disabled = true; btn.textContent = '⏳ Envoi…';
+  const { nom, couleur } = _getAdminPhotoIdentite();
+  try {
+    const fd = new FormData();
+    fd.append('photo',   _adminSelectedFile);
+    fd.append('auteur',  nom);
+    fd.append('couleur', couleur);
+    const caption = document.getElementById('adm-photo-caption-input').value.trim();
+    if (caption) fd.append('caption', caption);
+    const resp = await fetch(`${API}/api/partage/${_shareTokenCourant}/photos`, { method: 'POST', body: fd });
+    if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.error || resp.status); }
+    toast('✅ Photo partagée avec le crew !');
+    annulerUploadPhotoAdmin();
+    await chargerPhotosAdmin();
+  } catch(e) {
+    toast('❌ Erreur : ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '📤 Partager';
+  }
+}
+
+async function _likerPhotoAdmin(photoId) {
+  const { nom: monNom } = _getAdminPhotoIdentite();
+  if (!monNom) { toast('⚠️ Identifie-toi pour liker'); return; }
+  try {
+    const res = await fetch(`${API}/api/partage/${_shareTokenCourant}/photos/${photoId}/like`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auteur: monNom })
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); toast('❌ ' + (err.error || res.status)); return; }
+    const r = await res.json();
+    if (!_adminPhotosLikes[photoId]) _adminPhotosLikes[photoId] = { count: 0, auteurs: [] };
+    _adminPhotosLikes[photoId].count   = r.count;
+    _adminPhotosLikes[photoId].auteurs = r.auteurs || _adminPhotosLikes[photoId].auteurs;
+    const iLiked = _adminPhotosLikes[photoId].auteurs.includes(monNom);
+    const btn    = document.getElementById(`adm-like-btn-${photoId}`);
+    const cnt    = document.getElementById(`adm-like-count-${photoId}`);
+    if (btn) { btn.classList.toggle('liked', iLiked); btn.classList.add('pulse'); setTimeout(() => btn.classList.remove('pulse'), 300); }
+    if (cnt) { cnt.textContent = r.count > 0 ? r.count : ''; cnt.style.display = r.count > 0 ? '' : 'none'; }
+    // Mettre à jour lightbox si ouverte sur la même photo
+    if (_adminLightboxPhoto?.id === photoId) _ouvrirLightboxAdmin({ ..._adminLightboxPhoto });
+  } catch(e) { toast('❌ Erreur réseau'); }
+}
+
+function _ouvrirLightboxAdmin(p) {
+  _adminLightboxPhoto = p;
+  const lb = document.getElementById('adm-photo-lightbox');
+  document.getElementById('adm-lightbox-img').src = `${API}/api/photos/${p.id}/img`;
+  const d = new Date(p.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+  document.getElementById('adm-lightbox-info').innerHTML =
+    `<strong>${h(p.auteur)}</strong>${p.caption ? ' · ' + h(p.caption) : ''}<br><span style="opacity:.6;font-size:.75rem">${d}</span>`;
+  lb.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function fermerLightboxAdmin() {
+  document.getElementById('adm-photo-lightbox').style.display = 'none';
+  document.body.style.overflow = '';
+  _adminLightboxPhoto = null;
+}
+async function supprimerPhotoAdminLightbox() {
+  if (!_adminLightboxPhoto) return;
+  const id = _adminLightboxPhoto.id;
+  fermerLightboxAdmin();
+  await supprimerPhotoAdmin(id);
 }
 
 async function traiterDemande(id, statut) {

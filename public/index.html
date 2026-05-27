@@ -72,6 +72,52 @@
       cursor: pointer; white-space: nowrap; flex-shrink: 0;
       font-family: var(--font-body);
     }
+    /* ── CrewiPics (photo tab dans la vue admin) ─────────────── */
+    .photo-upload-zone {
+      position:relative;overflow:hidden;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:7px;padding:26px 20px;
+      border-radius:18px;border:none;cursor:pointer;
+      background:linear-gradient(135deg,rgba(249,115,22,.09) 0%,rgba(251,146,60,.04) 50%,rgba(249,115,22,.07) 100%);
+      box-shadow:inset 0 0 0 1.5px rgba(249,115,22,.28);
+      transition:box-shadow .2s,background .2s,transform .1s;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .photo-upload-zone::before {
+      content:'';position:absolute;inset:0;
+      background:linear-gradient(105deg,transparent 30%,rgba(249,115,22,.09) 50%,transparent 70%);
+      background-size:200% 100%;animation:uploadShimmer 3s ease-in-out infinite;
+    }
+    @keyframes uploadShimmer{0%{background-position:-100% 0}60%{background-position:220% 0}100%{background-position:220% 0}}
+    .photo-upload-zone:active{transform:scale(.98);box-shadow:inset 0 0 0 2px rgba(249,115,22,.55)}
+    .upload-pill {
+      display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;
+      font-family:var(--font-body);font-size:.86rem;font-weight:700;
+      padding:8px 18px;border-radius:100px;box-shadow:0 4px 14px rgba(249,115,22,.30);
+      position:relative;z-index:1;
+    }
+    .upload-hint{font-size:.71rem;color:var(--text-muted);position:relative;z-index:1}
+    .photos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+    .photo-thumb{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;cursor:pointer;touch-action:manipulation;isolation:isolate}
+    .photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s}
+    .photo-thumb:active img{transform:scale(.97)}
+    .photo-thumb-info{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.55));padding:18px 6px 5px;font-size:.65rem;color:#fff;font-weight:600;display:flex;align-items:center;gap:4px;pointer-events:none;z-index:1}
+    .photo-thumb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .photo-del-btn{position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:50%;background:rgba(239,68,68,.82);border:none;color:#fff;font-size:.68rem;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;line-height:1;opacity:0;transition:opacity .15s;z-index:2}
+    .photo-thumb:hover .photo-del-btn,.photo-thumb:focus-within .photo-del-btn{opacity:1}
+    .pic-like-overlay{position:absolute;bottom:5px;right:5px;display:flex;align-items:center;gap:3px;pointer-events:auto;z-index:2}
+    .pic-like-btn{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(255,255,255,.55);background:rgba(0,0,0,.55);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:background .15s,color .15s,border-color .15s;flex-shrink:0;font-family:inherit;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.5);-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-width:44px;min-height:44px}
+    .pic-like-btn.liked{color:#F97316;background:rgba(249,115,22,.35);border-color:rgba(249,115,22,.8)}
+    @keyframes likeHeartbeat{0%,100%{transform:scale(1)}40%{transform:scale(1.30)}70%{transform:scale(.90)}}
+    .pic-like-btn.pulse{animation:likeHeartbeat 280ms ease-out}
+    .pic-like-count{font-size:.68rem;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);min-width:14px}
+    .photos-sort-chips{display:flex;gap:8px}
+    .sort-chip{padding:6px 14px;border-radius:20px;border:1px solid var(--border-solid);background:var(--bg);color:var(--text-muted);font-size:.78rem;font-weight:600;cursor:pointer;font-family:var(--font-body);transition:all .15s}
+    .sort-chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    /* Lightbox admin */
+    #adm-photo-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9100;flex-direction:column;align-items:center;justify-content:center}
+    #adm-lightbox-img{max-width:calc(100vw - 32px);max-height:calc(100dvh - 140px);border-radius:12px;object-fit:contain}
+    #adm-lightbox-info{margin-top:12px;text-align:center;color:#fff;font-size:.85rem;padding:0 20px}
+    #adm-lightbox-del{margin-top:14px;padding:9px 22px;border-radius:10px;border:none;background:rgba(239,68,68,.8);color:#fff;font-weight:700;cursor:pointer;font-family:var(--font-body)}
     .auth-back-link {
       display: inline-flex;
       align-items: center;
@@ -283,6 +329,10 @@
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></span>
       <span>CrewiChat</span>
     </button>
+    <button class="tab-btn" data-tab="crewipics" onclick="changerOnglet('crewipics',this)">
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></span>
+      <span>CrewiPics</span>
+    </button>
   </nav>
 
   <main class="main-content tabs-content">
@@ -358,7 +408,80 @@
       </div>
     </div>
 
+    <!-- ONGLET CREWIPICS -->
+    <div id="tab-crewipics" class="tab-panel">
+      <div id="crewipics-wrap" style="padding:16px">
+
+        <!-- Pas de session participant → inviter à rejoindre -->
+        <div id="crewipics-no-session" style="display:none;text-align:center;padding:32px 0">
+          <div style="font-size:2.5rem;margin-bottom:12px">📸</div>
+          <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:16px">
+            Rejoins le crew pour poster des photos dans l'album partagé.
+          </p>
+          <button class="btn-primary" onclick="rejoindreVoyage()">Rejoindre comme participant</button>
+        </div>
+
+        <!-- Session active → interface complète -->
+        <div id="crewipics-main" style="display:none">
+
+          <!-- Zone upload -->
+          <div id="adm-photo-upload-zone" class="photo-upload-zone"
+               onclick="document.getElementById('adm-photo-file-input').click()" style="margin-bottom:12px">
+            <span class="upload-pill">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              Ajouter une photo
+            </span>
+            <span class="upload-hint">JPEG · PNG · HEIC — max 10 Mo</span>
+          </div>
+          <input type="file" id="adm-photo-file-input" accept="image/*" style="display:none"
+                 onchange="previewPhotoUploadAdmin(this)">
+
+          <!-- Preview avant envoi -->
+          <div id="adm-photo-upload-preview" style="display:none;margin-bottom:12px;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow)">
+            <img id="adm-photo-preview-img" src="" alt="preview"
+                 style="width:100%;border-radius:10px;max-height:220px;object-fit:cover">
+            <div style="margin-top:10px">
+              <input type="text" id="adm-photo-caption-input" placeholder="Légende (optionnelle)…" maxlength="200"
+                style="width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--border-solid);
+                       background:var(--bg);color:var(--text);font-size:.9rem;box-sizing:border-box">
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button type="button" onclick="annulerUploadPhotoAdmin()"
+                style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-solid);
+                       background:transparent;color:var(--text);font-size:.88rem;cursor:pointer">Annuler</button>
+              <button type="button" onclick="envoyerPhotoAdmin()" id="adm-photo-send-btn"
+                style="flex:2;padding:10px;border-radius:10px;border:none;background:var(--accent);
+                       color:#fff;font-size:.88rem;font-weight:700;cursor:pointer">📤 Partager</button>
+            </div>
+          </div>
+
+          <!-- Tri -->
+          <div id="adm-photos-sort-bar" class="photos-sort-chips" style="display:none;margin-bottom:10px">
+            <button class="sort-chip active" id="adm-sort-chip-recent" onclick="_setPhotoSortAdmin('recent')">Plus récentes</button>
+            <button class="sort-chip" id="adm-sort-chip-likes" onclick="_setPhotoSortAdmin('likes')">♥ Plus likées</button>
+          </div>
+
+          <!-- Grille -->
+          <div id="adm-photos-grid" class="photos-grid"></div>
+          <div id="adm-photos-empty" class="empty-state" style="display:none;padding-top:32px">
+            <div style="font-size:2.2rem;margin-bottom:8px">📷</div>
+            <p style="color:var(--text-muted);font-size:.88rem">Soyez les premiers à partager une photo !</p>
+          </div>
+
+        </div><!-- /crewipics-main -->
+      </div><!-- /crewipics-wrap -->
+    </div><!-- /tab-crewipics -->
+
   </main>
+</div>
+
+<!-- ═══ LIGHTBOX ADMIN CREWIPICS ═══ -->
+<div id="adm-photo-lightbox" onclick="fermerLightboxAdmin()">
+  <img id="adm-lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+  <div id="adm-lightbox-info" onclick="event.stopPropagation()"></div>
+  <div style="display:flex;align-items:center;gap:14px;margin-top:14px" onclick="event.stopPropagation()">
+    <button id="adm-lightbox-del" onclick="supprimerPhotoAdminLightbox()">🗑️ Supprimer</button>
+  </div>
 </div>
 
 <!-- ═══ SCREEN CRÉER UN TRIP — WIZARD ═══ -->
