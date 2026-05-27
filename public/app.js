@@ -447,6 +447,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ─── NAVIGATION ─────────────────────────────────────
 
+// ─── BARRE MODE PARTICIPANT ─────────────────────────────────────────────────
+// Met à jour la barre orange affichée dans la vue admin quand l'organisateur
+// a déjà rejoint le voyage en tant que participant (session stockée en localStorage).
+function _updateParticipantModeBar() {
+  const bar  = document.getElementById('mode-participant-bar');
+  const btn  = document.getElementById('mpb-switch-btn');
+  const nom  = document.getElementById('mpb-nom');
+  const av   = document.getElementById('mpb-avatar');
+  if (!bar) return;
+
+  if (!_shareTokenCourant) { bar.classList.add('hidden'); return; }
+
+  let session = null;
+  try { session = JSON.parse(localStorage.getItem('partage_id_' + _shareTokenCourant) || 'null'); } catch {}
+
+  if (session?.nom) {
+    if (nom) nom.textContent = session.nom;
+    if (av) {
+      av.textContent = session.nom[0].toUpperCase();
+      av.style.background = session.couleur || 'var(--accent)';
+    }
+    if (btn) btn.onclick = () => { window.location.href = `/share/${_shareTokenCourant}`; };
+    bar.classList.remove('hidden');
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
 function afficherAccueil() {
   document.getElementById('screen-voyage').classList.remove('active');
   document.getElementById('screen-home').classList.add('active');
@@ -467,6 +495,9 @@ function afficherVoyage(id) {
 
       const header = document.getElementById('voyage-header');
       header.style.borderBottom = `3px solid ${voyage.couleur}`;
+
+      // Mettre à jour la barre de mode participant (session admin active ?)
+      _updateParticipantModeBar();
 
       // Reset onglet actif
       changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
@@ -3487,6 +3518,9 @@ async function rejoindreVoyage() {
       sessionToken:   data.sessionToken,
       role:           'owner',
     }));
+
+    // Mettre à jour la barre de mode participant (au cas où l'user resterait sur /app)
+    _updateParticipantModeBar();
 
     // Naviguer vers la vue participant (même onglet)
     // window.open(..., '_blank') est bloqué par Safari après des await
