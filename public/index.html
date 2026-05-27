@@ -258,7 +258,13 @@
       <div class="budget-section">
         <div class="budget-section-header">
           <span class="budget-section-title">Participants</span>
-          <button class="btn-mini-add" id="btn-ajouter-participant">+ Ajouter</button>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn-mini btn-mini-view" id="btn-rejoindre-shortcut" onclick="rejoindreVoyage()" title="Basculer en vue participant">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+              Vue participant
+            </button>
+            <button class="btn-mini-add" id="btn-ajouter-participant">+ Ajouter</button>
+          </div>
         </div>
         <div id="liste-participants" class="participants-list"></div>
       </div>
@@ -968,6 +974,16 @@
       </div>
       <svg class="sheet-action-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
     </button>
+    <button class="sheet-action-btn" id="btn-rejoindre-voyage">
+      <span class="sheet-action-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+      </span>
+      <div class="sheet-action-body">
+        <span class="sheet-action-title">Rejoindre le voyage</span>
+        <span class="sheet-action-sub">Participer en tant qu'organisateur</span>
+      </div>
+      <svg class="sheet-action-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+    </button>
     <button class="sheet-action-btn" id="btn-modifier-voyage">
       <span class="sheet-action-icon">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
@@ -1067,6 +1083,28 @@
     <div class="modal-footer" style="padding:14px 16px;border-top:1px solid var(--border)">
       <button class="btn-secondary" data-modal-close="modal-cloture">Fermer</button>
       <button class="btn-primary" id="cloture-btn-action" style="display:inline-flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" style="flex-shrink:0"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>Archiver le trip</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL REJOINDRE EN VUE PARTICIPANT ═══ -->
+<!-- Remplace prompt() bloqué en mode PWA standalone iOS -->
+<div id="modal-rejoindre" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Rejoindre en vue participant</h2>
+      <button class="btn-icon" id="btn-rejoindre-close">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>Ton prénom *</label>
+      <input type="text" id="rejoindre-nom" placeholder="Ex: Fabian"
+             autocomplete="given-name" inputmode="text">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="btn-rejoindre-close2">Annuler</button>
+      <button class="btn-primary" id="btn-rejoindre-ok">Rejoindre</button>
     </div>
   </div>
 </div>

@@ -1,10 +1,11 @@
 // ─── Cache config ────────────────────────────────────────────────────────────
-const CACHE_VERSION = 'cgo-v22';
+const CACHE_VERSION = 'cgo-v39';
+// NE PAS inclure app.js et style.css non versionnés ici :
+// le serveur les sert via /app?vXX et /style.css?vXX → deux entrées distinctes
+// dans le cache coexisteraient et créeraient un conflit (stale + fresh en même temps)
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/style.css',
-  '/app.js',
   '/offline.html',
   '/logo-icon.png',
   '/logo-192.png',
@@ -12,11 +13,18 @@ const STATIC_ASSETS = [
   '/manifest.json'
 ];
 
+// Helper — fetch en court-circuitant le cache HTTP du navigateur
+// Évite que le SW serve du contenu périmé via le cache HTTP intermédiaire
+const freshFetch = (req) => fetch(new Request(req, { cache: 'no-store' }));
+
 // ─── Install : pre-cache static shell (resilient — n'échoue pas si un asset manque)
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_VERSION)
-      .then(cache => Promise.allSettled(STATIC_ASSETS.map(url => cache.add(url))))
+      // cache: 'no-store' garantit que le pre-cache installe le contenu le plus récent
+      .then(cache => Promise.allSettled(
+        STATIC_ASSETS.map(url => cache.add(new Request(url, { cache: 'no-store' })))
+      ))
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting())
   );
@@ -52,10 +60,10 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Navigation → network-first, fallback offline.html
+  // Navigation → network-first (bypass HTTP cache), fallback offline.html
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      freshFetch(request)
         .then(response => {
           const clone = response.clone();
           caches.open(CACHE_VERSION).then(c => c.put(request, clone)).catch(() => {});
@@ -66,7 +74,23 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Assets statiques → cache-first avec mise à jour silencieuse en arrière-plan
+  // JS / CSS / HTML → network-first (bypass HTTP cache) : toujours la version fraîche
+  if (/\.(js|css|html)(\?.*)?$/.test(url.pathname) || url.pathname === '/' || url.pathname === '/app') {
+    event.respondWith(
+      freshFetch(request)
+        .then(response => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_VERSION).then(c => c.put(request, clone)).catch(() => {});
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Images / fonts / icônes → cache-first (changent rarement)
   event.respondWith(
     caches.match(request).then(cached => {
       const networkFetch = fetch(request).then(response => {
@@ -80,6 +104,11 @@ self.addEventListener('fetch', event => {
       return cached || networkFetch;
     })
   );
+});
+
+// ─── Message : activation forcée depuis le client ────────────────────────────
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 // ─── Push notifications ───────────────────────────────────────────────────────

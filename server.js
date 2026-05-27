@@ -9,8 +9,15 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const webpush = require('web-push');
 const db = require('./database');
+const { createSession } = require('./sessions');
+const verifyParticipantSession = require('./services/verifyParticipantSession');
 
 const IS_CLOUD = db.usePostgres;
+
+// Version de l'app — doit correspondre à CACHE_VERSION dans sw.js
+// Changer ici ET dans sw.js à chaque déploiement pour forcer le rechargement
+const APP_VERSION = 'v39';
+const fs = require('fs');
 if (!process.env.JWT_SECRET && IS_CLOUD) {
   console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
   process.exit(1);
@@ -57,7 +64,7 @@ app.use(helmet({
       imgSrc:        ["'self'", "data:", "blob:", "upload.wikimedia.org", "commons.wikimedia.org", "api.qrserver.com", "*.tile.openstreetmap.org", "*.wikimedia.org"],
       connectSrc:    ["'self'", "api.fontshare.com", "fr.wikipedia.org", "commons.wikimedia.org", "geocoding-api.open-meteo.com", "api.open-meteo.com", "nominatim.openstreetmap.org", "api.anthropic.com"],
       workerSrc:     ["'self'", "blob:", "cdn.jsdelivr.net"],
-      frameSrc:      ["'none'"],
+      frameSrc:      ["'self'", "https://maps.google.com", "https://www.google.com", "https://www.openstreetmap.org"],
       objectSrc:     ["'none'"],
     }
   },
@@ -67,14 +74,51 @@ app.use(helmet({
 app.use(express.json({ limit: '20mb' }));
 
 // ─── ROUTES PRINCIPALES (avant express.static pour éviter que index.html soit servi sur /) ──
-app.get('/',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
-app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+// no-store : le navigateur ne cache jamais ces pages HTML
+// Les URLs versionnées app.js?v=XX et style.css?v=XX garantissent le rechargement du JS/CSS
+app.get('/', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  // etag:false + lastModified:false : évite que Safari retourne 304 malgré no-store
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'), { etag: false, lastModified: false });
+});
+
+app.get('/app', (req, res) => {
+  // no-store + pas d'ETag : res.end() contourne la génération automatique d'ETag
+  // d'Express (res.send() en génère un → Safari peut retourner 304 et servir un
+  // HTML périmé malgré Cache-Control: no-store)
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+    'Pragma':        'no-cache',
+    'Expires':       '0',
+    'Content-Type':  'text/html; charset=utf-8'
+  });
+  let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+  html = html
+    .replace('href="style.css"', `href="style.css?${APP_VERSION}"`)
+    .replace('src="app.js"',     `src="app.js?${APP_VERSION}"`);
+  res.end(html);
+});
+
+// ─── ROUTE DÉDIÉE sw.js (AVANT express.static) ──────────────────────────────
+// Le Service Worker DOIT être récupéré frais à chaque requête — jamais via cache HTTP.
+// express.static génère ETag + Last-Modified automatiquement (via serve-static) et
+// res.removeHeader() dans setHeaders est trop tardif (les headers sont posés après).
+// → Route explicite avec sendFile({ etag:false, lastModified:false }) pour garantir
+//   qu'aucun header de revalidation ne filtre vers Safari.
+app.get('/sw.js', (req, res) => {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+    'Pragma':        'no-cache',
+    'Expires':       '0',
+    'Content-Type':  'application/javascript; charset=utf-8',
+  });
+  res.sendFile(path.join(__dirname, 'public', 'sw.js'), { etag: false, lastModified: false });
+});
 
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders(res, filePath) {
-    // Forcer la revalidation des fichiers JS/CSS/HTML à chaque requête
-    // → les navigateurs rechargent toujours le vrai contenu quand les fichiers changent
     if (/\.(js|css|html)$/.test(filePath)) {
+      // Forcer la revalidation des fichiers JS/CSS/HTML à chaque requête
       res.setHeader('Cache-Control', 'no-cache');
     }
   }
@@ -200,6 +244,16 @@ app.get('/api/voyages', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.voyages.getAll(req.user.id))); } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+// GET voyages archivés — DOIT être avant /:id pour ne pas être intercepté
+app.get('/api/voyages/archives', authMiddleware, async (req, res) => {
+  try {
+    const all = IS_CLOUD
+      ? (await db._pool.query("SELECT * FROM voyages WHERE statut='archived' AND owner_id=$1 ORDER BY archived_at DESC", [req.user.id])).rows
+      : db.voyages.getAll().filter(v => v.statut === 'archived').sort((a, b) => (b.archived_at || '').localeCompare(a.archived_at || ''));
+    res.json(all);
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
 app.get('/api/voyages/:id', authMiddleware, async (req, res) => {
   try {
     const v = await run(() => db.voyages.getById(req.params.id));
@@ -249,7 +303,7 @@ app.patch('/api/voyages/:id/statut', authMiddleware, async (req, res) => {
     if (statut === 'archived' && !voyage.archived_at)   extra.archived_at  = new Date().toISOString();
     await run(() => db.voyages.setStatutFull(req.params.id, statut, extra));
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // ─── RÉSERVATIONS ──────────────────────────────────────────────────────────
@@ -403,8 +457,18 @@ app.get('/api/voyages/:id/participants', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/voyages/:id/participants', authMiddleware, async (req, res) => {
-  try { const item = await run(() => db.participants.create(req.params.id, req.body)); res.json({ id: item.id }); }
-  catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+  try {
+    const { nom, couleur, pin } = req.body;
+    if (!nom?.trim()) return res.status(400).json({ error: 'Nom requis' });
+    const payload = {
+      nom: nom.trim().slice(0, 50),
+      couleur: couleur || '#6366F1',
+      pin: pin != null ? String(pin).slice(0, 20) : null,
+      // 'role' volontairement exclu — toujours 'participant' par défaut
+    };
+    const item = await run(() => db.participants.create(req.params.id, payload));
+    res.json({ id: item.id });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.put('/api/participants/:id', authMiddleware, async (req, res) => {
@@ -413,7 +477,13 @@ app.put('/api/participants/:id', authMiddleware, async (req, res) => {
     if (!item) return res.status(404).json({ error: 'Introuvable' });
     if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
       return res.status(403).json({ error: 'Accès refusé' });
-    await run(() => db.participants.update(req.params.id, req.body));
+    const { nom, couleur, pin } = req.body;
+    const payload = {};
+    if (nom !== undefined) payload.nom = String(nom).trim().slice(0, 50);
+    if (couleur !== undefined) payload.couleur = couleur;
+    if (pin !== undefined) payload.pin = pin != null ? String(pin).slice(0, 20) : null;
+    // 'role' et 'voyage_id' volontairement exclus
+    await run(() => db.participants.update(req.params.id, payload));
     res.json({ ok: true });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
@@ -427,6 +497,64 @@ app.delete('/api/participants/:id', authMiddleware, async (req, res) => {
     await run(() => db.participants.delete(req.params.id));
     res.json({ ok: true });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.post('/api/voyages/:id/join-as-participant', authMiddleware, async (req, res) => {
+  try {
+    const voyageId = parseInt(req.params.id);
+
+    // 1. Récupérer le voyage et vérifier l'ownership
+    const voyage = await run(() => db.voyages.getById(voyageId));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    if (!(await checkVoyageOwnership(voyageId, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+
+    // 2. Trouver ou créer le participant "owner"
+    const parts = await run(() => db.participants.getByVoyage(voyageId));
+
+    // Cherche un participant existant avec role='owner' (défensif : le champ peut être absent)
+    let ownerPart = parts.find(p => p.role === 'owner');
+
+    if (!ownerPart) {
+      const nom = (req.body.nom || 'Organisateur').trim().slice(0, 50);
+      const couleur = req.body.couleur || '#FF6B35';
+
+      ownerPart = await run(() => db.participants.create(voyageId, {
+        nom,
+        couleur,
+        pin: null,
+        role: 'owner',
+      }));
+    }
+
+    // 3. Générer un session token
+    const sessionToken = createSession({
+      participantId: ownerPart.id,
+      voyageId,
+      nom:     ownerPart.nom,
+      couleur: ownerPart.couleur,
+      role:    'owner',
+    });
+
+    // 4. Construire l'URL de partage (utilise le share_token du voyage)
+    const shareToken = voyage.share_token || null;
+    const partageUrl = shareToken ? `/partage/${shareToken}` : null;
+
+    res.json({
+      success: true,
+      participant: {
+        nom:            ownerPart.nom,
+        participant_id: ownerPart.id,
+        couleur:        ownerPart.couleur,
+        role:           'owner',
+      },
+      sessionToken,
+      partageUrl,
+    });
+  } catch(e) {
+    console.error('[JOIN-AS-PARTICIPANT]', e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 });
 
 app.post('/api/partage/:token/verify-pin', async (req, res) => {
@@ -445,8 +573,19 @@ app.post('/api/partage/:token/verify-pin', async (req, res) => {
     const a = Buffer.from(String(p.pin));
     const b = Buffer.from(String(pin || ''));
     const same = a.length === b.length && crypto.timingSafeEqual(a, b);
-    res.json({ ok: same });
-  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+    if (!same) return res.json({ ok: false });
+
+    // Générer la session
+    const sessionToken = createSession({
+      participantId: p.id,
+      voyageId:      voyage.id,
+      nom:           p.nom,
+      couleur:       p.couleur,
+      role:          p.role || 'participant',
+    });
+
+    res.json({ ok: true, sessionToken });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // ─── DÉPENSES ──────────────────────────────────────────────────────────────
@@ -746,7 +885,7 @@ app.post('/api/voyages/:id/messages-prives', authMiddleware, async (req, res) =>
               title: `📬 Message privé — ${voyage?.nom || 'Voyage'}`,
               body: apercu,
               tag: 'mp-' + item.id,
-              url: voyage?.share_token ? `/share/${voyage.share_token}?tab=mes-infos` : '/'
+              url: voyage?.share_token ? `/share/${voyage.share_token}?tab=preparation` : '/'
             })
           );
         } catch(e) {
@@ -797,12 +936,14 @@ app.post('/api/partage/:token/commentaires', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const { auteur, message } = req.body;
     if (!auteur || !message?.trim()) return res.status(400).json({ error: 'Données manquantes' });
-    const item = await run(() => db.commentaires.create(voyage.id, { auteur, message: message.trim() }));
+    const safeAuteur = String(auteur).trim().slice(0, 50);
+    const safeMessage = message.trim().slice(0, 2000);
+    const item = await run(() => db.commentaires.create(voyage.id, { auteur: safeAuteur, message: safeMessage }));
     res.json(item);
-    const apercu = message.trim().length > 60 ? message.trim().slice(0, 60) + '…' : message.trim();
+    const apercu = safeMessage.length > 60 ? safeMessage.slice(0, 60) + '…' : safeMessage;
     pushToAll(voyage.id, {
       title: `💬 ${voyage.nom}`,
-      body: `${auteur} : ${apercu}`,
+      body: `${safeAuteur} : ${apercu}`,
       tag: 'commentaire-' + voyage.id,
       url: `/share/${req.params.token}?tab=discussion`
     }).catch(() => {});
@@ -815,10 +956,15 @@ app.delete('/api/partage/:token/commentaires/:id', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     // Vérifier que le commentaire appartient bien à ce voyage (anti-IDOR)
     const all = await run(() => db.commentaires.getByVoyage(voyage.id));
-    if (!all.find(c => c.id === +req.params.id)) return res.status(403).json({ error: 'Interdit' });
+    const commentaire = all.find(c => c.id === +req.params.id);
+    if (!commentaire) return res.status(403).json({ error: 'Interdit' });
+    // L'auteur est obligatoire pour prouver l'identité
+    if (!req.body.auteur) return res.status(400).json({ error: 'Auteur requis' });
+    if (req.body.auteur !== commentaire.auteur)
+      return res.status(403).json({ error: 'Tu ne peux supprimer que tes propres commentaires' });
     await run(() => db.commentaires.delete(req.params.id));
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 app.get('/api/voyages/:id/commentaires', authMiddleware, async (req, res) => {
@@ -915,7 +1061,7 @@ app.get('/api/voyages/:id/docs-participants', authMiddleware, async (req, res) =
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.get('/api/voyages/:id/docs-participants/:docId/download', async (req, res) => {
+app.get('/api/voyages/:id/docs-participants/:docId/download', authMiddleware, async (req, res) => {
   try {
     const doc = await run(() => db.docs_participants.getById(req.params.docId));
     if (!doc || doc.voyage_id !== +req.params.id) return res.status(404).json({ error: 'Document introuvable' });
@@ -1012,7 +1158,7 @@ app.get('/api/partage/:token/reservations', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const resas = await run(() => db.reservations.getByVoyage(voyage.id));
     res.json(resas);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.get('/api/partage/:token/documents', async (req, res) => {
@@ -1021,7 +1167,7 @@ app.get('/api/partage/:token/documents', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const docs = await run(() => db.documents.getByVoyage(voyage.id));
     res.json(docs);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ── Dépenses publiques (participants) — GET liste + POST créer ───────────────
@@ -1031,7 +1177,7 @@ app.get('/api/partage/:token/depenses', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const depenses = await run(() => db.depenses.getByVoyage(voyage.id));
     res.json(depenses);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 app.post('/api/partage/:token/depenses', async (req, res) => {
@@ -1053,7 +1199,7 @@ app.post('/api/partage/:token/depenses', async (req, res) => {
       participants_ids: safeParts
     }));
     res.json(item);
-  } catch(e) { console.error('[DEPENSE CREATE]', e.message, e.detail || ''); res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[DEPENSE CREATE]', e.message, e.detail || ''); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
 // ── Téléchargement public d'un document (réservation / agenda) ────────────
@@ -1089,9 +1235,11 @@ app.post('/api/partage/:token/hype', async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
-    const { auteur, score, emoji } = req.body;
+    const { score, emoji } = req.body;
+    const auteur = req.body.auteur;
     if (!auteur || !score || score < 1 || score > 5) return res.status(400).json({ error: 'Données invalides' });
-    await run(() => db.hype_votes.upsert(voyage.id, { auteur, score: +score, emoji: emoji || null }));
+    const safeAuteur = String(auteur).trim().slice(0, 50);
+    await run(() => db.hype_votes.upsert(voyage.id, { auteur: safeAuteur, score: +score, emoji: emoji ? String(emoji).slice(0, 10) : null }));
     const votes = await run(() => db.hype_votes.getByVoyage(voyage.id));
     const total = votes.length;
     const moyenne = total > 0 ? Math.round((votes.reduce((s, v) => s + v.score, 0) / total) * 10) / 10 : 0;
@@ -1147,9 +1295,10 @@ app.post('/api/partage/:token/wishlist/:id/like', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const { auteur } = req.body;
     if (!auteur) return res.status(400).json({ error: 'Auteur requis' });
+    const safeAuteur = String(auteur).trim().slice(0, 50);
     const item = await run(() => db.wishlist.getById(req.params.id));
     if (!item || item.voyage_id !== voyage.id) return res.status(404).json({ error: 'Item introuvable' });
-    const liked = await run(() => db.wishlist.toggleLike(req.params.id, auteur));
+    const liked = await run(() => db.wishlist.toggleLike(req.params.id, safeAuteur));
     res.json({ ok: true, liked });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
@@ -1160,6 +1309,10 @@ app.delete('/api/partage/:token/wishlist/:id', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const item = await run(() => db.wishlist.getById(req.params.id));
     if (!item || item.voyage_id !== voyage.id) return res.status(404).json({ error: 'Item introuvable' });
+    // L'auteur est obligatoire pour prouver l'identité
+    if (!req.body.auteur) return res.status(400).json({ error: 'Auteur requis' });
+    if (req.body.auteur !== item.auteur)
+      return res.status(403).json({ error: 'Tu ne peux supprimer que tes propres items' });
     await run(() => db.wishlist.delete(req.params.id));
     res.json({ ok: true });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
@@ -1194,12 +1347,14 @@ app.post('/api/partage/:token/sondages/:id/vote', async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
-    const { option_id, auteur } = req.body;
+    const { option_id } = req.body;
+    const auteur = req.body.auteur;
     if (!option_id || !auteur) return res.status(400).json({ error: 'Données manquantes' });
+    const safeAuteur = String(auteur).trim().slice(0, 50);
     const s = await run(() => db.sondages.getById(req.params.id));
     if (!s || s.voyage_id !== voyage.id) return res.status(404).json({ error: 'Sondage introuvable' });
     if (s.statut === 'fermé') return res.status(403).json({ error: 'Sondage fermé' });
-    await run(() => db.sondages.vote(req.params.id, option_id, auteur));
+    await run(() => db.sondages.vote(req.params.id, option_id, safeAuteur));
     res.json({ ok: true });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
@@ -1210,6 +1365,10 @@ app.patch('/api/partage/:token/sondages/:id/fermer', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const s = await run(() => db.sondages.getById(req.params.id));
     if (!s || s.voyage_id !== voyage.id) return res.status(404).json({ error: 'Sondage introuvable' });
+    // L'auteur est obligatoire pour prouver l'identité
+    if (!req.body.auteur) return res.status(400).json({ error: 'Auteur requis' });
+    if (req.body.auteur !== s.created_by)
+      return res.status(403).json({ error: 'Seul le créateur peut fermer ce sondage' });
     await run(() => db.sondages.fermer(req.params.id));
     res.json({ ok: true });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
@@ -1221,6 +1380,10 @@ app.delete('/api/partage/:token/sondages/:id', async (req, res) => {
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const s = await run(() => db.sondages.getById(req.params.id));
     if (!s || s.voyage_id !== voyage.id) return res.status(404).json({ error: 'Sondage introuvable' });
+    // L'auteur est obligatoire pour prouver l'identité
+    if (!req.body.auteur) return res.status(400).json({ error: 'Auteur requis' });
+    if (req.body.auteur !== s.created_by)
+      return res.status(403).json({ error: 'Seul le créateur peut supprimer ce sondage' });
     await run(() => db.sondages.delete(req.params.id));
     res.json({ ok: true });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
@@ -1237,8 +1400,17 @@ app.get('/partage/:token', (req, res) => {
 });
 
 app.get('/share/:token', (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(__dirname, 'public', 'partage.html'));
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+    'Pragma':        'no-cache',
+    'Expires':       '0',
+    'Content-Type':  'text/html; charset=utf-8'
+  });
+  let html = fs.readFileSync(path.join(__dirname, 'public', 'partage.html'), 'utf8');
+  html = html
+    .replace('href="/style.css"', `href="/style.css?${APP_VERSION}"`)
+    .replace('src="/app.js"',     `src="/app.js?${APP_VERSION}"`);
+  res.end(html);
 });
 
 // ─── PHOTOS PARTAGÉES ────────────────────────────────────────────────────────
@@ -1297,19 +1469,31 @@ app.delete('/api/photos/:id', authMiddleware, async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-// Suppression photo par le participant auteur (sans JWT)
-app.delete('/api/partage/:token/photos/:id', async (req, res) => {
+// Suppression photo par le participant auteur (avec session token)
+app.delete('/api/partage/:token/photos/:id', verifyParticipantSession, async (req, res) => {
   try {
-    const v = await run(() => db.voyages.getByToken(req.params.token));
-    if (!v) return res.status(404).json({ error: 'Voyage introuvable' });
-    const photo = await run(() => db.photos.getById(+req.params.id));
-    if (!photo) return res.status(404).json({ error: 'Photo introuvable' });
-    if (photo.voyage_id !== v.id) return res.status(403).json({ error: 'Accès refusé' });
-    const { auteur } = req.body;
-    if (!auteur || photo.auteur !== auteur) return res.status(403).json({ error: 'Tu ne peux supprimer que tes propres photos' });
-    await run(() => db.photos.delete(+req.params.id));
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Token invalide' });
+
+    const photo = await run(() => db.photos.getById(req.params.id));
+    if (!photo || photo.voyage_id !== voyage.id)
+      return res.status(404).json({ error: 'Photo introuvable' });
+
+    const { participantSession } = req;
+    // Vérification rétrocompat : participantId OU auteur string
+    const isOwner =
+      (photo.participant_id && photo.participant_id === participantSession.participantId) ||
+      photo.auteur === participantSession.nom;
+
+    if (!isOwner)
+      return res.status(403).json({ error: 'Tu ne peux supprimer que tes propres photos' });
+
+    await run(() => db.photos.delete(req.params.id));
     res.json({ ok: true });
-  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+  } catch(e) {
+    console.error('[DELETE PHOTO]', e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 });
 
 // ─── CREWIREWIND — Likes photos ────────────────────────────────────────────
@@ -1412,15 +1596,7 @@ app.get('/api/partage/:token/memory', async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-// GET voyages archivés (admin)
-app.get('/api/voyages/archives', authMiddleware, async (req, res) => {
-  try {
-    const all = IS_CLOUD
-      ? (await db._pool.query("SELECT * FROM voyages WHERE statut='archived' AND owner_id=$1 ORDER BY archived_at DESC", [req.user.id])).rows
-      : db.voyages.getAll().filter(v => v.statut === 'archived').sort((a, b) => (b.archived_at || '').localeCompare(a.archived_at || ''));
-    res.json(all);
-  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
-});
+// Route /api/voyages/archives déplacée avant /:id (voir ligne 205)
 
 // POST cron tick manuel (debug)
 app.post('/api/admin/cron/tick', authMiddleware, async (req, res) => {
@@ -1428,7 +1604,7 @@ app.post('/api/admin/cron/tick', authMiddleware, async (req, res) => {
     const { runDailyJob } = require('./services/tripClosure');
     await runDailyJob();
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: e.message }); }
 });
 
 // ─── DIAGNOSTIC (Railway debug) ─────────────────────────────────────────────

@@ -6,7 +6,8 @@ const API = '';  // même origin
 
 // ─── AUTH ────────────────────────────────────────────────────────────────────
 let currentUser = null;
-let _authToken = localStorage.getItem('crewigo_token');
+// try/catch : localStorage.getItem() lève une exception en navigation privée iOS
+let _authToken = (() => { try { return localStorage.getItem('crewigo_token'); } catch { return null; } })();
 
 // Décode le payload JWT côté client (sans vérification de signature)
 // Utilisé comme fallback quand le serveur est injoignable
@@ -204,7 +205,8 @@ async function submitRegister() {
 }
 
 function logout() {
-  if (!confirm('Te déconnecter de CrewiGO ?')) return;
+  // confirm() est bloqué en mode PWA standalone iOS (retourne false immédiatement)
+  // → déconnexion directe sans confirmation dialog
   _doLogout();
 }
 
@@ -316,11 +318,80 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initAuth().then(() => { if (currentUser) chargerVoyages(); });
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(console.error);
-    // Quand un nouveau Service Worker prend le contrôle → rechargement automatique
-    // pour que l'utilisateur bénéficie immédiatement des nouveaux fichiers JS/CSS
+    const _swActivateWaiting = (sw) => sw.postMessage({ type: 'SKIP_WAITING' });
+
+    // Capture AVANT register() : si controller est null, c'est un premier chargement.
+    // clients.claim() dans le SW déclenche controllerchange même au premier chargement
+    // → sans cette garde, la bannière "Mise à jour" et le rechargement se déclenchent
+    //   inutilement à la toute première visite sur un nouvel appareil.
+    let _swWasAlreadyControlled = !!navigator.serviceWorker.controller;
+
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+      .then(reg => {
+        reg.update();
+        // Si un SW en attente existe déjà au moment de l'enregistrement → l'activer
+        if (reg.waiting) _swActivateWaiting(reg.waiting);
+        // Observer les nouvelles installations de SW
+        reg.addEventListener('updatefound', () => {
+          const sw = reg.installing;
+          if (!sw) return;
+          sw.addEventListener('statechange', () => {
+            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+              // Nouveau SW prêt → activer immédiatement
+              _swActivateWaiting(sw);
+            }
+          });
+        });
+      })
+      .catch(console.error);
+
+    // Quand le nouveau SW prend le contrôle → mise à jour disponible
+    // Problème iOS standalone : window.location.href est parfois ignoré après controllerchange,
+    // et _swReloading en mémoire est perdu après le rechargement → boucle infinie possible.
+    // Fix : stocker le flag dans sessionStorage (persiste au rechargement de page).
+    let _swReloading = false;
+    try {
+      if (sessionStorage.getItem('sw_reloading')) {
+        // On vient d'être rechargé suite à une MAJ SW — supprimer le flag
+        sessionStorage.removeItem('sw_reloading');
+        _swReloading = true; // empêche un 2e rechargement si controllerchange se redéclenche
+      }
+    } catch {}
+
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload();
+      // Ignorer le controllerchange dû à clients.claim() au premier chargement
+      // (controller était null avant register → ce n'est pas une mise à jour)
+      if (!_swWasAlreadyControlled) { _swWasAlreadyControlled = true; return; }
+      if (_swReloading) return;
+      _swReloading = true;
+      try { sessionStorage.setItem('sw_reloading', '1'); } catch {}
+
+      // Bannière persistante (fonctionne même si la navigation auto est bloquée)
+      const banner = document.createElement('div');
+      banner.id = 'sw-update-banner';
+      Object.assign(banner.style, {
+        position: 'fixed', bottom: '0', left: '0', right: '0', zIndex: '99999',
+        background: '#1a73e8', color: '#fff', display: 'flex',
+        alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 16px', fontSize: '14px',
+        boxShadow: '0 -2px 8px rgba(0,0,0,.25)', fontFamily: 'inherit'
+      });
+      banner.innerHTML = `
+        <span>🔄 Mise à jour disponible</span>
+        <button id="sw-update-btn"
+          style="background:#fff;color:#1a73e8;border:none;border-radius:6px;
+                 padding:7px 16px;font-weight:700;cursor:pointer;font-size:13px">
+          Recharger
+        </button>`;
+      document.body.appendChild(banner);
+      // window.location.reload() est plus fiable que href sur Safari PWA standalone
+      document.getElementById('sw-update-btn').addEventListener('click', () => {
+        window.location.reload();
+      });
+
+      // Tentative de rechargement automatique après un court délai
+      // (fonctionne en Chrome/Firefox, souvent ignoré en Safari PWA standalone)
+      setTimeout(() => { window.location.reload(); }, 800);
     });
   }
 
@@ -1034,7 +1105,8 @@ async function sauvegarderVoyage(e) {
 
   const url = id ? `${API}/api/voyages/${id}` : `${API}/api/voyages`;
   const method = id ? 'PUT' : 'POST';
-  await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  if (!r.ok) { toast('❌ Erreur lors de la sauvegarde'); return; }
 
   fermerModal('modal-voyage');
   toast(id ? '✅ Voyage modifié' : '✅ Voyage créé');
@@ -1059,7 +1131,8 @@ function modifierVoyageActuel() {
 async function supprimerVoyageActuel() {
   if (!confirm('Supprimer ce voyage et toutes ses données ?')) return;
   fermerBottomSheet();
-  await fetch(`${API}/api/voyages/${voyageActuel}`, { method: 'DELETE' });
+  const r = await fetch(`${API}/api/voyages/${voyageActuel}`, { method: 'DELETE' });
+  if (!r.ok) { toast('❌ Erreur lors de la suppression'); return; }
   toast('🗑️ Voyage supprimé');
   afficherAccueil();
 }
@@ -1171,11 +1244,12 @@ function _calculerTransactions(depenses, participants) {
 }
 
 async function archiverVoyage() {
-  await fetch(`${API}/api/voyages/${voyageActuel}/statut`, {
+  const r = await fetch(`${API}/api/voyages/${voyageActuel}/statut`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ statut: 'terminé' })
   });
+  if (!r.ok) { toast('❌ Erreur lors de l\'archivage'); return; }
   fermerModal('modal-cloture');
   toast('🏁 Trip archivé !');
   chargerVoyages();
@@ -1184,11 +1258,12 @@ async function archiverVoyage() {
 }
 
 async function rouvrirVoyage() {
-  await fetch(`${API}/api/voyages/${voyageActuel}/statut`, {
+  const r = await fetch(`${API}/api/voyages/${voyageActuel}/statut`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ statut: 'actif' })
   });
+  if (!r.ok) { toast('❌ Erreur lors de la réouverture'); return; }
   fermerModal('modal-cloture');
   toast('✅ Trip réouvert !');
   chargerVoyages();
@@ -1362,7 +1437,7 @@ function ouvrirModalReservation(id = null) {
   document.getElementById('modal-reservation').classList.remove('hidden');
 }
 
-async function modifierReservation(id) {
+function modifierReservation(id) {
   ouvrirModalReservation(id);
 }
 
@@ -1385,7 +1460,8 @@ async function sauvegarderReservation(e) {
 
   const url = id ? `${API}/api/reservations/${id}` : `${API}/api/voyages/${voyageActuel}/reservations`;
   const method = id ? 'PUT' : 'POST';
-  await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  if (!r.ok) { toast('❌ Erreur lors de la sauvegarde'); return; }
 
   fermerModal('modal-reservation');
   toast(id ? '✅ Réservation modifiée' : '✅ Réservation ajoutée');
@@ -1394,7 +1470,8 @@ async function sauvegarderReservation(e) {
 
 async function supprimerReservation(id) {
   if (!confirm('Supprimer cette réservation ?')) return;
-  await fetch(`${API}/api/reservations/${id}`, { method: 'DELETE' });
+  const r = await fetch(`${API}/api/reservations/${id}`, { method: 'DELETE' });
+  if (!r.ok) { toast('❌ Erreur lors de la suppression'); return; }
   toast('🗑️ Réservation supprimée');
   chargerAdmin();
 }
@@ -1687,10 +1764,8 @@ async function chargerProgramme() {
           const editFn = it.source === 'resa' ? `modifierReservation(${it.id})` : `modifierAgenda(${it.id})`;
           const delFn = it.source === 'resa' ? `supprimerReservation(${it.id})` : `supprimerAgenda(${it.id})`;
 
-          const mapId  = `map-${it.source}-${it.id}`;
-          const mapSrc = it.lieu
-            ? `https://maps.google.com/maps?q=${encodeURIComponent(it.lieu)}&output=embed&z=14`
-            : null;
+          const mapId   = it.lieu ? `map-${it.source}-${it.id}` : null;
+          const mapAddr = it.lieu || null;
 
           return `
           <div class="prog-item">
@@ -1718,16 +1793,13 @@ async function chargerProgramme() {
                 <div class="prog-actions">
                   ${badge}
                   <div style="display:flex;gap:4px;margin-top:6px">
-                    ${mapSrc ? `<button class="btn-mini btn-mini-map" onclick="event.stopPropagation();toggleProgMap('${mapId}', this)" title="Voir sur la carte"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg></button>` : ''}
+                    ${mapId ? `<button class="btn-mini btn-mini-map" onclick="event.stopPropagation();toggleProgMap('${mapId}',this,'${(mapAddr||'').replace(/'/g,"\\'")}')" title="Voir sur la carte"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg></button>` : ''}
                     <button class="btn-mini btn-mini-edit" onclick="event.stopPropagation();${editFn}" title="Modifier"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
                     <button class="btn-mini btn-mini-del" onclick="event.stopPropagation();${delFn}" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
                   </div>
                 </div>
               </div>
-              ${mapSrc ? `
-              <div id="${mapId}" class="prog-map hidden">
-                <iframe src="" data-src="${mapSrc}" class="prog-map-frame" frameborder="0" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
-              </div>` : ''}
+              ${mapId ? `<div id="${mapId}" class="prog-map hidden"></div>` : ''}
             </div>
           </div>`;
         }).join('')}
@@ -1736,16 +1808,49 @@ async function chargerProgramme() {
   }).join('');
 }
 
-function toggleProgMap(mapId, btn) {
+async function toggleProgMap(mapId, btn, address) {
   const div = document.getElementById(mapId);
+  if (!div) return;
   const isOpen = !div.classList.contains('hidden');
   div.classList.toggle('hidden', isOpen);
   btn.classList.toggle('active', !isOpen);
-  // Charger l'iframe uniquement à la première ouverture
-  if (!isOpen) {
-    const iframe = div.querySelector('iframe');
-    if (!iframe.src || iframe.src === window.location.href) {
-      iframe.src = iframe.dataset.src;
+
+  // Initialiser la carte uniquement à la première ouverture
+  if (!isOpen && !div.dataset.initialized) {
+    div.dataset.initialized = 'true';
+    div.innerHTML = '<div style="padding:10px;text-align:center;font-size:.8rem;color:var(--text-muted)">📍 Localisation en cours…</div>';
+    try {
+      const nominatimFetch = async (q) => {
+        const r = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
+          { headers: { 'Accept-Language': 'fr' } }
+        );
+        return r.json();
+      };
+      // Essai 1 : adresse complète
+      let results = await nominatimFetch(address);
+      // Essai 2 : simplifié (après le premier tiret ou virgule)
+      if (!results.length) {
+        const simplified = address.split(/[-,]/)[0].trim();
+        if (simplified && simplified !== address) results = await nominatimFetch(simplified);
+      }
+      if (!results.length) throw new Error('not found');
+      const { lat, lon } = results[0];
+      const d = 0.004;
+      const bbox = `${+lon-d},${+lat-d},${+lon+d},${+lat+d}`;
+      div.innerHTML = `<iframe class="prog-map-frame"
+        src="https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lon}"
+        frameborder="0" loading="eager"></iframe>
+        <a href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}&zoom=15" target="_blank" rel="noopener"
+          style="display:block;text-align:right;font-size:.68rem;padding:2px 8px 4px;color:var(--text-muted)">
+          Ouvrir dans OpenStreetMap ↗
+        </a>`;
+    } catch (e) {
+      div.innerHTML = `<div style="padding:10px;text-align:center">
+        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}"
+           target="_blank" rel="noopener" style="color:var(--accent);font-size:.8rem">
+          📍 Ouvrir dans Google Maps ↗
+        </a></div>`;
     }
   }
 }
@@ -1852,7 +1957,8 @@ async function sauvegarderAgenda(e) {
 
 async function supprimerAgenda(id) {
   if (!confirm('Supprimer cet événement ?')) return;
-  await fetch(`${API}/api/agenda/${id}`, { method: 'DELETE' });
+  const r = await fetch(`${API}/api/agenda/${id}`, { method: 'DELETE' });
+  if (!r.ok) { toast('❌ Erreur lors de la suppression'); return; }
   toast('🗑️ Événement supprimé');
   await chargerProgramme();
 }
@@ -2268,11 +2374,12 @@ async function sauvegarderModifDocument() {
   if (lienVal.startsWith('resa:'))  body.reservation_id = parseInt(lienVal.split(':')[1]);
   if (lienVal.startsWith('event:')) body.event_id       = parseInt(lienVal.split(':')[1]);
 
-  await fetch(`${API}/api/documents/${id}`, {
+  const r = await fetch(`${API}/api/documents/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
+  if (!r.ok) { toast('❌ Erreur lors de la modification'); return; }
 
   fermerModal('modal-doc-edit');
   toast('✅ Document modifié');
@@ -2737,10 +2844,11 @@ async function sauvegarderParticipant() {
   const nom = document.getElementById('p-nom').value.trim();
   if (!nom) { toast('⚠️ Entre un prénom'); return; }
   const pin = document.getElementById('p-pin').value.trim() || null;
-  await fetch(`${API}/api/voyages/${voyageActuel}/participants`, {
+  const r = await fetch(`${API}/api/voyages/${voyageActuel}/participants`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nom, couleur: document.getElementById('p-couleur').value, pin })
   });
+  if (!r.ok) { toast('❌ Erreur lors de l\'ajout'); return; }
   fermerModal('modal-participant');
   toast('✅ Participant ajouté');
   chargerBudget();
@@ -2759,10 +2867,11 @@ async function sauvegarderPin() {
   const pin = document.getElementById('pin-valeur').value.trim() || null;
   const p = participantsActuels.find(x => x.id === +id);
   if (!p) return;
-  await fetch(`${API}/api/participants/${id}`, {
+  const r = await fetch(`${API}/api/participants/${id}`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nom: p.nom, couleur: p.couleur, pin })
   });
+  if (!r.ok) { toast('❌ Erreur lors de la sauvegarde'); return; }
   fermerModal('modal-pin');
   toast(pin ? '🔒 PIN enregistré' : '🔓 PIN retiré');
   chargerBudget();
@@ -2770,7 +2879,8 @@ async function sauvegarderPin() {
 
 async function supprimerParticipant(id) {
   if (!confirm('Supprimer ce participant ?')) return;
-  await fetch(`${API}/api/participants/${id}`, { method: 'DELETE' });
+  const r = await fetch(`${API}/api/participants/${id}`, { method: 'DELETE' });
+  if (!r.ok) { toast('❌ Erreur lors de la suppression'); return; }
   toast('🗑️ Participant supprimé');
   chargerBudget();
 }
@@ -3225,10 +3335,11 @@ async function supprimerPhotoAdmin(id) {
 }
 
 async function traiterDemande(id, statut) {
-  await fetch(`${API}/api/demandes/${id}`, {
+  const r = await fetch(`${API}/api/demandes/${id}`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ statut })
   });
+  if (!r.ok) { toast('❌ Erreur lors du traitement'); return; }
   chargerAdmin();
 }
 
@@ -3272,9 +3383,10 @@ async function sauvegarderAttribution() {
     document_id: parseInt(document.getElementById('attr-document').value) || null
   };
 
-  await fetch(`${API}/api/voyages/${voyageActuel}/attributions`, {
+  const r = await fetch(`${API}/api/voyages/${voyageActuel}/attributions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
   });
+  if (!r.ok) { toast('❌ Erreur lors de la création'); return; }
   fermerModal('modal-attribution');
   toast('✅ Attribution créée');
   chargerAdmin();
@@ -3282,7 +3394,8 @@ async function sauvegarderAttribution() {
 
 async function supprimerAttribution(id) {
   if (!confirm('Supprimer cette attribution ?')) return;
-  await fetch(`${API}/api/attributions/${id}`, { method: 'DELETE' });
+  const r = await fetch(`${API}/api/attributions/${id}`, { method: 'DELETE' });
+  if (!r.ok) { toast('❌ Erreur lors de la suppression'); return; }
   toast('🗑️ Attribution supprimée');
   chargerAdmin();
 }
@@ -3293,12 +3406,102 @@ function fermerModal(id) {
   document.getElementById(id).classList.add('hidden');
 }
 
+// Helper : modal de saisie du prénom admin pour rejoindre en vue participant
+// Remplace prompt() qui est bloqué en mode PWA standalone iOS (retourne null immédiatement)
+function _nomAdminModal(defaultName = '') {
+  return new Promise(resolve => {
+    const modal      = document.getElementById('modal-rejoindre');
+    const input      = document.getElementById('rejoindre-nom');
+    const btnOk      = document.getElementById('btn-rejoindre-ok');
+    const btnCloseX  = document.getElementById('btn-rejoindre-close');
+    const btnCancel  = document.getElementById('btn-rejoindre-close2');
+
+    input.value = defaultName;
+    modal.classList.remove('hidden');
+    setTimeout(() => input.focus(), 100);
+
+    const cleanup = (val) => {
+      modal.classList.add('hidden');
+      btnOk.removeEventListener('click', onOk);
+      btnCloseX.removeEventListener('click', onClose);
+      btnCancel.removeEventListener('click', onClose);
+      input.removeEventListener('keydown', onKey);
+      resolve(val);
+    };
+    const onOk    = () => cleanup(input.value.trim() || null);
+    const onClose = () => cleanup(null);
+    const onKey   = (e) => { if (e.key === 'Enter') onOk(); if (e.key === 'Escape') onClose(); };
+
+    btnOk.addEventListener('click', onOk);
+    btnCloseX.addEventListener('click', onClose);
+    btnCancel.addEventListener('click', onClose);
+    input.addEventListener('keydown', onKey);
+  });
+}
+
 async function partagerVoyage() {
   fermerBottomSheet();
   const resp = await fetch(`${API}/api/voyages/${voyageActuel}/partager`, { method: 'POST' });
   const data = await resp.json();
   document.getElementById('partage-url').textContent = data.url;
   document.getElementById('modal-partage').classList.remove('hidden');
+}
+
+async function rejoindreVoyage() {
+  if (!voyageActuel) return;
+  fermerBottomSheet();
+
+  // Auto-créer le lien de partage si nécessaire
+  if (!_shareTokenCourant) {
+    try {
+      const r = await fetch(`${API}/api/voyages/${voyageActuel}/partager`, { method: 'POST' });
+      if (!r.ok) { toast('❌ Impossible de créer le lien de partage'); return; }
+      const d = await r.json();
+      _shareTokenCourant = d.token;
+    } catch(e) { toast('❌ Erreur réseau'); return; }
+  }
+
+  // Demander le nom à l'admin via modal HTML
+  // prompt() est bloqué en mode PWA standalone iOS (retourne null immédiatement)
+  const nomAdmin = await _nomAdminModal(currentUser?.nom || '');
+  if (!nomAdmin) return;
+
+  try {
+    const resp = await fetch(`${API}/api/voyages/${voyageActuel}/join-as-participant`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${_authToken}`,
+      },
+      body: JSON.stringify({ nom: nomAdmin.trim(), couleur: '#FF6B35' }),
+    });
+    if (!resp.ok) { toast('❌ Erreur lors de la connexion'); return; }
+    const data = await resp.json();
+
+    // Stocker la session participant dans localStorage
+    const storageKey = 'partage_id_' + _shareTokenCourant;
+    localStorage.setItem(storageKey, JSON.stringify({
+      nom:            data.participant.nom,
+      participant_id: data.participant.participant_id,
+      couleur:        data.participant.couleur,
+      sessionToken:   data.sessionToken,
+      role:           'owner',
+    }));
+
+    // Naviguer vers la vue participant (même onglet)
+    // window.open(..., '_blank') est bloqué par Safari après des await
+    // → window.location.href fonctionne partout, retour via bouton navigateur
+    if (data.partageUrl) {
+      toast('✅ Chargement de la vue participant…');
+      window.location.href = data.partageUrl;
+    } else {
+      // partageUrl null → le token n'existe pas encore en DB : on ne doit pas arriver ici
+      // (le bloc ci-dessus crée le token si _shareTokenCourant est null), mais par sécurité :
+      toast('❌ Lien de partage introuvable. Réessaie dans quelques secondes.');
+    }
+  } catch(e) {
+    toast('❌ Erreur réseau');
+  }
 }
 
 function copierLienPartage() {
@@ -3433,9 +3636,9 @@ async function envoyerMessagePrive() {
 
 function _couleurChat(nom) {
   const palette = ['#C9622F','#3B82F6','#10B981','#8B5CF6','#EC4899','#F59E0B','#6366F1','#14B8A6'];
-  let h = 0;
-  for (const c of (nom||'?')) h = (h * 31 + c.charCodeAt(0)) & 0xFFFFFF;
-  return palette[h % palette.length];
+  let _hash = 0;
+  for (const c of (nom||'?')) _hash = (_hash * 31 + c.charCodeAt(0)) & 0xFFFFFF;
+  return palette[_hash % palette.length];
 }
 
 function _renderCommentairesAdmin(liste) {
@@ -3721,6 +3924,7 @@ function _bindStaticHandlers() {
 
   // ── Bottom sheet voyage ───────────────────────────────────────────────────
   _on('btn-partager-voyage',   'click', partagerVoyage);
+  _on('btn-rejoindre-voyage',  'click', rejoindreVoyage);
   _on('btn-modifier-voyage',   'click', modifierVoyageActuel);
   _on('btn-supprimer-voyage',  'click', supprimerVoyageActuel);
   _on('overlay-sheet',         'click', fermerBottomSheet);

@@ -9,6 +9,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
 const FICHIERS = {
+  users:               path.join(DATA_DIR, 'users.json'),
   voyages:             path.join(DATA_DIR, 'voyages.json'),
   reservations:        path.join(DATA_DIR, 'reservations.json'),
   agenda:              path.join(DATA_DIR, 'agenda.json'),
@@ -51,11 +52,24 @@ if (voyagesInit.length === 0) {
 
 const localDB = {
   users: {
-    getByEmail: () => null,
-    getById:    () => null,
-    create: (email, hash, nom) => ({ id: 1, email, nom, created_at: new Date().toISOString() }),
-    count: () => 0,
-    claimOrphanVoyages: () => {}
+    // Mode local : les comptes sont persistés dans data/users.json
+    // Permet login + register normaux sans PostgreSQL
+    getByEmail: (email) => charger('users').find(u => u.email === email) || null,
+    getById:    (id)    => charger('users').find(u => u.id === +id)     || null,
+    create: (email, hash, nom) => {
+      const list = charger('users');
+      const item = { id: nextId(list), email, password_hash: hash, nom, created_at: new Date().toISOString() };
+      list.push(item);
+      sauvegarder('users', list);
+      return item;
+    },
+    count: () => charger('users').length,
+    claimOrphanVoyages: (userId) => {
+      const list = charger('voyages');
+      let changed = false;
+      list.forEach(v => { if (!v.owner_id) { v.owner_id = userId; changed = true; } });
+      if (changed) sauvegarder('voyages', list);
+    }
   },
   voyages: {
     getAll: () => charger('voyages').sort((a,b) => (a.date_debut||'').localeCompare(b.date_debut||'')),
@@ -140,6 +154,11 @@ const localDB = {
       const idx = list.findIndex(s => s.endpoint === sub.endpoint);
       const item = { voyage_id: +vid, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, participant_id: sub.participant_id || null };
       if (idx === -1) { list.push({ ...item, id: nextId(list) }); } else { list[idx] = { ...list[idx], ...item }; }
+      sauvegarder('push_subscriptions', list);
+      return true;
+    },
+    deleteByEndpoint: (endpoint) => {
+      const list = charger('push_subscriptions').filter(s => s.endpoint !== endpoint);
       sauvegarder('push_subscriptions', list);
       return true;
     }
@@ -555,7 +574,7 @@ const pgDB = pgPool ? {
   participants: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM participants WHERE voyage_id=$1 ORDER BY created_at ASC', [vid])).rows,
     getById: async (id) => (await pgPool.query('SELECT * FROM participants WHERE id=$1', [id])).rows[0],
-    create: async (vid, data) => (await pgPool.query('INSERT INTO participants(voyage_id,nom,couleur,pin) VALUES($1,$2,$3,$4) RETURNING *', [vid,data.nom,data.couleur||'#6366F1',data.pin||null])).rows[0],
+    create: async (vid, data) => (await pgPool.query('INSERT INTO participants(voyage_id,nom,couleur,pin,role) VALUES($1,$2,$3,$4,$5) RETURNING *', [vid,data.nom,data.couleur||'#6366F1',data.pin||null,data.role||'participant'])).rows[0],
     update: async (id, data) => { await pgPool.query('UPDATE participants SET nom=$1,couleur=$2,pin=$3 WHERE id=$4', [data.nom,data.couleur,data.pin??null,id]); return true; },
     delete: async (id) => {
       await pgPool.query('DELETE FROM bagages WHERE participant_id=$1', [id]);
