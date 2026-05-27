@@ -2883,7 +2883,7 @@ async function sauvegarderParticipant() {
   if (!r.ok) { toast('❌ Erreur lors de l\'ajout'); return; }
   fermerModal('modal-participant');
   toast('✅ Participant ajouté');
-  chargerBudget();
+  chargerAccueil();
 }
 
 function ouvrirModalPin(id, nom, pinActuel) {
