@@ -463,6 +463,7 @@ if (USE_POSTGRES) {
     await m(`ALTER TABLE bagages ADD COLUMN IF NOT EXISTS checked BOOLEAN DEFAULT FALSE`);
     await m(`ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS participant_id INTEGER`);
     await m(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS pin TEXT`);
+    await m(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'participant'`);
     // Colonnes critiques pour CrewiCash (budget partagé entre participants)
     await m(`ALTER TABLE depenses ADD COLUMN IF NOT EXISTS participants_ids TEXT`);
     await m(`ALTER TABLE depenses ADD COLUMN IF NOT EXISTS payeur_id INTEGER`);

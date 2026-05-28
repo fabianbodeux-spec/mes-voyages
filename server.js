@@ -467,8 +467,12 @@ app.post('/api/voyages/:id/participants', authMiddleware, async (req, res) => {
       // 'role' volontairement exclu — toujours 'participant' par défaut
     };
     const item = await run(() => db.participants.create(req.params.id, payload));
-    res.json({ id: item.id });
-  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+    res.status(201).json({ id: item.id });
+  } catch(e) {
+    const msg = e?.message || String(e);
+    console.error('[PARTICIPANT CREATE]', msg, e?.detail || '');
+    res.status(500).json({ error: msg.split('\n')[0].slice(0, 120) || 'Erreur interne' });
+  }
 });
 
 app.put('/api/participants/:id', authMiddleware, async (req, res) => {

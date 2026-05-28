@@ -534,6 +534,10 @@ async function _initPushAdmin(voyageId) {
 }
 
 function changerOnglet(tab, btn) {
+  // Fermer la lightbox photos si elle est ouverte (z-index 9100 bloquerait les modals)
+  const _lb = document.getElementById('adm-photo-lightbox');
+  if (_lb && _lb.style.display === 'flex') fermerLightboxAdmin();
+
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
@@ -2873,17 +2877,27 @@ function choisirCouleurParticipant(btn) {
 }
 
 async function sauvegarderParticipant() {
+  if (!voyageActuel) { toast('⚠️ Aucun voyage sélectionné'); return; }
   const nom = document.getElementById('p-nom').value.trim();
   if (!nom) { toast('⚠️ Entre un prénom'); return; }
   const pin = document.getElementById('p-pin').value.trim() || null;
-  const r = await fetch(`${API}/api/voyages/${voyageActuel}/participants`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nom, couleur: document.getElementById('p-couleur').value, pin })
-  });
-  if (!r.ok) { toast('❌ Erreur lors de l\'ajout'); return; }
-  fermerModal('modal-participant');
-  toast('✅ Participant ajouté');
-  chargerAccueil();
+  try {
+    const r = await fetch(`${API}/api/voyages/${voyageActuel}/participants`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom, couleur: document.getElementById('p-couleur').value, pin })
+    });
+    if (!r.ok) {
+      const msg = await r.text().catch(() => '');
+      toast(`❌ Erreur lors de l'ajout${msg ? ' : ' + msg : ''}`);
+      return;
+    }
+    fermerModal('modal-participant');
+    toast('✅ Participant ajouté');
+    chargerAccueil();
+  } catch (e) {
+    console.error('sauvegarderParticipant:', e);
+    toast('❌ Erreur réseau, réessaie');
+  }
 }
 
 function ouvrirModalPin(id, nom, pinActuel) {
@@ -2906,7 +2920,7 @@ async function sauvegarderPin() {
   if (!r.ok) { toast('❌ Erreur lors de la sauvegarde'); return; }
   fermerModal('modal-pin');
   toast(pin ? '🔒 PIN enregistré' : '🔓 PIN retiré');
-  chargerBudget();
+  chargerAccueil();
 }
 
 async function supprimerParticipant(id) {
@@ -2914,7 +2928,7 @@ async function supprimerParticipant(id) {
   const r = await fetch(`${API}/api/participants/${id}`, { method: 'DELETE' });
   if (!r.ok) { toast('❌ Erreur lors de la suppression'); return; }
   toast('🗑️ Participant supprimé');
-  chargerBudget();
+  chargerAccueil();
 }
 
 async function ouvrirModalDepense(id = null) {
