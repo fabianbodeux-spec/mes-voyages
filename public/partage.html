@@ -682,6 +682,14 @@
       </div>
     </div>
 
+    <!-- ── Powered by CrewiGO — acquisition organique passive ── -->
+    <div class="crewigo-powered-footer">
+      <a href="/" class="crewigo-powered-link" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Organisé avec <strong>CrewiGO</strong> · crée ton trip gratuitement →
+      </a>
+    </div>
+
   </main>
 </div>
 
@@ -4198,6 +4206,35 @@ function escHtml(t) {
 }
 .hub-geo-card {
   border: 1px solid var(--border-solid);
+}
+
+/* ── Powered by CrewiGO ─────────────────────────────────────────── */
+.crewigo-powered-footer {
+  display: flex;
+  justify-content: center;
+  padding: 28px 16px 12px;
+}
+.crewigo-powered-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: opacity 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.crewigo-powered-link:hover {
+  opacity: 0.8;
+  color: var(--accent);
+}
+.crewigo-powered-link strong {
+  color: var(--accent);
+  font-weight: 800;
 }
 </style>
 
