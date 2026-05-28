@@ -214,6 +214,16 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+// Sliding window : renouvelle le token pour 365j supplémentaires
+app.get('/api/auth/refresh', authMiddleware, async (req, res) => {
+  const token = jwt.sign(
+    { id: req.user.id, email: req.user.email, nom: req.user.nom },
+    JWT_SECRET,
+    { expiresIn: '365d' }
+  );
+  res.json({ token });
+});
+
 // Rate-limiter en mémoire pour les tentatives PIN
 const _pinAttempts = new Map();
 function checkPinRate(key) {

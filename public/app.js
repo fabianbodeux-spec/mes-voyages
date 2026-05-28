@@ -9,6 +9,46 @@ let currentUser = null;
 // try/catch : localStorage.getItem() lève une exception en navigation privée iOS
 let _authToken = (() => { try { return localStorage.getItem('crewigo_token'); } catch { return null; } })();
 
+// ── Fix C : IndexedDB — backup du token résistant à la purge iOS ──────────────
+// iOS Safari peut vider localStorage si la PWA n'est pas ouverte depuis >7 jours.
+// IndexedDB est plus persistant (origine distincte, moins purgé).
+const _IDB_NAME = 'crewigo_auth_v1';
+const _IDB_STORE = 'tokens';
+
+function _openTokenDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(_IDB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(_IDB_STORE, { keyPath: 'k' });
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+async function _saveTokenIDB(token) {
+  try {
+    const db = await _openTokenDB();
+    const tx = db.transaction(_IDB_STORE, 'readwrite');
+    tx.objectStore(_IDB_STORE).put({ k: 'token', v: token });
+  } catch {}
+}
+async function _readTokenIDB() {
+  try {
+    const db = await _openTokenDB();
+    return await new Promise((resolve) => {
+      const tx = db.transaction(_IDB_STORE, 'readonly');
+      const req = tx.objectStore(_IDB_STORE).get('token');
+      req.onsuccess = () => resolve(req.result?.v || null);
+      req.onerror   = () => resolve(null);
+    });
+  } catch { return null; }
+}
+async function _clearTokenIDB() {
+  try {
+    const db = await _openTokenDB();
+    const tx = db.transaction(_IDB_STORE, 'readwrite');
+    tx.objectStore(_IDB_STORE).delete('token');
+  } catch {}
+}
+
 // Décode le payload JWT côté client (sans vérification de signature)
 // Utilisé comme fallback quand le serveur est injoignable
 function _decodeJwtPayload(token) {
@@ -28,7 +68,10 @@ function _getCachedUser() {
 }
 
 // Intercepteur global : injecte le token JWT sur tous les appels /api/
-// et redirige vers login uniquement sur 401 explicite du serveur
+// Fix B : 401 gracieux — ne déconnecte PAS immédiatement sur un 401 secondaire.
+// Valide d'abord le token sur /api/auth/me ; si confirmé invalide → logout.
+// Évite les déconnexions sauvages sur cold-start Railway ou erreur transitoire.
+let _401Pending = false;
 (function installFetchInterceptor() {
   const _native = window.fetch.bind(window);
   window.fetch = function(url, opts = {}) {
@@ -38,12 +81,36 @@ function _getCachedUser() {
     }
     return _native(url, opts).then(r => {
       if (r.status === 401 && u.startsWith('/api/') && !u.startsWith('/api/auth/')) {
-        _doLogout();
+        _handle401Gracieux();
       }
       return r;
     });
   };
 })();
+
+// Fix B — vérification avant logout : évite les faux-positifs sur cold start
+async function _handle401Gracieux() {
+  if (_401Pending) return;     // déjà en cours de vérification
+  _401Pending = true;
+  try {
+    // Re-vérifier le token directement sur /me
+    const check = await window.fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${_authToken}` }
+    });
+    if (check.status === 401) {
+      // Token véritablement invalide → logout propre
+      _doLogout();
+    } else {
+      // 401 transitoire (cold start, race condition) → session maintenue
+      // On renouvelle silencieusement au cas où
+      _renewTokenSilently();
+      _401Pending = false;
+    }
+  } catch {
+    // Erreur réseau → ne pas déconnecter
+    _401Pending = false;
+  }
+}
 
 async function initAuth() {
   // Lire le paramètre ?auth= (register / login)
@@ -51,6 +118,15 @@ async function initAuth() {
   if (authParam) {
     const cleanUrl = window.location.pathname + window.location.hash;
     history.replaceState(null, '', cleanUrl);
+  }
+
+  // Fix C : si localStorage est vide (purge iOS), tenter la récupération depuis IndexedDB
+  if (!_authToken) {
+    const idbToken = await _readTokenIDB();
+    if (idbToken) {
+      _authToken = idbToken;
+      try { localStorage.setItem('crewigo_token', _authToken); } catch {}
+    }
   }
 
   // Aucun token → écran de connexion
@@ -110,6 +186,7 @@ async function initAuth() {
 }
 
 // Vérifie le token en arrière-plan sans bloquer ni déconnecter sur erreur réseau
+// Fix A : renouvelle également le token (sliding window 365j)
 async function _validateTokenSilently() {
   try {
     const r = await fetch('/api/auth/me');
@@ -119,9 +196,24 @@ async function _validateTokenSilently() {
     currentUser = fresh;
     _cacheUser(fresh);
     _updateHeaderUser();
+    // Renouveler le token silencieusement à chaque session active
+    _renewTokenSilently();
   } catch {
     // Pas de réseau → session locale maintenue, aucune action
   }
+}
+
+// Fix A — émet un nouveau token (365j) sans déconnecter l'utilisateur
+async function _renewTokenSilently() {
+  try {
+    const r = await fetch('/api/auth/refresh');
+    if (!r.ok) return;
+    const { token } = await r.json();
+    if (!token) return;
+    _authToken = token;
+    try { localStorage.setItem('crewigo_token', token); } catch {}
+    _saveTokenIDB(token);  // Fix C : double sauvegarde IDB
+  } catch {}               // Pas de réseau → token actuel reste valide
 }
 
 function _showAuthScreen() {
@@ -167,6 +259,7 @@ async function submitLogin() {
     _authToken = data.token;
     currentUser = data.user;
     localStorage.setItem('crewigo_token', _authToken);
+    _saveTokenIDB(_authToken);   // Fix C : double sauvegarde IDB
     _cacheUser(currentUser);
     _hideAuthScreen();
     _updateHeaderUser();
@@ -196,6 +289,7 @@ async function submitRegister() {
     _authToken = data.token;
     currentUser = data.user;
     localStorage.setItem('crewigo_token', _authToken);
+    _saveTokenIDB(_authToken);   // Fix C : double sauvegarde IDB
     _cacheUser(currentUser);
     _hideAuthScreen();
     _updateHeaderUser();
@@ -213,8 +307,10 @@ function logout() {
 function _doLogout() {
   _authToken = null;
   currentUser = null;
+  _401Pending = false;
   localStorage.removeItem('crewigo_token');
   localStorage.removeItem(_USER_CACHE_KEY);
+  _clearTokenIDB();   // Fix C : purge IDB aussi
   _showAuthScreen();
 }
 
