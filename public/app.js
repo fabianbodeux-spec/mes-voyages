@@ -1298,26 +1298,86 @@ async function _creerTrip() {
     const wizard = document.getElementById('create-wizard');
     wizard.classList.add('wizard-out');
 
-    setTimeout(() => {
+    // Générer le lien de partage en parallèle (idem à ce que fait l'onglet Admin)
+    const partagePromise = fetch(`${API}/api/voyages/${id}/partager`, { method: 'POST' })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null);
+
+    setTimeout(async () => {
       wizard.classList.add('hidden');
       const conf = document.getElementById('create-confirm');
       conf.classList.remove('hidden');
       const totalPax = _createParticipants.length + (orgaNom ? 1 : 0);
       document.getElementById('create-confirm-sub').textContent =
         `${h(nom)}${destination ? ' · ' + h(destination) : ''}${totalPax ? ` · ${totalPax} voyageur${totalPax > 1 ? 's' : ''}` : ''}`;
-    }, 300);
 
-    // Aller sur le voyage après l'animation
-    setTimeout(() => {
-      chargerVoyages();
-      afficherVoyage(id);
-    }, 1800);
+      // Attendre le lien de partage et l'afficher
+      const partageData = await partagePromise;
+      const loadingEl = document.getElementById('create-confirm-loading');
+      const shareEl   = document.getElementById('create-confirm-share');
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (partageData?.url && shareEl) {
+        // Stocker le lien complet pour les actions Copy / Share
+        window._confirmShareFullUrl = partageData.url;
+        // Afficher uniquement le chemin relatif (plus lisible)
+        const displayUrl = partageData.url.replace(/^https?:\/\/[^/]+/, '');
+        const urlEl = document.getElementById('create-confirm-share-url');
+        if (urlEl) urlEl.textContent = displayUrl;
+        shareEl.classList.remove('hidden');
+      }
+
+      // Stocker l'id pour la navigation depuis les boutons
+      window._confirmVoyageId = id;
+    }, 300);
 
   } catch(e) {
     toast('⚠️ Erreur lors de la création');
     btn.disabled = false;
     btn.style.opacity = '1';
   }
+}
+
+// ─── Actions de la confirmation post-création ───────────────────────────────
+
+function _confirmShareCopy() {
+  const url = window._confirmShareFullUrl;
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => {
+    toast('✅ Lien copié !');
+  }).catch(() => {
+    // Fallback pour les vieux navigateurs
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('✅ Lien copié !');
+  });
+}
+
+function _confirmShareNative() {
+  const url = window._confirmShareFullUrl;
+  if (!url) return;
+  if (navigator.share) {
+    navigator.share({
+      title: 'Rejoins mon trip sur CrewiGO !',
+      text: 'Je t\'invite à rejoindre notre voyage 🌍',
+      url
+    }).catch(() => {});
+  } else {
+    // Pas de Web Share API → copier directement
+    _confirmShareCopy();
+  }
+}
+
+function _confirmGo() {
+  const id = window._confirmVoyageId;
+  if (!id) return;
+  chargerVoyages();
+  afficherVoyage(id);
 }
 
 // ═══════════════════════════════════════════════════════

@@ -1424,7 +1424,7 @@ app.get('/partage/:token', (req, res) => {
   res.redirect(301, `/share/${safe}`);
 });
 
-app.get('/share/:token', (req, res) => {
+app.get('/share/:token', async (req, res) => {
   res.set({
     'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
     'Pragma':        'no-cache',
@@ -1435,6 +1435,73 @@ app.get('/share/:token', (req, res) => {
   html = html
     .replace('href="/style.css"', `href="/style.css?${APP_VERSION}"`)
     .replace('src="/app.js"',     `src="/app.js?${APP_VERSION}"`);
+
+  // ─── INJECTION OG DYNAMIQUE ──────────────────────────────────────────────────
+  // Les bots (WhatsApp, Telegram, Slack…) ne font jamais tourner le JS —
+  // ils lisent uniquement le HTML brut. On injecte les balises OG côté serveur
+  // pour que chaque lien partagé affiche le bon nom de voyage + destination.
+  try {
+    const t = req.params.token;
+    // Valider le format du token avant toute requête DB (anti path-injection)
+    if (/^[a-zA-Z0-9_\-]{6,30}$/.test(t)) {
+      const voyage = await run(() => db.voyages.getByToken(t));
+      if (voyage) {
+        const participants = await run(() => db.participants.getByVoyage(voyage.id));
+        const nbMembres = participants.length;
+
+        // Échappement HTML pour éviter tout XSS via les données du voyage
+        const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const nom  = esc(voyage.nom || 'Voyage en groupe');
+        const dest = esc(voyage.destination || '');
+
+        // Formatage lisible des dates (ex : "14 juin" / "17 juin")
+        const fmtDate = d => {
+          if (!d) return null;
+          const dt = new Date(d);
+          return isNaN(dt.getTime()) ? null : dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+        };
+        const debut = fmtDate(voyage.date_debut);
+        const fin   = fmtDate(voyage.date_fin);
+
+        // Titre OG : "Weekend à Lisbonne · CrewiGO" ou "Notre Road Trip · CrewiGO"
+        const ogTitle = dest ? `${nom} · ${dest}` : nom;
+
+        // Description OG : "6 membres · Lisbonne · du 14 juin au 17 juin"
+        const descParts = [];
+        if (nbMembres > 0) descParts.push(`${nbMembres} membre${nbMembres > 1 ? 's' : ''}`);
+        if (dest)           descParts.push(dest);
+        if (debut && fin)   descParts.push(`du ${debut} au ${fin}`);
+        else if (debut)     descParts.push(`à partir du ${debut}`);
+        const ogDesc = descParts.length
+          ? descParts.join(' · ')
+          : 'Rejoignez ce voyage en groupe sur CrewiGO.';
+
+        // URL canonique pour og:url
+        const ogUrl = `${req.protocol}://${req.get('host')}/share/${esc(t)}`;
+
+        html = html
+          .replace(/<title>[^<]*<\/title>/,                                          `<title>${nom} — CrewiGO</title>`)
+          .replace(/(<meta property="og:title"\s+content=")[^"]*(")/,               `$1${ogTitle} — CrewiGO$2`)
+          .replace(/(<meta property="og:description"\s+content=")[^"]*(")/,         `$1${ogDesc}$2`)
+          .replace(/(<meta property="og:locale"\s+content=")[^"]*(")/,              `$1fr_FR$2`)
+          .replace(/(<meta name="twitter:title"\s+content=")[^"]*(")/,              `$1${ogTitle} — CrewiGO$2`)
+          .replace(/(<meta name="twitter:description"\s+content=")[^"]*(")/,        `$1${ogDesc}$2`);
+
+        // Injecter og:url juste après og:locale (si la balise n'existe pas encore)
+        if (!html.includes('og:url')) {
+          html = html.replace(
+            /(<meta property="og:locale"[^>]*>)/,
+            `$1\n  <meta property="og:url" content="${ogUrl}">`
+          );
+        }
+      }
+    }
+  } catch (e) {
+    // Fallback silencieux sur les OG statiques — la page reste fonctionnelle
+    console.warn('[OG INJECTION] Erreur silencieuse:', e.message);
+  }
+
   res.end(html);
 });
 

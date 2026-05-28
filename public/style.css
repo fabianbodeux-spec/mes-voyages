@@ -3484,6 +3484,66 @@ textarea { resize: vertical; line-height: 1.6; }
   animation: fadeInUp 0.4s 0.2s ease both;
 }
 
+/* ── Bloc lien de partage sur l'écran de confirmation ──────────────────── */
+.confirm-share-block {
+  width: 100%; max-width: 320px;
+  display: flex; flex-direction: column; gap: 10px;
+  animation: fadeInUp 0.35s 0.15s ease both;
+}
+.confirm-share-label {
+  font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-muted);
+  text-align: center;
+}
+.confirm-share-url-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 12px;
+}
+.confirm-share-url {
+  flex: 1; font-size: 0.78rem; color: var(--text); word-break: break-all;
+  font-family: ui-monospace, 'SF Mono', monospace;
+}
+.confirm-share-copy-btn {
+  flex-shrink: 0;
+  background: none; border: none; cursor: pointer;
+  color: var(--accent); padding: 2px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; transition: opacity 0.15s;
+}
+.confirm-share-copy-btn:hover { opacity: 0.7; }
+.confirm-share-actions {
+  display: flex; gap: 8px;
+}
+.btn-confirm-share {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 11px 12px; border-radius: 10px; border: none; cursor: pointer;
+  background: var(--accent); color: #fff;
+  font-size: 0.82rem; font-weight: 700;
+  transition: opacity 0.15s;
+}
+.btn-confirm-share:hover { opacity: 0.85; }
+.btn-confirm-go {
+  flex: 1; padding: 11px 12px; border-radius: 10px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); font-size: 0.82rem; font-weight: 600;
+  transition: opacity 0.15s;
+}
+.btn-confirm-go:hover { opacity: 0.7; }
+.confirm-share-loading {
+  display: flex; align-items: center; justify-content: center;
+  padding: 8px 0;
+}
+.confirm-loading-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); opacity: 0.6;
+  animation: dotPulse 1s ease-in-out infinite;
+}
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%       { opacity: 1;   transform: scale(1.2); }
+}
+
 /* Step 1 — deux inputs destination */
 .create-dest-fields { display: flex; flex-direction: column; gap: 16px; margin-top: 8px; }
 .create-dest-field { display: flex; flex-direction: column; gap: 6px; }
