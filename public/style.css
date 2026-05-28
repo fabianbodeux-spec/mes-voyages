@@ -775,6 +775,65 @@ body {
 /* ═══════════════════════════════════════════════════════════════
    VOYAGE CARDS
    ═══════════════════════════════════════════════════════════════ */
+/* ─── HOME SECTIONS (En cours / À venir / Mur de Trophées) ───── */
+.home-section {
+  padding-bottom: 4px;
+}
+.home-section + .home-section {
+  margin-top: 4px;
+}
+
+.home-section-hd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px 13px;
+}
+.home-section-bar {
+  display: inline-block;
+  width: 4px;
+  height: 20px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.home-section-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  flex: 1;
+}
+.home-section-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border-solid);
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+/* Section EN COURS — barre verte pulsante */
+.home-section--ongoing .home-section-bar {
+  background: linear-gradient(180deg, #10B981 0%, #059669 100%);
+  animation: hsPulseGreen 2.4s ease-in-out infinite;
+}
+@keyframes hsPulseGreen {
+  0%,100% { box-shadow: 0 0 0 rgba(16,185,129,0); }
+  50%      { box-shadow: 0 0 8px rgba(16,185,129,0.6); }
+}
+
+/* Section À VENIR — barre indigo */
+.home-section--upcoming .home-section-bar {
+  background: linear-gradient(180deg, #6366F1 0%, #4F46E5 100%);
+}
+
+/* Section SOUVENIRS — barre ambre */
+.home-section--memories .home-section-bar {
+  background: linear-gradient(180deg, #F59E0B 0%, #D97706 100%);
+}
+
 /* ─── VOYAGE GRID & CARDS ────────────────────────────────────── */
 .voyage-grid {
   display: flex;
@@ -804,6 +863,126 @@ body {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Cartes EN COURS : banner 130px, accent vert ── */
+.voyage-grid--ongoing .voyage-card {
+  border-color: rgba(16,185,129,0.22);
+}
+.voyage-grid--ongoing .voyage-card:hover {
+  border-color: rgba(16,185,129,0.42);
+  box-shadow: 0 6px 24px rgba(16,185,129,0.13), 0 1px 4px rgba(0,0,0,0.06);
+}
+.voyage-grid--ongoing .voyage-card-banner { height: 130px; }
+
+/* Badge live ongoing */
+.voyage-grid--ongoing .badge-ongoing {
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.voyage-grid--ongoing .badge-ongoing::before {
+  content: '';
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #6EE7B7;
+  animation: liveDot 1.3s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes liveDot {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.35; transform: scale(1.4); }
+}
+
+/* Barre de progression voyage "en cours" */
+.voyage-progress {
+  height: 3px;
+  background: var(--border-solid);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0 0 5px;
+}
+.voyage-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #10B981 0%, #34D399 100%);
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+.voyage-progress-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #10B981;
+  margin-bottom: 8px;
+}
+
+/* ── Cartes À VENIR : banner 100px, accent indigo ── */
+.voyage-grid--upcoming .voyage-card {
+  border-color: rgba(99,102,241,0.18);
+}
+.voyage-grid--upcoming .voyage-card:hover {
+  border-color: rgba(99,102,241,0.38);
+  box-shadow: 0 6px 24px rgba(99,102,241,0.10), 0 1px 4px rgba(0,0,0,0.06);
+}
+.voyage-grid--upcoming .voyage-card-banner { height: 100px; }
+
+/* Countdown badge */
+.voyage-countdown {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #6366F1;
+  background: rgba(99,102,241,0.10);
+  border: 1px solid rgba(99,102,241,0.22);
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.01em;
+  flex-shrink: 0;
+}
+.voyage-countdown--urgent {
+  color: #EF4444;
+  background: rgba(239,68,68,0.09);
+  border-color: rgba(239,68,68,0.22);
+  animation: countdownPulse 1.6s ease-in-out infinite;
+}
+@keyframes countdownPulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+/* ── Cartes MÉMOIRE : banner 180px, accent ambre ── */
+.voyage-card--memory {
+  border-color: rgba(245,158,11,0.2);
+}
+.voyage-card--memory:hover {
+  border-color: rgba(245,158,11,0.40);
+  box-shadow: 0 8px 32px rgba(245,158,11,0.12), 0 2px 6px rgba(0,0,0,0.07);
+  transform: translateY(-3px);
+}
+.voyage-card--memory .voyage-card-banner { height: 180px; }
+
+/* Stats mémoire (⭐ note + 👥 crew) */
+.memory-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.memory-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.memory-stat--rating { color: #D97706; }
+.memory-stat--crew   { color: var(--text-muted); }
+.memory-stat-sub     { font-weight: 400; color: var(--text-muted); font-size: 0.72rem; }
+
+/* Dark mode overrides pour les nouvelles sections */
+@media (prefers-color-scheme: dark) {
+  .voyage-countdown { color: #A5B4FC; background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.3); }
+  .voyage-countdown--urgent { color: #FCA5A5; background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.28); }
+  .voyage-progress-label { color: #34D399; }
+  .memory-stat--rating { color: #FCD34D; }
+}
+
+/* ─ fin variantes sections ─────────────────────────────────── */
 
 .voyage-card:hover {
   border-color: rgba(249,115,22,0.35);
@@ -2650,6 +2829,17 @@ textarea { resize: vertical; line-height: 1.6; }
     background: linear-gradient(to bottom, rgba(25,25,25,0.10) 0%, rgba(25,25,25,0.35) 60%, rgba(25,25,25,0.60) 100%);
   }
   #screen-home .main-content { background: var(--bg); }
+
+  /* Sections home dark mode */
+  .home-section-count { background: #2A2A2A; border-color: #3A3A3A; }
+  .voyage-grid--ongoing .voyage-card { border-color: rgba(16,185,129,0.15); }
+  .voyage-grid--ongoing .voyage-card:hover { border-color: rgba(16,185,129,0.35); box-shadow: 0 6px 24px rgba(16,185,129,0.10), 0 1px 4px rgba(0,0,0,0.20); }
+  .voyage-grid--upcoming .voyage-card { border-color: rgba(99,102,241,0.13); }
+  .voyage-grid--upcoming .voyage-card:hover { border-color: rgba(99,102,241,0.30); box-shadow: 0 6px 24px rgba(99,102,241,0.08), 0 1px 4px rgba(0,0,0,0.20); }
+  .voyage-card--memory { border-color: rgba(245,158,11,0.14); }
+  .voyage-card--memory:hover { border-color: rgba(245,158,11,0.32); box-shadow: 0 8px 32px rgba(245,158,11,0.09), 0 2px 6px rgba(0,0,0,0.25); }
+  .voyage-progress { background: rgba(255,255,255,0.08); }
+  .memory-stat--crew { color: #6B6860; }
 
   .badge-upcoming { background: #1A2540; color: #93BFFF; }
   .badge-ongoing  { background: #0D2B1A; color: #6EE7A0; }

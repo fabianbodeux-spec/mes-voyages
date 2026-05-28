@@ -659,75 +659,199 @@ function _appliquerPhoto(voyageId, photoUrl) {
 }
 
 async function chargerVoyages() {
-  const data = await fetch(`${API}/api/voyages`).then(r => r.ok ? r.json() : []).catch(() => []);
+  const data = await fetch(`${API}/api/voyages/home-summary`).then(r => r.ok ? r.json() : []).catch(() => []);
   const voyages = Array.isArray(data) ? data : [];
-  const liste = document.getElementById('liste-voyages');
+  const container = document.getElementById('voyages-container');
   const empty = document.getElementById('empty-state');
 
   if (voyages.length === 0) {
-    liste.innerHTML = '';
+    container.innerHTML = '';
     empty.classList.remove('hidden');
     return;
   }
   empty.classList.add('hidden');
 
-  // Stats pour le banner
-  const aVenir = voyages.filter(v => getStatut(v.date_debut, v.date_fin).classe === 'upcoming').length;
-  const enCours = voyages.filter(v => getStatut(v.date_debut, v.date_fin).classe === 'ongoing').length;
+  // ── Grouper par statut ─────────────────────────────────────────
+  const MEMORY_STATUTS = new Set(['terminé', 'completed', 'archived']);
+  const ongoing = [], upcoming = [], memories = [];
+  for (const v of voyages) {
+    if (MEMORY_STATUTS.has(v.statut)) {
+      memories.push(v);
+    } else {
+      const s = getStatut(v.date_debut, v.date_fin);
+      if (s.classe === 'ongoing') ongoing.push(v);
+      else if (s.classe === 'upcoming') upcoming.push(v);
+      else memories.push(v); // passé mais pas encore marqué terminé
+    }
+  }
+
+  // ── Stats banner ───────────────────────────────────────────────
   const statsEl = document.getElementById('home-stats');
   if (statsEl) {
     const pills = [];
-    if (enCours > 0) pills.push(`<span class="stat-pill stat-pill--ongoing"><svg viewBox="0 0 24 24" fill="currentColor" width="8" height="8"><circle cx="12" cy="12" r="6"/></svg>${enCours} en cours</span>`);
-    if (aVenir > 0) pills.push(`<span class="stat-pill stat-pill--upcoming"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="11" height="11"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>${aVenir} à venir</span>`);
+    if (ongoing.length > 0) pills.push(`<span class="stat-pill stat-pill--ongoing"><svg viewBox="0 0 24 24" fill="currentColor" width="8" height="8"><circle cx="12" cy="12" r="6"/></svg>${ongoing.length} en cours</span>`);
+    if (upcoming.length > 0) pills.push(`<span class="stat-pill stat-pill--upcoming"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="11" height="11"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>${upcoming.length} à venir</span>`);
     pills.push(`<span class="stat-pill stat-pill--total"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>${voyages.length} voyage${voyages.length > 1 ? 's' : ''}</span>`);
     statsEl.innerHTML = pills.join('');
   }
 
-  liste.innerHTML = voyages.map(v => {
-    const statut = v.statut === 'terminé'
-      ? { label: 'Terminé', classe: 'done' }
-      : getStatut(v.date_debut, v.date_fin);
-    const duree = getDuree(v.date_debut, v.date_fin);
-    return `
-    <div class="voyage-card" data-id="${v.id}" onclick="afficherVoyage(${v.id})">
-      <!-- Bande de couleur + zone visuelle sombre -->
-      <div class="voyage-card-banner">
-        <div class="voyage-card-accent" style="background:${h(v.couleur)}"></div>
-        <img class="voyage-card-banner-img" src="" alt="" style="opacity:0">
-        <div class="voyage-card-color-wash" style="background:linear-gradient(135deg,${h(v.couleur)}33 0%,transparent 70%)"></div>
-        <div class="voyage-card-banner-content">
-          <div class="voyage-card-banner-top">
-            <span class="voyage-badge badge-${statut.classe}">${statut.label}</span>
-          </div>
-          <div class="voyage-card-banner-bottom">
-            <span class="voyage-card-dest">
-              <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-              ${h(v.destination)}
-            </span>
-          </div>
-        </div>
-      </div>
-      <!-- Contenu texte -->
-      <div class="voyage-card-body">
-        <h2 class="voyage-card-title">${h(v.nom)}</h2>
-        <div class="voyage-card-meta">
-          <span class="voyage-dates">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
-            ${v.date_debut ? formatDates(v.date_debut, v.date_fin) : '<em>Dates à définir</em>'}
-          </span>
-          ${duree ? `<span class="voyage-duree">${duree}</span>` : ''}
-        </div>
-        <div class="voyage-card-cta">
-          <span class="voyage-card-open-btn">Ouvrir le trip
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M15 6l6 6-6 6"/></svg>
-          </span>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+  // ── Rendu 3 sections ──────────────────────────────────────────
+  let html = '';
 
-  // Chargement asynchrone des photos emblématiques depuis Wikipedia
-  enrichirPhotos(voyages);
+  if (ongoing.length > 0) {
+    html += `<section class="home-section home-section--ongoing">
+      <div class="home-section-hd">
+        <span class="home-section-bar"></span>
+        <span class="home-section-title">🔥 En ce moment</span>
+        <span class="home-section-count">${ongoing.length}</span>
+      </div>
+      <div class="voyage-grid voyage-grid--ongoing">
+        ${ongoing.map(v => _renderVoyageCard(v, 'ongoing')).join('')}
+      </div>
+    </section>`;
+  }
+
+  if (upcoming.length > 0) {
+    html += `<section class="home-section home-section--upcoming">
+      <div class="home-section-hd">
+        <span class="home-section-bar"></span>
+        <span class="home-section-title">✈️ À venir</span>
+        <span class="home-section-count">${upcoming.length}</span>
+      </div>
+      <div class="voyage-grid voyage-grid--upcoming">
+        ${upcoming.map(v => _renderVoyageCard(v, 'upcoming')).join('')}
+      </div>
+    </section>`;
+  }
+
+  if (memories.length > 0) {
+    html += `<section class="home-section home-section--memories">
+      <div class="home-section-hd">
+        <span class="home-section-bar"></span>
+        <span class="home-section-title">🏆 Mur de Trophées</span>
+        <span class="home-section-count">${memories.length}</span>
+      </div>
+      <div class="voyage-grid voyage-grid--memories">
+        ${memories.map(v => _renderVoyageCard(v, 'memories')).join('')}
+      </div>
+    </section>`;
+  }
+
+  container.innerHTML = html;
+
+  // ── Photos Wikipedia pour ongoing + upcoming ───────────────────
+  enrichirPhotos([...ongoing, ...upcoming]);
+  // ── Top photos internes pour les souvenirs ─────────────────────
+  _enrichirPhotosSouvenirs(memories);
+}
+
+/** Construit le HTML d'une carte voyage selon sa section */
+function _renderVoyageCard(v, section) {
+  const isMemory  = section === 'memories';
+  const isOngoing = section === 'ongoing';
+
+  const statut = ['terminé','completed','archived'].includes(v.statut)
+    ? { label: 'Terminé', classe: 'done' }
+    : getStatut(v.date_debut, v.date_fin);
+
+  const duree = getDuree(v.date_debut, v.date_fin);
+
+  // ── Countdown "à venir" ──
+  let countdownHtml = '';
+  if (section === 'upcoming' && v.date_debut) {
+    const daysUntil = Math.ceil((new Date(v.date_debut) - new Date()) / (1000*60*60*24));
+    if (daysUntil > 0 && daysUntil <= 60) {
+      const urgent = daysUntil <= 7 ? ' voyage-countdown--urgent' : '';
+      countdownHtml = `<span class="voyage-countdown${urgent}">🗓️ Dans ${daysUntil}j</span>`;
+    }
+  }
+
+  // ── Progression "en cours" ──
+  let progressHtml = '';
+  if (isOngoing && v.date_debut && v.date_fin) {
+    const total   = new Date(v.date_fin)   - new Date(v.date_debut);
+    const elapsed = new Date()             - new Date(v.date_debut);
+    const pct     = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+    const dayN    = Math.max(1, Math.ceil(elapsed / (1000*60*60*24)));
+    const dayTot  = Math.max(1, Math.round(total  / (1000*60*60*24)));
+    progressHtml = `<div class="voyage-progress">
+      <div class="voyage-progress-bar" style="width:${pct}%"></div>
+    </div>
+    <span class="voyage-progress-label">Jour ${dayN} / ${dayTot}</span>`;
+  }
+
+  // ── Stats mémoire ──
+  let memoryStatsHtml = '';
+  if (isMemory) {
+    let s = '';
+    if (v.avg_capsule_note != null)
+      s += `<span class="memory-stat memory-stat--rating">⭐ ${v.avg_capsule_note}<span class="memory-stat-sub"> (${v.capsule_count||0} capsule${(v.capsule_count||0)>1?'s':''})</span></span>`;
+    if (v.participant_count > 0)
+      s += `<span class="memory-stat memory-stat--crew">👥 ${v.participant_count} crewmate${v.participant_count>1?'s':''}</span>`;
+    if (s) memoryStatsHtml = `<div class="memory-stats">${s}</div>`;
+  }
+
+  // ── Click handler ──
+  const clickHandler = isMemory && v.share_token
+    ? `onclick="window.location.href='/partage/${v.share_token}?tab=souvenirs'"`
+    : `onclick="afficherVoyage(${v.id})"`;
+
+  const ctaLabel = isMemory ? '🎞️ Voir les souvenirs' : 'Ouvrir le trip';
+
+  return `<div class="voyage-card${isMemory?' voyage-card--memory':''}" data-id="${h(String(v.id))}" ${clickHandler}>
+    <div class="voyage-card-banner">
+      <div class="voyage-card-accent" style="background:${h(v.couleur)}"></div>
+      <img class="voyage-card-banner-img" src="" alt="" style="opacity:0">
+      <div class="voyage-card-color-wash" style="background:linear-gradient(135deg,${h(v.couleur)}33 0%,transparent 70%)"></div>
+      <div class="voyage-card-banner-content">
+        <div class="voyage-card-banner-top">
+          <span class="voyage-badge badge-${statut.classe}">${statut.label}</span>
+        </div>
+        <div class="voyage-card-banner-bottom">
+          <span class="voyage-card-dest">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            ${h(v.destination)}
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="voyage-card-body">
+      <h2 class="voyage-card-title">${h(v.nom)}</h2>
+      ${progressHtml}
+      ${memoryStatsHtml}
+      <div class="voyage-card-meta">
+        <span class="voyage-dates">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+          ${v.date_debut ? formatDates(v.date_debut, v.date_fin) : '<em>Dates à définir</em>'}
+        </span>
+        ${countdownHtml || (duree ? `<span class="voyage-duree">${duree}</span>` : '')}
+      </div>
+      <div class="voyage-card-cta">
+        <span class="voyage-card-open-btn">${ctaLabel}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M15 6l6 6-6 6"/></svg>
+        </span>
+      </div>
+    </div>
+  </div>`;
+}
+
+/** Charge les top photos des voyages archivés dans les cartes mémoire */
+function _enrichirPhotosSouvenirs(voyages) {
+  for (const v of voyages) {
+    if (!v.top_photo_id) continue;
+    const card = document.querySelector(`.voyage-card[data-id="${v.id}"]`);
+    if (!card) continue;
+    const img = card.querySelector('.voyage-card-banner-img');
+    if (!img) continue;
+    const tmp = new Image();
+    tmp.onload = () => {
+      img.src = `${API}/api/photos/${v.top_photo_id}/img`;
+      img.style.opacity = '0.7';
+      img.style.filter  = 'saturate(0.85) brightness(0.75)';
+      img.style.transition = 'opacity 0.5s ease';
+    };
+    tmp.src = `${API}/api/photos/${v.top_photo_id}/img`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════

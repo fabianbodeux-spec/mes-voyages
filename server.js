@@ -244,6 +244,17 @@ app.get('/api/voyages', authMiddleware, async (req, res) => {
   try { res.json(await run(() => db.voyages.getAll(req.user.id))); } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+// GET home summary enrichi (participant_count, top_photo_id, avg_capsule_note) — DOIT être avant /:id
+app.get('/api/voyages/home-summary', authMiddleware, async (req, res) => {
+  try {
+    const rows = await run(() => db.voyages.getAllWithSummary(req.user.id));
+    res.json(rows);
+  } catch(e) {
+    console.error('[HOME SUMMARY]', e.message);
+    res.status(500).json({ error: 'Erreur interne' });
+  }
+});
+
 // GET voyages archivés — DOIT être avant /:id pour ne pas être intercepté
 app.get('/api/voyages/archives', authMiddleware, async (req, res) => {
   try {

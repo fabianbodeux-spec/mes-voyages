@@ -74,6 +74,23 @@ const localDB = {
   },
   voyages: {
     getAll: () => charger('voyages').sort((a,b) => (a.date_debut||'').localeCompare(b.date_debut||'')),
+    getAllWithSummary: () => {
+      const voyages = charger('voyages').sort((a,b) => (a.date_debut||'').localeCompare(b.date_debut||''));
+      const capsulesList = charger('capsules');
+      const topPhotosList = charger('trip_top_photos');
+      const participantsList = charger('participants');
+      return voyages.map(v => {
+        const isMemory = ['archived','completed','terminé'].includes(v.statut);
+        const parts = participantsList.filter(p => p.voyage_id === v.id);
+        if (!isMemory) return { ...v, participant_count: parts.length };
+        const caps = capsulesList.filter(c => c.voyage_id === v.id);
+        const notes = caps.map(c => c.note).filter(n => n != null);
+        const avgNote = notes.length ? Math.round((notes.reduce((a,b)=>a+b)/notes.length)*10)/10 : null;
+        const topRec = topPhotosList.find(t => t.voyage_id === v.id);
+        const topIds = topRec ? JSON.parse(topRec.photo_ids || '[]') : [];
+        return { ...v, participant_count: parts.length, top_photo_id: topIds[0]||null, avg_capsule_note: avgNote, capsule_count: caps.length };
+      });
+    },
     getById: (id) => charger('voyages').find(v => v.id === +id),
     getByToken: (token) => charger('voyages').find(v => v.share_token === token),
     setToken: (id, token) => { const list = charger('voyages'); const idx = list.findIndex(v => v.id === +id); if (idx !== -1) { list[idx].share_token = token; sauvegarder('voyages', list); } return true; },
@@ -546,6 +563,26 @@ const pgDB = pgPool ? {
   },
   voyages: {
     getAll: async (ownerId) => (await pgPool.query('SELECT * FROM voyages WHERE owner_id=$1 ORDER BY date_debut ASC NULLS LAST', [ownerId])).rows,
+    getAllWithSummary: async (ownerId) => {
+      const { rows } = await pgPool.query(`
+        SELECT v.*,
+          COUNT(DISTINCT p.id)::int AS participant_count,
+          ROUND(AVG(c.note) FILTER (WHERE c.note IS NOT NULL)::numeric, 1) AS avg_capsule_note,
+          COUNT(DISTINCT c.id)::int AS capsule_count,
+          (SELECT photo_ids FROM trip_top_photos WHERE voyage_id = v.id LIMIT 1) AS top_photo_ids_raw
+        FROM voyages v
+        LEFT JOIN participants p ON p.voyage_id = v.id
+        LEFT JOIN capsules c ON c.voyage_id = v.id
+        WHERE v.owner_id = $1
+        GROUP BY v.id
+        ORDER BY v.date_debut ASC NULLS LAST
+      `, [ownerId]);
+      return rows.map(v => {
+        const { top_photo_ids_raw, ...rest } = v;
+        const ids = top_photo_ids_raw ? JSON.parse(top_photo_ids_raw) : [];
+        return { ...rest, top_photo_id: ids[0] || null };
+      });
+    },
     getById: async (id) => (await pgPool.query('SELECT * FROM voyages WHERE id=$1', [id])).rows[0],
     getByToken: async (token) => (await pgPool.query('SELECT * FROM voyages WHERE share_token=$1', [token])).rows[0],
     setToken: async (id, token) => { await pgPool.query('UPDATE voyages SET share_token=$1 WHERE id=$2', [token, id]); return true; },
