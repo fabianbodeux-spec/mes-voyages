@@ -1717,7 +1717,7 @@ app.post('/api/partage/:token/capsule', async (req, res) => {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
     if (voyage.statut !== 'archived' && voyage.statut !== 'completed')
-      return res.status(403).json({ error: 'Capsules disponibles 3 jours après la fin du voyage' });
+      return res.status(403).json({ error: 'Capsules disponibles 24h après la fin du voyage' });
     const { nom, couleur, photo_id, mots_cles, moment_prefere, ferait_differemment, note } = req.body;
     if (!nom?.trim()) return res.status(400).json({ error: 'Nom requis' });
     const mots = Array.isArray(mots_cles) ? mots_cles.slice(0, 3).map(m => String(m).slice(0, 30)) : [];

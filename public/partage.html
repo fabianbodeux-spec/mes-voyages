@@ -597,7 +597,7 @@
           <div style="font-size:3rem;margin-bottom:16px">⏳</div>
           <h3 style="font-family:var(--font-display);font-size:1.3rem;margin-bottom:8px">Bientôt disponible</h3>
           <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6" id="souvenirs-waiting-msg">
-            CrewiRewind sera disponible 3 jours après la fin du voyage.<br>
+            CrewiRewind sera disponible 24h après la fin du voyage.<br>
             Tu recevras une notification push dès que c'est prêt !
           </p>
         </div>
@@ -1780,11 +1780,11 @@ async function chargerSouvenirs() {
     if (voyage?.date_fin) {
       const fin = new Date(voyage.date_fin);
       const daysAfter = Math.floor((Date.now() - fin.getTime()) / 86400000);
-      const daysLeft = 3 - daysAfter;
+      const daysLeft = 1 - daysAfter;
       const msg = document.getElementById('souvenirs-waiting-msg');
       if (msg) {
         if (daysLeft > 0) {
-          msg.innerHTML = `CrewiRewind sera disponible <strong>dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''}</strong> (3 jours après la fin du voyage).<br>Tu recevras une notification push dès que c'est prêt !`;
+          msg.innerHTML = `CrewiRewind sera disponible <strong>dans quelques heures</strong> (24h après la fin du voyage).<br>Tu recevras une notification push dès que c'est prêt !`;
         } else {
           msg.innerHTML = `Les capsules sont en cours de préparation… Reviens dans quelques instants.`;
         }

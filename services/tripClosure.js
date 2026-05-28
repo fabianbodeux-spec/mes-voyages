@@ -3,7 +3,9 @@ const run = db.isAsync
   ? (fn) => fn()
   : (fn) => Promise.resolve(fn());
 
-const VOTE_WINDOW_DAYS = 3;
+// Délai avant activation du CrewiRewind — réduit à 1 jour (était 3)
+// pour exploiter le pic émotionnel du retour de voyage (24-48h max).
+const VOTE_WINDOW_DAYS = 1;
 
 function daysAgo(isoDate) {
   return Math.floor((Date.now() - new Date(isoDate).getTime()) / (1000 * 60 * 60 * 24));
@@ -51,7 +53,7 @@ async function checkAndArchive(voyage) {
       }
     }
 
-    // ── Push CrewiRewind : notifier tous les participants 3 jours après le retour ──
+    // ── Push CrewiRewind : notifier tous les participants 24h après le retour ──
     try {
       const shareToken = voyageFull?.share_token;
       if (shareToken) {
