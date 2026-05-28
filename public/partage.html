@@ -194,6 +194,128 @@
     #welcome-splash.ws-ready .ws-bienvenue,
     #welcome-splash.ws-ready .ws-nom,
     #welcome-splash.ws-ready .ws-tagline { opacity: 1; }
+
+    /* ── CrewiRewind — Capsules Mémoire ───────────────── */
+    .cr-section {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+    .cr-section-label {
+      font-weight: 700;
+      font-size: .93rem;
+      margin-bottom: 10px;
+    }
+    .cr-photo-pick-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .cr-photo-thumb {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      object-fit: cover;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: border-color .15s, opacity .15s;
+      opacity: .75;
+    }
+    .cr-photo-thumb.selected {
+      border-color: var(--accent);
+      opacity: 1;
+    }
+    .cr-mot-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 20px;
+      padding: 4px 10px 4px 12px;
+      font-size: .82rem;
+      font-weight: 600;
+    }
+    .cr-mot-chip button {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,.8);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0;
+    }
+    /* Capsule card (galerie) */
+    .cr-capsule-card {
+      background: var(--card);
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .cr-cap-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cr-cap-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: .85rem; color: #fff;
+      flex-shrink: 0;
+    }
+    .cr-cap-nom { font-weight: 700; font-size: .95rem; }
+    .cr-cap-note { margin-left: auto; font-size: 1rem; }
+    .cr-cap-photo {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+    .cr-cap-body { padding: 14px 16px; }
+    .cr-cap-mots {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-bottom: 12px;
+    }
+    .cr-cap-mot {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: .8rem;
+      font-weight: 600;
+    }
+    .cr-cap-section { margin-bottom: 10px; }
+    .cr-cap-section-lbl {
+      font-size: .78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 3px;
+    }
+    .cr-cap-section-txt {
+      font-size: .88rem;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .cr-mine-badge {
+      display: inline-block;
+      background: #10B981;
+      color: #fff;
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-size: .72rem;
+      font-weight: 700;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
@@ -298,6 +420,10 @@
     <button class="tab-btn" data-tab="docs" onclick="changerOnglet('docs', this)">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></span>
       <span>Infos</span>
+    </button>
+    <button class="tab-btn" id="tab-btn-souvenirs" data-tab="souvenirs" onclick="changerOnglet('souvenirs', this); chargerSouvenirs()" style="display:none">
+      <span class="tab-svg-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 100 18A9 9 0 0012 3zm0 16.5A7.5 7.5 0 1112 4.5a7.5 7.5 0 010 15zM9.75 9l4.5 3-4.5 3V9z"/></svg></span>
+      <span>Souvenirs</span>
     </button>
   </nav>
 
@@ -459,6 +585,100 @@
     <div id="tab-preparation" class="tab-panel">
       <div id="preparation-content">
         <!-- Chargé dynamiquement -->
+      </div>
+    </div>
+
+    <!-- SOUVENIRS — CrewiRewind capsules -->
+    <div id="tab-souvenirs" class="tab-panel">
+      <div id="souvenirs-wrap" style="padding:16px;max-width:560px;margin:0 auto">
+
+        <!-- État attente (voyage pas encore archivé) -->
+        <div id="souvenirs-waiting" style="display:none;text-align:center;padding:48px 16px">
+          <div style="font-size:3rem;margin-bottom:16px">⏳</div>
+          <h3 style="font-family:var(--font-display);font-size:1.3rem;margin-bottom:8px">Bientôt disponible</h3>
+          <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6" id="souvenirs-waiting-msg">
+            CrewiRewind sera disponible 3 jours après la fin du voyage.<br>
+            Tu recevras une notification push dès que c'est prêt !
+          </p>
+        </div>
+
+        <!-- Formulaire capsule (pas encore soumise) -->
+        <div id="souvenirs-form" style="display:none">
+          <div style="margin-bottom:20px">
+            <h2 style="font-family:var(--font-display);font-size:1.4rem;margin-bottom:6px">🎞️ Ta capsule mémoire</h2>
+            <p style="color:var(--text-muted);font-size:.88rem;line-height:1.5">
+              3 questions pour capturer l'essentiel. Tes réponses seront révélées à tout l'équipage après ta soumission.
+            </p>
+          </div>
+
+          <!-- Q1 : Photo préférée -->
+          <div class="cr-section">
+            <div class="cr-section-label">📸 Ta photo préférée du voyage</div>
+            <p style="color:var(--text-muted);font-size:.8rem;margin-bottom:10px">Sélectionne une photo parmi celles du voyage</p>
+            <div id="cr-photo-grid" class="cr-photo-pick-grid"></div>
+            <div id="cr-photo-empty" style="display:none;color:var(--text-muted);font-size:.85rem;padding:12px 0">
+              Aucune photo dans le voyage. Tu peux continuer sans en sélectionner.
+            </div>
+            <input type="hidden" id="cr-photo-id" value="">
+          </div>
+
+          <!-- Q2 : Mots-clés -->
+          <div class="cr-section">
+            <div class="cr-section-label">✨ 3 mots qui résument ce voyage</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <input type="text" id="cr-mot-input" placeholder="Ex: Soleil, Liberté, Rires…"
+                maxlength="30"
+                style="flex:1;padding:9px 12px;border-radius:10px;border:1.5px solid var(--border-solid);background:var(--bg);color:var(--text);font-size:.88rem"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();_crAjouterMot();}">
+              <button type="button" onclick="_crAjouterMot()"
+                style="padding:9px 14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:700;font-size:.88rem;cursor:pointer">+</button>
+            </div>
+            <div id="cr-mots-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px"></div>
+            <input type="hidden" id="cr-mots-data" value="[]">
+          </div>
+
+          <!-- Q3 : Moment préféré -->
+          <div class="cr-section">
+            <div class="cr-section-label">🌟 Ton moment préféré</div>
+            <textarea id="cr-moment" rows="3" maxlength="500" placeholder="Décris le moment qui t'a le plus marqué…"
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--border-solid);border-radius:12px;font-family:var(--font-body);font-size:.88rem;resize:vertical;background:var(--card);color:var(--text);box-sizing:border-box"></textarea>
+          </div>
+
+          <!-- Q4 : Ferais différemment -->
+          <div class="cr-section">
+            <div class="cr-section-label">🔄 Ce que tu aurais fait différemment</div>
+            <textarea id="cr-different" rows="2" maxlength="500" placeholder="Optionnel — reste constructif 😄"
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--border-solid);border-radius:12px;font-family:var(--font-body);font-size:.88rem;resize:vertical;background:var(--card);color:var(--text);box-sizing:border-box"></textarea>
+          </div>
+
+          <!-- Q5 : Note -->
+          <div class="cr-section">
+            <div class="cr-section-label">⭐ Ta note globale</div>
+            <div id="cr-stars" style="display:flex;gap:8px;font-size:2rem;cursor:pointer">
+              <span onclick="_crSetNote(1)" data-n="1">☆</span>
+              <span onclick="_crSetNote(2)" data-n="2">☆</span>
+              <span onclick="_crSetNote(3)" data-n="3">☆</span>
+              <span onclick="_crSetNote(4)" data-n="4">☆</span>
+              <span onclick="_crSetNote(5)" data-n="5">☆</span>
+            </div>
+            <input type="hidden" id="cr-note" value="">
+          </div>
+
+          <button onclick="_crSoumettre()"
+            style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--accent);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:8px;font-family:var(--font-body)">
+            🎞️ Créer ma capsule
+          </button>
+        </div>
+
+        <!-- Galerie des capsules (après soumission) -->
+        <div id="souvenirs-gallery" style="display:none">
+          <div style="margin-bottom:20px">
+            <h2 style="font-family:var(--font-display);font-size:1.4rem;margin-bottom:6px">🎞️ Capsules de l'équipage</h2>
+            <p style="color:var(--text-muted);font-size:.88rem" id="souvenirs-count"></p>
+          </div>
+          <div id="cr-capsules-list"></div>
+        </div>
+
       </div>
     </div>
 
@@ -1492,6 +1712,19 @@ function _lancerPartage(identite) {
     if (fab) fab.style.display = '';
   }
 
+  // Onglet Souvenirs : visible seulement si voyage completed ou archived
+  const _vs = window._hubVoyage?.statut;
+  const _tabSouvenirs = document.getElementById('tab-btn-souvenirs');
+  if (_tabSouvenirs && (_vs === 'archived' || _vs === 'completed')) {
+    _tabSouvenirs.style.display = '';
+    // Naviguer directement vers l'onglet souvenirs si demandé via URL
+    if (new URLSearchParams(window.location.search).get('tab') === 'souvenirs') {
+      setTimeout(() => { chargerSouvenirs(); changerOnglet('souvenirs', _tabSouvenirs); }, 100);
+      setTimeout(_showPwaInstallBanner, 25000);
+      return;
+    }
+  }
+
   // Construire le Hub et l'afficher en premier
   _chargerHub();
   changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
@@ -1506,6 +1739,217 @@ if (navigator.serviceWorker) {
       if (tabBtn) changerOnglet(e.data.tab, tabBtn);
     }
   });
+}
+
+// ══════════════════════════════════════════════════════
+// CREWIREWIND — Capsules Mémoire
+// ══════════════════════════════════════════════════════
+
+let _crPhotosCache = [];
+let _crNoteChoisie = 0;
+
+async function chargerSouvenirs() {
+  const voyage = window._hubVoyage;
+  const statut = voyage?.statut;
+
+  // Voyage pas encore archivé → état attente
+  if (statut !== 'archived' && statut !== 'completed') {
+    document.getElementById('souvenirs-waiting').style.display = '';
+    document.getElementById('souvenirs-form').style.display = 'none';
+    document.getElementById('souvenirs-gallery').style.display = 'none';
+    // Message personnalisé avec jours restants si date_fin connue
+    if (voyage?.date_fin) {
+      const fin = new Date(voyage.date_fin);
+      const daysAfter = Math.floor((Date.now() - fin.getTime()) / 86400000);
+      const daysLeft = 3 - daysAfter;
+      const msg = document.getElementById('souvenirs-waiting-msg');
+      if (msg) {
+        if (daysLeft > 0) {
+          msg.innerHTML = `CrewiRewind sera disponible <strong>dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''}</strong> (3 jours après la fin du voyage).<br>Tu recevras une notification push dès que c'est prêt !`;
+        } else {
+          msg.innerHTML = `Les capsules sont en cours de préparation… Reviens dans quelques instants.`;
+        }
+      }
+    }
+    return;
+  }
+
+  document.getElementById('souvenirs-waiting').style.display = 'none';
+
+  const identite = _safeGetIdentite();
+  const nom = identite?.nom || '';
+  const couleur = identite?.couleur || '#6366F1';
+
+  try {
+    const data = await fetch(`/api/partage/${_partageToken}/capsules?nom=${encodeURIComponent(nom)}`).then(r => r.json());
+
+    if (data.mine) {
+      // Déjà soumis → galerie
+      _afficherGalerieCapsules(data.capsules, nom);
+    } else {
+      // Pas encore soumis → formulaire
+      document.getElementById('souvenirs-form').style.display = '';
+      document.getElementById('souvenirs-gallery').style.display = 'none';
+      // Charger les photos pour la sélection
+      _crChargerPhotos();
+    }
+  } catch(e) {
+    _toast('❌ Erreur chargement souvenirs');
+  }
+}
+
+async function _crChargerPhotos() {
+  try {
+    const photos = await fetch(`/api/partage/${_partageToken}/photos`).then(r => r.json());
+    _crPhotosCache = Array.isArray(photos) ? photos : [];
+    const grid = document.getElementById('cr-photo-grid');
+    const empty = document.getElementById('cr-photo-empty');
+    if (!_crPhotosCache.length) {
+      grid.innerHTML = '';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    grid.innerHTML = _crPhotosCache.map(p =>
+      `<img src="/api/photos/${p.id}/img"
+            class="cr-photo-thumb"
+            data-id="${p.id}"
+            onclick="_crSelectPhoto(${p.id}, this)"
+            alt="${p.caption || ''}"
+            loading="lazy">`
+    ).join('');
+  } catch(e) {
+    // silencieux — le champ photo reste vide
+  }
+}
+
+function _crSelectPhoto(id, el) {
+  document.querySelectorAll('.cr-photo-thumb').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('cr-photo-id').value = id;
+}
+
+function _crAjouterMot() {
+  const input = document.getElementById('cr-mot-input');
+  const mot = input.value.trim();
+  if (!mot) return;
+  let mots = [];
+  try { mots = JSON.parse(document.getElementById('cr-mots-data').value || '[]'); } catch {}
+  if (mots.length >= 3) { _toast('⚠️ Maximum 3 mots'); return; }
+  if (mots.includes(mot)) { input.value = ''; return; }
+  mots.push(mot);
+  document.getElementById('cr-mots-data').value = JSON.stringify(mots);
+  _crRenderChips(mots);
+  input.value = '';
+}
+
+function _crRenderChips(mots) {
+  document.getElementById('cr-mots-chips').innerHTML = mots.map((m, i) =>
+    `<span class="cr-mot-chip">${_he(m)}<button onclick="_crSupprimerMot(${i})" title="Retirer">×</button></span>`
+  ).join('');
+}
+
+function _crSupprimerMot(idx) {
+  let mots = [];
+  try { mots = JSON.parse(document.getElementById('cr-mots-data').value || '[]'); } catch {}
+  mots.splice(idx, 1);
+  document.getElementById('cr-mots-data').value = JSON.stringify(mots);
+  _crRenderChips(mots);
+}
+
+function _crSetNote(n) {
+  _crNoteChoisie = n;
+  document.getElementById('cr-note').value = n;
+  document.querySelectorAll('#cr-stars span').forEach(s => {
+    s.textContent = +s.dataset.n <= n ? '⭐' : '☆';
+  });
+}
+
+async function _crSoumettre() {
+  const identite = _safeGetIdentite();
+  if (!identite?.nom) { _toast('⚠️ Identifie-toi d\'abord'); return; }
+
+  const mots = (() => { try { return JSON.parse(document.getElementById('cr-mots-data').value || '[]'); } catch { return []; } })();
+  const moment = document.getElementById('cr-moment').value.trim();
+  const different = document.getElementById('cr-different').value.trim();
+  const note = document.getElementById('cr-note').value;
+  const photo_id = document.getElementById('cr-photo-id').value;
+
+  if (!moment) { _toast('⚠️ Décris ton moment préféré'); return; }
+
+  const btn = document.querySelector('#souvenirs-form button[onclick="_crSoumettre()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
+
+  try {
+    const r = await fetch(`/api/partage/${_partageToken}/capsule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nom:                 identite.nom,
+        couleur:             identite.couleur || '#6366F1',
+        photo_id:            photo_id ? +photo_id : null,
+        mots_cles:           mots,
+        moment_prefere:      moment,
+        ferait_differemment: different || null,
+        note:                note ? +note : null,
+      })
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      _toast('❌ ' + (err.error || 'Erreur'));
+      if (btn) { btn.disabled = false; btn.textContent = '🎞️ Créer ma capsule'; }
+      return;
+    }
+    _toast('🎞️ Capsule créée ! Découvre celles de tes équipiers…');
+    // Recharger pour afficher la galerie
+    setTimeout(chargerSouvenirs, 800);
+  } catch(e) {
+    _toast('❌ Erreur réseau');
+    if (btn) { btn.disabled = false; btn.textContent = '🎞️ Créer ma capsule'; }
+  }
+}
+
+function _afficherGalerieCapsules(capsules, monNom) {
+  document.getElementById('souvenirs-form').style.display = 'none';
+  document.getElementById('souvenirs-gallery').style.display = '';
+
+  const count = document.getElementById('souvenirs-count');
+  if (count) count.textContent = `${capsules.length} capsule${capsules.length > 1 ? 's' : ''} partagée${capsules.length > 1 ? 's' : ''}`;
+
+  const list = document.getElementById('cr-capsules-list');
+  list.innerHTML = capsules.map(c => {
+    const mots = (() => { try { return JSON.parse(c.mots_cles || '[]'); } catch { return []; } })();
+    const isMine = c.participant_nom === monNom;
+    const stars = c.note ? '⭐'.repeat(c.note) : '';
+    const photoEl = c.photo_id
+      ? `<img src="/api/photos/${c.photo_id}/img" class="cr-cap-photo" alt="photo souvenir" loading="lazy">`
+      : '';
+    const motsEl = mots.length
+      ? `<div class="cr-cap-mots">${mots.map(m => `<span class="cr-cap-mot">${_he(m)}</span>`).join('')}</div>`
+      : '';
+    const momentEl = c.moment_prefere
+      ? `<div class="cr-cap-section"><div class="cr-cap-section-lbl">🌟 Moment préféré</div><div class="cr-cap-section-txt">${_he(c.moment_prefere)}</div></div>`
+      : '';
+    const diffEl = c.ferait_differemment
+      ? `<div class="cr-cap-section"><div class="cr-cap-section-lbl">🔄 Aurait fait différemment</div><div class="cr-cap-section-txt">${_he(c.ferait_differemment)}</div></div>`
+      : '';
+    return `
+      <div class="cr-capsule-card">
+        <div class="cr-cap-header">
+          <div class="cr-cap-avatar" style="background:${_he(c.participant_couleur||'#6366F1')}">
+            ${_he((c.participant_nom||'?')[0].toUpperCase())}
+          </div>
+          <span class="cr-cap-nom">${_he(c.participant_nom)}${isMine ? '<span class="cr-mine-badge">Toi</span>' : ''}</span>
+          <span class="cr-cap-note">${stars}</span>
+        </div>
+        ${photoEl}
+        <div class="cr-cap-body">
+          ${motsEl}
+          ${momentEl}
+          ${diffEl}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 // ── HUB ────────────────────────────────────────────────────────────────────

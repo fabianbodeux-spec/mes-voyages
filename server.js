@@ -1602,6 +1602,57 @@ app.get('/api/partage/:token/memory', async (req, res) => {
 
 // Route /api/voyages/archives déplacée avant /:id (voir ligne 205)
 
+// ─── CREWIREWIND — Capsules Mémoire ────────────────────────────────────────
+
+// GET /api/partage/:token/capsules — liste des capsules (visibles si tu as soumis la tienne)
+app.get('/api/partage/:token/capsules', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    const nom = (req.query.nom || '').trim();
+    const mine = nom ? await run(() => db.capsules.getMine(voyage.id, nom)) : null;
+    const all  = await run(() => db.capsules.getByVoyage(voyage.id));
+    res.json({
+      capsules:      mine ? all : [],   // révélées seulement si l'utilisateur a soumis la sienne
+      mine:          mine || null,
+      total:         all.length,
+      voyageStatut:  voyage.statut,
+      voyageNom:     voyage.nom,
+      voyageDest:    voyage.destination,
+    });
+  } catch(e) { console.error('[CAPSULES GET]', e.message); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// POST /api/partage/:token/capsule — créer ou mettre à jour ma capsule
+app.post('/api/partage/:token/capsule', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+    if (voyage.statut !== 'archived' && voyage.statut !== 'completed')
+      return res.status(403).json({ error: 'Capsules disponibles 3 jours après la fin du voyage' });
+    const { nom, couleur, photo_id, mots_cles, moment_prefere, ferait_differemment, note } = req.body;
+    if (!nom?.trim()) return res.status(400).json({ error: 'Nom requis' });
+    const mots = Array.isArray(mots_cles) ? mots_cles.slice(0, 3).map(m => String(m).slice(0, 30)) : [];
+    const item = await run(() => db.capsules.upsert(voyage.id, nom.trim(), {
+      participant_couleur:  couleur || '#6366F1',
+      photo_id:             photo_id ? +photo_id : null,
+      mots_cles:            JSON.stringify(mots),
+      moment_prefere:       moment_prefere ? String(moment_prefere).slice(0, 500) : null,
+      ferait_differemment:  ferait_differemment ? String(ferait_differemment).slice(0, 500) : null,
+      note:                 note ? Math.min(5, Math.max(1, parseInt(note))) : null,
+    }));
+    res.status(201).json(item);
+  } catch(e) { console.error('[CAPSULE POST]', e.message); res.status(500).json({ error: e.message.split('\n')[0] || 'Erreur interne' }); }
+});
+
+// GET /api/voyages/:id/capsules — admin : voir toutes les capsules d'un voyage
+app.get('/api/voyages/:id/capsules', authMiddleware, async (req, res) => {
+  try {
+    const capsules = await run(() => db.capsules.getByVoyage(req.params.id));
+    res.json(capsules);
+  } catch(e) { res.status(500).json({ error: 'Erreur interne' }); }
+});
+
 // POST cron tick manuel (debug)
 app.post('/api/admin/cron/tick', authMiddleware, async (req, res) => {
   try {

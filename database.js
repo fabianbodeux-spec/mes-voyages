@@ -32,6 +32,7 @@ const FICHIERS = {
   photo_likes:          path.join(DATA_DIR, 'photo_likes.json'),
   trip_memory_emails:   path.join(DATA_DIR, 'trip_memory_emails.json'),
   trip_top_photos:      path.join(DATA_DIR, 'trip_top_photos.json'),
+  capsules:             path.join(DATA_DIR, 'capsules.json'),
 };
 
 function charger(cle) {
@@ -327,6 +328,20 @@ const localDB = {
       return true;
     }
   },
+  capsules: {
+    getByVoyage: (vid) => charger('capsules').filter(c => c.voyage_id === +vid).sort((a,b) => a.created_at.localeCompare(b.created_at)),
+    getMine: (vid, nom) => charger('capsules').find(c => c.voyage_id === +vid && c.participant_nom === nom),
+    upsert: (vid, nom, data) => {
+      const list = charger('capsules');
+      const idx = list.findIndex(c => c.voyage_id === +vid && c.participant_nom === nom);
+      const now = new Date().toISOString();
+      const item = { ...data, voyage_id: +vid, participant_nom: nom, id: idx >= 0 ? list[idx].id : nextId(list), created_at: idx >= 0 ? list[idx].created_at : now };
+      if (idx >= 0) list[idx] = item; else list.push(item);
+      sauvegarder('capsules', list);
+      return item;
+    },
+    deleteByVoyage: (vid) => sauvegarder('capsules', charger('capsules').filter(c => c.voyage_id !== +vid))
+  },
 };
 
 // ─── MODE CLOUD : PostgreSQL ───────────────────────────────────────────────
@@ -501,6 +516,19 @@ if (USE_POSTGRES) {
       photo_ids TEXT NOT NULL,
       scored_at TIMESTAMPTZ DEFAULT now()
     )`);
+    await m(`CREATE TABLE IF NOT EXISTS capsules (
+      id SERIAL PRIMARY KEY,
+      voyage_id INTEGER NOT NULL,
+      participant_nom TEXT NOT NULL,
+      participant_couleur TEXT DEFAULT '#6366F1',
+      photo_id INTEGER,
+      mots_cles TEXT DEFAULT '[]',
+      moment_prefere TEXT,
+      ferait_differemment TEXT,
+      note INTEGER CHECK(note BETWEEN 1 AND 5),
+      created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(voyage_id, participant_nom)
+    )`);
     console.log('[DB] Migrations PostgreSQL OK');
   })();
 }
@@ -548,6 +576,7 @@ const pgDB = pgPool ? {
       await pgPool.query('DELETE FROM photo_likes WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM trip_memory_emails WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM trip_top_photos WHERE voyage_id=$1', [id]);
+      await pgPool.query('DELETE FROM capsules WHERE voyage_id=$1', [id]);
       await pgPool.query('DELETE FROM voyages WHERE id=$1', [id]);
     }
   },
@@ -785,6 +814,26 @@ const pgDB = pgPool ? {
       );
       return true;
     }
+  },
+  capsules: {
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM capsules WHERE voyage_id=$1 ORDER BY created_at ASC', [vid])).rows,
+    getMine: async (vid, nom) => (await pgPool.query('SELECT * FROM capsules WHERE voyage_id=$1 AND participant_nom=$2', [vid, nom])).rows[0],
+    upsert: async (vid, nom, data) => (await pgPool.query(
+      `INSERT INTO capsules(voyage_id,participant_nom,participant_couleur,photo_id,mots_cles,moment_prefere,ferait_differemment,note)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT(voyage_id,participant_nom) DO UPDATE SET
+         participant_couleur=EXCLUDED.participant_couleur,
+         photo_id=EXCLUDED.photo_id,
+         mots_cles=EXCLUDED.mots_cles,
+         moment_prefere=EXCLUDED.moment_prefere,
+         ferait_differemment=EXCLUDED.ferait_differemment,
+         note=EXCLUDED.note
+       RETURNING *`,
+      [vid, nom, data.participant_couleur||'#6366F1', data.photo_id||null,
+       data.mots_cles||'[]', data.moment_prefere||null, data.ferait_differemment||null,
+       data.note||null]
+    )).rows[0],
+    deleteByVoyage: async (vid) => pgPool.query('DELETE FROM capsules WHERE voyage_id=$1', [vid])
   },
 } : null;
 

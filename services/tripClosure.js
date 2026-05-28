@@ -37,16 +37,50 @@ async function checkAndArchive(voyage) {
     }));
     console.log(`[CrewiRewind] Voyage ${voyage.id} archivé, ${topPhotoIds.length} top photos scorées`);
 
+    // Récupérer les données complètes du voyage (share_token, nom…)
+    const voyageFull = await run(() => db.voyages.getById(voyage.id));
+
     if (process.env.ENABLE_MEMORY_EMAIL !== 'false') {
       try {
         const { sendMemoryEmail } = require('./tripMemoryEmail');
-        const voyageFull = await run(() => db.voyages.getById(voyage.id));
         const participants = await run(() => db.participants.getByVoyage(voyage.id));
         const photos = await run(() => db.photos.getByVoyage(voyage.id));
         await sendMemoryEmail(voyageFull, participants, topPhotoIds, photos);
       } catch (e) {
         console.error('[CrewiRewind] Email souvenir échoué:', e.message);
       }
+    }
+
+    // ── Push CrewiRewind : notifier tous les participants 3 jours après le retour ──
+    try {
+      const shareToken = voyageFull?.share_token;
+      if (shareToken) {
+        const webpush = require('web-push');
+        const subs = await run(() => db.push_subscriptions.getByVoyage(voyage.id));
+        const payload = JSON.stringify({
+          title: '🎞️ CrewiRewind — Tes souvenirs t\'attendent !',
+          body: `Crée ta capsule mémoire pour "${voyageFull.nom}" — 3 questions, 1 photo, pour garder la magie.`,
+          tag: 'crewirewind',
+          url: `/partage/${shareToken}?tab=souvenirs`
+        });
+        let sent = 0;
+        for (const sub of subs) {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+              payload
+            );
+            sent++;
+          } catch (e2) {
+            if (e2.statusCode === 410 || e2.statusCode === 404) {
+              run(() => db.push_subscriptions.deleteByEndpoint?.(sub.endpoint)).catch(() => {});
+            }
+          }
+        }
+        console.log(`[CrewiRewind] Push capsule envoyé à ${sent}/${subs.length} abonnés (voyage ${voyage.id})`);
+      }
+    } catch (e) {
+      console.error('[CrewiRewind] Push capsule échoué:', e.message);
     }
   }
 }
