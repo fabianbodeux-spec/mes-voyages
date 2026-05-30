@@ -770,7 +770,7 @@ app.post('/api/partage/:token/first-access', async (req, res) => {
   }
 });
 
-// ── Sauvegarde email participant (pont vers continuité cross-device) ──────────
+// ── Sauvegarde email + envoi magic link ───────────────────────────────────────
 app.post('/api/partage/:token/save-email', async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
@@ -779,14 +779,89 @@ app.post('/api/partage/:token/save-email', async (req, res) => {
     if (!email || !participant_nom) return res.status(400).json({ error: 'email et participant_nom requis' });
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRe.test(email)) return res.status(400).json({ error: 'Email invalide' });
+
+    // Sauvegarde dans participant_emails (idempotent)
     await run(() => db.participant_emails.save(voyage.id, participant_nom, email));
-    console.log(`[Email] ${participant_nom} a sauvegardé son email pour le voyage ${voyage.id}`);
-    res.json({ ok: true });
+
+    // Envoi du magic link (silencieux si pas de config email)
+    try {
+      const { generateAndSend } = require('./services/magicLink');
+      await generateAndSend({
+        email,
+        voyageId:       voyage.id,
+        participantNom: participant_nom,
+        shareToken:     req.params.token,
+        voyageNom:      voyage.nom
+      });
+      console.log(`[MagicLink] Envoyé → ${email} pour voyage ${voyage.id}`);
+      res.json({ ok: true, magic_sent: true });
+    } catch (emailErr) {
+      console.error('[MagicLink] Envoi échoué (email sauvegardé quand même):', emailErr.message);
+      res.json({ ok: true, magic_sent: false });
+    }
   } catch (e) {
     console.error('[save-email]', e.message);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
+
+// ── Validation du magic link et redirection ───────────────────────────────────
+app.get('/auth/magic/:magicToken', async (req, res) => {
+  try {
+    const record = await run(() => db.magic_links.getByToken(req.params.magicToken));
+
+    // Token inconnu
+    if (!record) return res.send(_magicErrorPage('Lien invalide ou déjà utilisé.'));
+
+    // Déjà utilisé
+    if (record.used_at) return res.send(_magicErrorPage('Ce lien a déjà été utilisé. Demande un nouveau lien depuis la page du voyage.'));
+
+    // Expiré
+    if (new Date(record.expires_at) < new Date()) return res.send(_magicErrorPage('Ce lien a expiré (15 minutes). Demande un nouveau lien depuis la page du voyage.'));
+
+    // Marquer comme utilisé
+    await run(() => db.magic_links.markUsed(req.params.magicToken));
+
+    // Récupérer le voyage + le participant pour avoir la couleur
+    const voyage = await run(() => db.voyages.getById(record.voyage_id));
+    if (!voyage) return res.send(_magicErrorPage('Voyage introuvable.'));
+
+    const shareToken = req.query.v || voyage.share_token;
+    if (!shareToken) return res.send(_magicErrorPage('Token de partage manquant.'));
+
+    const participants = await run(() => db.participants.getByVoyage(record.voyage_id));
+    const participant  = participants.find(p => p.nom === record.participant_nom);
+    const couleur      = participant?.couleur || '#F97316';
+    const participantId = participant?.id || null;
+
+    // Construire l'identité à injecter côté client via ?_mid
+    const identity = {
+      nom:            record.participant_nom,
+      couleur,
+      email:          record.email,
+      participant_id: participantId,
+      from_magic:     true
+    };
+    const mid = Buffer.from(JSON.stringify(identity)).toString('base64url');
+
+    res.redirect(302, `/share/${shareToken}?_mid=${mid}`);
+  } catch (e) {
+    console.error('[magic-link]', e.message);
+    res.send(_magicErrorPage('Une erreur est survenue. Réessaie depuis la page du voyage.'));
+  }
+});
+
+function _magicErrorPage(msg) {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CrewiGO — Lien expiré</title>
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;background:#0f172a;color:#f1f5f9;text-align:center;padding:24px}
+.card{background:#1e293b;border-radius:20px;padding:40px 32px;max-width:400px}
+h2{margin:0 0 12px;font-size:1.4rem}p{color:#94a3b8;margin:0 0 24px;line-height:1.6}
+a{display:inline-block;background:#f97316;color:#fff;border-radius:10px;padding:12px 24px;text-decoration:none;font-weight:700}</style>
+</head><body><div class="card"><div style="font-size:2.5rem;margin-bottom:16px">🔮</div>
+<h2>Lien magique</h2><p>${msg}</p>
+<a href="/">Retour à CrewiGO</a></div></body></html>`;
+}
 
 app.get('/api/partage/:token', async (req, res) => {
   try {

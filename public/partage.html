@@ -1314,6 +1314,20 @@ async function _initPartage() {
       if (nomForm) nomForm.style.display = '';
     }
 
+    // ── Magic Link : récupérer l'identité depuis ?_mid et nettoyer l'URL ──────
+    const _midParam = new URLSearchParams(window.location.search).get('_mid');
+    if (_midParam) {
+      try {
+        const magicIdentite = JSON.parse(atob(_midParam.replace(/-/g,'+').replace(/_/g,'/')));
+        if (magicIdentite.nom) {
+          _safeStoreIdentite(magicIdentite);
+        }
+      } catch(e) { console.warn('[MagicLink] Décodage _mid échoué:', e.message); }
+      // Retirer le paramètre de l'URL sans recharger la page
+      const cleanUrl = window.location.pathname + window.location.search.replace(/[?&]_mid=[^&]*/g, '').replace(/^\?$/, '');
+      history.replaceState(null, '', cleanUrl || window.location.pathname);
+    }
+
     // Identité déjà stockée ? (localStorage → sessionStorage fallback pour Safari privé)
     let storedIdentite = _safeGetIdentite();
 
@@ -1747,9 +1761,29 @@ function _showEmailBanner() {
       });
       if (r.ok) {
         localStorage.setItem(_EMAIL_SAVED_KEY, '1');
-        banner.style.transform = 'translateY(100%)';
-        setTimeout(() => { banner.style.display = 'none'; }, 350);
-        _toast('✅ Email sauvegardé — retrouve ce voyage partout !');
+        const data = await r.json().catch(() => ({}));
+        // Transformer la bannière en confirmation
+        const bannerInner = banner.querySelector('div');
+        if (bannerInner) {
+          bannerInner.innerHTML = `
+            <div style="display:flex;align-items:center;gap:14px">
+              <span style="font-size:1.8rem">📧</span>
+              <div>
+                <p style="margin:0 0 4px;font-weight:700;font-size:.95rem;color:#f1f5f9">
+                  ${data.magic_sent ? 'Lien magique envoyé !' : 'Email sauvegardé !'}
+                </p>
+                <p style="margin:0;font-size:.82rem;color:#94a3b8;line-height:1.4">
+                  ${data.magic_sent
+                    ? 'Check ta boîte mail — clique le lien pour accéder à ce voyage depuis n\'importe quel appareil 🔮'
+                    : 'Tu retrouveras ce voyage depuis ton adresse email.'}
+                </p>
+              </div>
+            </div>`;
+        }
+        setTimeout(() => {
+          banner.style.transform = 'translateY(100%)';
+          setTimeout(() => { banner.style.display = 'none'; }, 350);
+        }, 3500);
       } else {
         btn.textContent = 'Réessayer';
         btn.disabled = false;

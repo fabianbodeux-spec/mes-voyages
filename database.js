@@ -34,6 +34,7 @@ const FICHIERS = {
   trip_top_photos:      path.join(DATA_DIR, 'trip_top_photos.json'),
   capsules:             path.join(DATA_DIR, 'capsules.json'),
   participant_emails:   path.join(DATA_DIR, 'participant_emails.json'),
+  magic_links:          path.join(DATA_DIR, 'magic_links.json'),
 };
 
 function charger(cle) {
@@ -360,6 +361,21 @@ const localDB = {
     },
     deleteByVoyage: (vid) => sauvegarder('capsules', charger('capsules').filter(c => c.voyage_id !== +vid))
   },
+  magic_links: {
+    create: (data) => {
+      const list = charger('magic_links');
+      const item = { ...data, id: nextId(list), used_at: null, created_at: new Date().toISOString() };
+      list.push(item);
+      sauvegarder('magic_links', list);
+      return item;
+    },
+    getByToken: (token) => charger('magic_links').find(l => l.token === token) || null,
+    markUsed: (token) => {
+      const list = charger('magic_links');
+      const idx = list.findIndex(l => l.token === token);
+      if (idx !== -1) { list[idx].used_at = new Date().toISOString(); sauvegarder('magic_links', list); }
+    }
+  },
   participant_emails: {
     save: (vid, nom, email) => {
       const list = charger('participant_emails');
@@ -557,6 +573,16 @@ if (USE_POSTGRES) {
       note INTEGER CHECK(note BETWEEN 1 AND 5),
       created_at TIMESTAMPTZ DEFAULT now(),
       UNIQUE(voyage_id, participant_nom)
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS magic_links (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL,
+      token TEXT UNIQUE NOT NULL,
+      voyage_id INTEGER NOT NULL,
+      participant_nom TEXT NOT NULL,
+      used_at TIMESTAMPTZ,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
     )`);
     await m(`CREATE TABLE IF NOT EXISTS participant_emails (
       id SERIAL PRIMARY KEY,
@@ -891,6 +917,19 @@ const pgDB = pgPool ? {
        data.note||null]
     )).rows[0],
     deleteByVoyage: async (vid) => pgPool.query('DELETE FROM capsules WHERE voyage_id=$1', [vid])
+  },
+  magic_links: {
+    create: async (data) => (await pgPool.query(
+      `INSERT INTO magic_links(email, token, voyage_id, participant_nom, expires_at)
+       VALUES($1,$2,$3,$4,$5) RETURNING *`,
+      [data.email, data.token, data.voyage_id, data.participant_nom, data.expires_at]
+    )).rows[0],
+    getByToken: async (token) => (await pgPool.query(
+      'SELECT * FROM magic_links WHERE token=$1', [token]
+    )).rows[0] || null,
+    markUsed: async (token) => pgPool.query(
+      'UPDATE magic_links SET used_at=now() WHERE token=$1', [token]
+    )
   },
   participant_emails: {
     save: async (vid, nom, email) => pgPool.query(
