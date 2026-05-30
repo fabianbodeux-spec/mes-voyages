@@ -1933,6 +1933,85 @@ async function supprimerReservation(id) {
 
 // ─── DASHBOARD ACCUEIL ───────────────────────────────────────────────────────
 
+// P5 — Construit le fil d'activité récente pour le Basecamp
+function _buildActivityFeed(participants, depenses, agenda, reservations) {
+  const items = [];
+
+  // Participants (triés par id décroissant = plus récents en premier)
+  const sortedParts = [...participants].sort((a, b) => (b.id || 0) - (a.id || 0));
+  sortedParts.forEach(p => {
+    items.push({
+      icon: '👤',
+      text: `<strong>${h(p.nom)}</strong> a rejoint le voyage`,
+      sortKey: p.id || 0,
+      type: 'participant'
+    });
+  });
+
+  // Dépenses (triées par date ou id)
+  const sortedDep = [...depenses].sort((a, b) => {
+    const da = a.created_at || a.date || '';
+    const db = b.created_at || b.date || '';
+    return da > db ? -1 : da < db ? 1 : (b.id || 0) - (a.id || 0);
+  });
+  sortedDep.forEach(d => {
+    const montant = parseFloat(d.montant || 0).toFixed(0);
+    const payeur  = d.payeur || d.paye_par || '';
+    items.push({
+      icon: '💰',
+      text: `<strong>${h(d.libelle || d.description || 'Dépense')}</strong> · ${montant}€${payeur ? ` — ${h(payeur)}` : ''}`,
+      sortKey: d.created_at || d.date || String(d.id || 0),
+      type: 'depense'
+    });
+  });
+
+  // Agenda (trié par date_debut décroissant)
+  const sortedAgenda = [...agenda].sort((a, b) => {
+    const da = a.created_at || a.date_debut || '';
+    const db = b.created_at || b.date_debut || '';
+    return da > db ? -1 : da < db ? 1 : 0;
+  });
+  sortedAgenda.forEach(ev => {
+    items.push({
+      icon: '📍',
+      text: `<strong>${h(ev.titre || ev.nom || 'Événement')}</strong> ajouté au programme`,
+      sortKey: ev.created_at || ev.date_debut || String(ev.id || 0),
+      type: 'agenda'
+    });
+  });
+
+  // Réservations
+  const sortedResa = [...reservations].sort((a, b) => {
+    const da = a.created_at || a.date_debut || '';
+    const db = b.created_at || b.date_debut || '';
+    return da > db ? -1 : da < db ? 1 : 0;
+  });
+  sortedResa.forEach(r => {
+    items.push({
+      icon: '✈️',
+      text: `<strong>${h(r.titre || r.nom || 'Réservation')}</strong> ajoutée`,
+      sortKey: r.created_at || r.date_debut || String(r.id || 0),
+      type: 'reservation'
+    });
+  });
+
+  // Tri global par sortKey décroissant, limiter à 8
+  const sorted = items
+    .sort((a, b) => String(b.sortKey) > String(a.sortKey) ? 1 : String(b.sortKey) < String(a.sortKey) ? -1 : 0)
+    .slice(0, 8);
+
+  if (sorted.length === 0) {
+    return `<p style="text-align:center;color:var(--text-muted);font-size:13px;padding:12px 0">Aucune activité récente</p>`;
+  }
+
+  return sorted.map(item => `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-subtle, rgba(255,255,255,.06))">
+      <span style="font-size:1.2rem;line-height:1.2;flex-shrink:0">${item.icon}</span>
+      <span style="font-size:13px;color:var(--text-secondary, var(--text-muted));line-height:1.4">${item.text}</span>
+    </div>
+  `).join('');
+}
+
 async function chargerAccueil() {
   const container = document.getElementById('dash-content');
   container.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-muted)">Chargement…</div>`;
@@ -2033,6 +2112,19 @@ async function chargerAccueil() {
     ${voyage.description ? `
     <div class="dash-section-title"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>Notes du voyage</div>
     <div class="dash-notes">${h(voyage.description).replace(/\n/g,'<br>')}</div>` : ''}
+
+    <!-- Fil d'activité transversal (P5) -->
+    <div class="budget-section" style="margin-top:0">
+      <div class="budget-section-header">
+        <span class="budget-section-title" style="display:flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" style="flex-shrink:0;opacity:.8"><path d="M13 2.05V4.08c3.39.49 6 3.39 6 6.92 0 2.74-1.52 5.25-3.78 6.67L13 16v5h5l-1.22-1.22C19.91 18.07 21 15.14 21 12c0-4.94-3.50-9.07-8-9.95zM11 2.05C6.5 2.93 3 7.06 3 12c0 3.14 1.09 6.07 3.22 8.28L5 21.99h5v-5l-2.22 1.67A7.908 7.908 0 0 1 5 12c0-3.53 2.61-6.43 6-6.92V2.05z"/></svg>
+          Récemment
+        </span>
+      </div>
+      <div style="padding:0 16px 16px">
+        ${_buildActivityFeed(participants, depenses, agenda, reservations)}
+      </div>
+    </div>
 
     <div style="height:24px"></div>
   `;
