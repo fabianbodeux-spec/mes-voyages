@@ -227,6 +227,7 @@ tr:hover td{background:#FAFAFA}
     <a href="#s11"><span class="n">11.</span> Priorités moyen terme</a>
     <a href="#s12"><span class="n">12.</span> Vision stratégique long terme</a>
     <a href="#s13"><span class="n">13.</span> Recommandation finale</a>
+    <a href="#slanding"><span class="n">14.</span> Audit landing page</a>
     <a href="#annex"><span class="n">A.</span> Rapports des 6 sous-agents</a>
   </div>
 </div>
@@ -926,6 +927,154 @@ tr:hover td{background:#FAFAFA}
   </div>
 
   <p style="margin-top:20px; font-size:14px; color:#FED7AA">Le produit à 12 mois, après ces corrections, peut légitimement se positionner comme le <strong>standard de référence</strong> de la coordination de voyage de groupe. Le concept le mérite. L'exécution doit le rejoindre.</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 14 — AUDIT LANDING PAGE
+══════════════════════════════════════════════════════ -->
+<h2 id="slanding"><span class="num">14.</span> Audit de la page d'accueil <code style="font-size:.75em;background:rgba(0,0,0,.15);padding:2px 8px;border-radius:6px">landing.html</code></h2>
+
+<p style="color:var(--muted);font-size:14px;margin-bottom:24px">Analyse indépendante de la page marketing (<code>/</code>) — design, copywriting, conversion, cohérence produit, technique.</p>
+
+<!-- Score landing -->
+<div style="display:flex;align-items:center;gap:20px;background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:20px 28px;margin-bottom:28px">
+  <div style="text-align:center;min-width:80px">
+    <div style="font-size:2.8rem;font-weight:900;color:#D97706;line-height:1">6,5</div>
+    <div style="font-size:12px;color:var(--muted);font-weight:600">/10</div>
+  </div>
+  <div>
+    <div style="font-weight:700;font-size:1rem;margin-bottom:6px">Landing page — Score global</div>
+    <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Design premium exceptionnel, cohérence visuelle forte avec l'app. Pénalisée par une intro bloquante de 1,8 s, un headline cryptique, une promesse-réalité gap sur la collaboration, et l'absence totale de preuve sociale.</p>
+  </div>
+</div>
+
+<!-- Grille Forces / Faiblesses -->
+<div class="cols2" style="margin-bottom:28px">
+  <div>
+    <h4 style="color:#16A34A;margin-bottom:12px">✅ Forces (5)</h4>
+    <div class="card" style="padding:14px 18px">
+      <p style="font-size:13px;margin:0 0 8px;line-height:1.6"><strong>Design premium cohérent</strong><br>Police Satoshi, palette orange/noir identique à l'app. Transitions CSS soignées. Mockup téléphone crédible (Tokyo, données fictives réalistes).</p>
+    </div>
+    <div class="card" style="padding:14px 18px;margin-top:8px">
+      <p style="font-size:13px;margin:0 0 8px;line-height:1.6"><strong>Intro cinématique différenciante</strong><br>Séquence logo + tagline à 1,8 s — aucun concurrent direct n'a d'intro landing comparable. Impression de produit premium.</p>
+    </div>
+    <div class="card" style="padding:14px 18px;margin-top:8px">
+      <p style="font-size:13px;margin:0 0 8px;line-height:1.6"><strong>Parcours organisateur clair</strong><br>Section "Comment ça marche" en 4 étapes — de zéro à GO en quelques secondes de lecture. CTAs cohérents.</p>
+    </div>
+    <div class="card" style="padding:14px 18px;margin-top:8px">
+      <p style="font-size:13px;margin:0 0 8px;line-height:1.6"><strong>PWA install flow complet</strong><br>iOS (tooltip instructions pas à pas) et Android (beforeinstallprompt capturé en &lt;head&gt;). QR code desktop. Bonne pratique technique.</p>
+    </div>
+    <div class="card" style="padding:14px 18px;margin-top:8px">
+      <p style="font-size:13px;margin:0 0 8px;line-height:1.6"><strong>Sous-marques bien exposées</strong><br>Road Map, CrewiCash, CrewiChat, CrewiPics présentées avec leurs feature tags spécifiques — cohérence de l'univers de marque.</p>
+    </div>
+  </div>
+  <div>
+    <h4 style="color:#DC2626;margin-bottom:12px">❌ Faiblesses (8)</h4>
+    <div class="card risk" style="padding:14px 18px">
+      <p style="font-size:13px;margin:0 0 4px;line-height:1.6"><strong>Intro bloquante 1,8 s</strong> <span class="chip chC">Critique</span><br>L'overlay cinématique full-screen retarde tout le contenu visible. LCP pénalisé, bounce mobile élevé, contenu bloqué pour les crawlers SEO.</p>
+    </div>
+    <div class="card risk" style="padding:14px 18px;margin-top:8px">
+      <p style="font-size:13px;margin:0 0 4px;line-height:1.6"><strong>Headline cryptique</strong> <span class="chip chH">Élevé</span><br>"crew <em>we</em> GO" — le jeu de mot "we" en grisé est incompréhensible hors-contexte. Incompréhensible en 1 seconde pour un utilisateur froid.</p>
+    </div>
+    <div class="card risk" style="padding:14px 18px;margin-top:8px">
+      <p style="font-size:13px;margin:0 0 4px;line-height:1.6"><strong>Promesse-réalité gap collaboration</strong> <span class="chip chH">Élevé</span><br>"Construis ta roadmap <em>en groupe</em>" implique que les participants planifient — ils consultent seulement. Désillusion dès la première utilisation réelle.</p>
+    </div>
+    <div class="card risk" style="padding:14px 18px;margin-top:8px">
+      <p style="font-size:13px;margin:0 0 4px;line-height:1.6"><strong>Pas de mention du parcours participant</strong> <span class="chip chH">Élevé</span><br>"Aucun compte requis pour rejoindre" est la différenciation #1 du produit — absente du hero et des features. Le visiteur le plus décisif (celui qui reçoit le lien) ne se retrouve pas dans la landing.</p>
+    </div>
+    <div class="card" style="padding:14px 18px;margin-top:8px">
+      <p style="font-size:13px;margin:0 0 4px;line-height:1.6"><strong>Zéro preuve sociale</strong> <span class="chip chM">Modéré</span><br>Aucun témoignage, aucun compteur de voyages créés, aucune note. Confiance initiale faible pour un inconnu qui découvre le produit.</p>
+    </div>
+    <div class="card" style="padding:14px 18px;margin-top:8px">
+      <p style="font-size:13px;margin:0 0 4px;line-height:1.6"><strong>Feature Hub géo incohérente</strong> <span class="chip chM">Modéré</span><br>"Où est ton crew, maintenant" présentée comme un argument <em>organisateur</em> — mais la géolocalisation est accessible aux participants uniquement.</p>
+    </div>
+    <div class="card" style="padding:14px 18px;margin-top:8px">
+      <p style="font-size:13px;margin:0 0 4px;line-height:1.6"><strong>OG image générique</strong> <span class="chip chF">Faible</span><br><code>og:image = /logo-icon.png</code> uniquement. Partage de la landing sur WhatsApp/Slack = aperçu logo pixelisé, pas d'image app réelle.</p>
+    </div>
+    <div class="card" style="padding:14px 18px;margin-top:8px">
+      <p style="font-size:13px;margin:0 0 4px;line-height:1.6"><strong>QR code service tiers</strong> <span class="chip chF">Faible</span><br>QR code chargé depuis <code>api.qrserver.com</code> — dépendance externe, risque d'indisponibilité, tracking tiers potentiel.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Tableau corrections recommandées -->
+<h3>Corrections recommandées — landing</h3>
+<table>
+  <tr><th>#</th><th>Correction</th><th>Sévérité</th><th>Effort</th><th>Impact</th></tr>
+  <tr>
+    <td>L1</td>
+    <td><strong>Réduire l'intro à 600 ms</strong> — le délai <code>setTimeout(…, 1800)</code> → <code>600</code>. Les barres letterbox + fondu restent, seule la durée diminue.</td>
+    <td><span class="chip chC">Critique</span></td>
+    <td>15 min</td>
+    <td>LCP +30 %, bounce mobile −</td>
+  </tr>
+  <tr>
+    <td>L2</td>
+    <td><strong>Reformuler le héadline</strong> en dessous du titre principal : ajouter un sous-titre explicite, ex. <em>"L'app web pour planifier ton voyage en groupe — sans rien télécharger."</em></td>
+    <td><span class="chip chH">Élevé</span></td>
+    <td>10 min</td>
+    <td>Clarté immédiate +</td>
+  </tr>
+  <tr>
+    <td>L3</td>
+    <td><strong>Ajouter argument participant dans le hero</strong> : <em>"Tes amis rejoignent en un clic — sans compte, sans app."</em> comme bullet point sous la hero-sub.</td>
+    <td><span class="chip chH">Élevé</span></td>
+    <td>20 min</td>
+    <td>Conversion crew +</td>
+  </tr>
+  <tr>
+    <td>L4</td>
+    <td><strong>Corriger feature Hub géo</strong> : changer "Où est ton crew" → "Partage ta position avec ton crew". Préciser que c'est une feature participant.</td>
+    <td><span class="chip chM">Modéré</span></td>
+    <td>10 min</td>
+    <td>Cohérence promesse +</td>
+  </tr>
+  <tr>
+    <td>L5</td>
+    <td><strong>Ajouter 1 proof social</strong> : compteur dynamique via <code>/api/stats/public</code> (ex : "372 voyages créés") ou 2–3 quotes simulées d'utilisateurs.</td>
+    <td><span class="chip chM">Modéré</span></td>
+    <td>2h</td>
+    <td>Confiance +, conversion +</td>
+  </tr>
+  <tr>
+    <td>L6</td>
+    <td><strong>OG image réelle</strong> : générer un screenshot statique de l'app (phone mockup PNG) et l'utiliser comme <code>og:image</code> 1200×630. Héberger en local.</td>
+    <td><span class="chip chF">Faible</span></td>
+    <td>30 min</td>
+    <td>CTR social +40 %</td>
+  </tr>
+  <tr>
+    <td>L7</td>
+    <td><strong>QR code local</strong> : générer le SVG QR code en Node.js (<code>qrcode</code> npm) à la construction et le servir en statique. Supprimer la dépendance qrserver.com.</td>
+    <td><span class="chip chF">Faible</span></td>
+    <td>30 min</td>
+    <td>Fiabilité + RGPD +</td>
+  </tr>
+</table>
+
+<!-- Analyse technique landing -->
+<h3 style="margin-top:24px">Points techniques</h3>
+<div class="cols2">
+  <div class="card">
+    <h4 style="color:#16A34A;font-size:.95rem">✅ Bonnes pratiques détectées</h4>
+    <ul style="font-size:13px;line-height:1.9;margin:8px 0 0;padding-left:18px">
+      <li><code>beforeinstallprompt</code> capturé en <code>&lt;head&gt;</code> avant le reste du JS</li>
+      <li>Service Worker enregistré depuis la landing (pré-cache)</li>
+      <li><code>prefers-reduced-motion</code> respecté sur l'intro</li>
+      <li>Scroll reveal via Intersection Observer (pas de scroll listener)</li>
+      <li>Lien <code>/confidentialite</code> présent dans le footer</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4 style="color:#D97706;font-size:.95rem">⚠️ Points d'attention</h4>
+    <ul style="font-size:13px;line-height:1.9;margin:8px 0 0;padding-left:18px">
+      <li>Pas de <code>og:url</code> canonique pour la landing elle-même</li>
+      <li>Police Satoshi chargée depuis un CDN tiers (<code>api.fontshare.com</code>) — FOUT potentiel et dépendance réseau</li>
+      <li>QR code depuis <code>qrserver.com</code> — tracking tiers, uptime non garanti</li>
+      <li>Intro overlay <code>z-index:9999</code> bloque les screen readers pendant 1,8 s</li>
+      <li>Pas de <code>lang="fr"</code> sur le <code>&lt;html&gt;</code> (présent sur l'app, manquant ici)</li>
+    </ul>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════
