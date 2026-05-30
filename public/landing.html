@@ -1854,7 +1854,7 @@
         }, 350);
 
       } else {
-        // Phase 1 — sortie cinématique à 3.2s
+        // Phase 1 — sortie cinématique à 600 ms (L1 : réduit de 1800 ms → LCP +)
         setTimeout(() => {
           const content = introOverlay.querySelector('.intro-content');
 
@@ -1875,7 +1875,7 @@
             introOverlay.style.opacity = '0';
             setTimeout(() => { introOverlay.style.display = 'none'; }, 700);
           }, 480);
-        }, 1800);
+        }, 600);
       }
     }
   </script>
