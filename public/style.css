@@ -537,6 +537,11 @@ body {
   border-color: rgba(249,115,22,0.26);
   color: #FDBA74;
 }
+.stat-pill--participant {
+  background: rgba(139,92,246,0.12);
+  border-color: rgba(139,92,246,0.26);
+  color: #C4B5FD;
+}
 
 #screen-home .main-content {
   background: var(--bg);
@@ -3035,9 +3040,10 @@ textarea { resize: vertical; line-height: 1.6; }
   .btn-mini-edit { background: #3A2010; color: #F0956A; border-color: #4A2C16; }
   .btn-mini-del  { background: #3A0A0A; color: #FCA5A5; border-color: #4A1010; }
 
-  .stat-pill--ongoing  { background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.32); color: #6EE7B7; }
-  .stat-pill--upcoming { background: rgba(99,102,241,0.18); border-color: rgba(99,102,241,0.32); color: #A5B4FC; }
-  .stat-pill--total    { background: rgba(249,115,22,0.16); border-color: rgba(249,115,22,0.30); color: #FDBA74; }
+  .stat-pill--ongoing      { background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.32); color: #6EE7B7; }
+  .stat-pill--upcoming     { background: rgba(99,102,241,0.18); border-color: rgba(99,102,241,0.32); color: #A5B4FC; }
+  .stat-pill--total        { background: rgba(249,115,22,0.16); border-color: rgba(249,115,22,0.30); color: #FDBA74; }
+  .stat-pill--participant  { background: rgba(139,92,246,0.18); border-color: rgba(139,92,246,0.32); color: #C4B5FD; }
 
   input[type="text"], input[type="date"], input[type="time"],
   input[type="url"], input[type="number"], input[type="password"],

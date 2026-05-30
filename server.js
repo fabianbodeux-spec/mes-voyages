@@ -213,7 +213,29 @@ app.post('/api/auth/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     const token = jwt.sign({ id: user.id, email: user.email, nom: user.nom }, JWT_SECRET, { expiresIn: '30d' });
-    res.json({ token, user: { id: user.id, email: user.email, nom: user.nom } });
+
+    // P3 — Réconciliation automatique : trouver les participations liées à cet email
+    let newParticipations = 0;
+    try {
+      const emailLinks    = await run(() => db.participant_emails.getAllByEmail(email.toLowerCase().trim()));
+      const existingLinks = await run(() => db.user_participant_links.getByUser(user.id));
+      const existingKeys  = new Set(existingLinks.map(l => l.voyage_id));
+
+      for (const ep of emailLinks) {
+        if (existingKeys.has(ep.voyage_id)) continue; // déjà lié
+        const participants = await run(() => db.participants.getByVoyage(ep.voyage_id));
+        const participant  = participants.find(p => p.nom === ep.participant_nom);
+        if (participant) {
+          await run(() => db.user_participant_links.upsert(
+            user.id, participant.id, ep.voyage_id, ep.participant_nom
+          )).catch(() => {});
+          newParticipations++;
+        }
+      }
+    } catch(e) {
+      console.warn('[P3 réconciliation]', e.message);
+    }
+    res.json({ token, user: { id: user.id, email: user.email, nom: user.nom }, newParticipations });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
@@ -689,6 +711,11 @@ app.post('/api/voyages/:id/join-as-participant', authMiddleware, async (req, res
       couleur: ownerPart.couleur,
       role:    'owner',
     });
+
+    // P3 — Créer le lien user ↔ participant pour ce voyage (organisateur qui rejoint en tant que participant)
+    await run(() => db.user_participant_links.upsert(
+      req.user.id, ownerPart.id, voyageId, ownerPart.nom
+    )).catch(e => console.warn('[JOIN-AS-PARTICIPANT] link upsert:', e.message));
 
     // 4. Construire l'URL de partage (utilise le share_token du voyage)
     const shareToken = voyage.share_token || null;

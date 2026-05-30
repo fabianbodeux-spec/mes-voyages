@@ -279,6 +279,10 @@ async function submitLogin() {
     _hideAuthScreen();
     _updateHeaderUser();
     chargerVoyages();
+    if (data.newParticipations > 0) {
+      const n = data.newParticipations;
+      toast(`🎭 ${n} voyage${n > 1 ? 's' : ''} participé${n > 1 ? 's' : ''} retrouvé${n > 1 ? 's' : ''} !`, 4000);
+    }
   } catch { errEl.textContent = 'Erreur réseau'; }
   finally { btn.disabled = false; btn.textContent = 'Se connecter'; }
 }
@@ -862,6 +866,12 @@ async function chargerVoyages() {
     if (ongoing.length > 0) pills.push(`<span class="stat-pill stat-pill--ongoing"><svg viewBox="0 0 24 24" fill="currentColor" width="8" height="8"><circle cx="12" cy="12" r="6"/></svg>${ongoing.length} en cours</span>`);
     if (upcoming.length > 0) pills.push(`<span class="stat-pill stat-pill--upcoming"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="11" height="11"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>${upcoming.length} à venir</span>`);
     pills.push(`<span class="stat-pill stat-pill--total"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>${voyages.length} voyage${voyages.length > 1 ? 's' : ''}</span>`);
+    if (partUniques.length > 0) {
+      pills.push(`<span class="stat-pill stat-pill--participant">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        ${partUniques.length} participation${partUniques.length > 1 ? 's' : ''}
+      </span>`);
+    }
     statsEl.innerHTML = pills.join('');
   }
 

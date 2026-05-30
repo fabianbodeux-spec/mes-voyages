@@ -410,7 +410,10 @@ const localDB = {
       sauvegarder('participant_emails', list);
       return true;
     },
-    getByVoyage: (vid) => charger('participant_emails').filter(e => e.voyage_id === +vid)
+    getByVoyage: (vid) => charger('participant_emails').filter(e => e.voyage_id === +vid),
+    getAllByEmail: (email) => charger('participant_emails').filter(e =>
+      e.email && e.email.toLowerCase() === String(email).toLowerCase()
+    ),
   },
 };
 
@@ -994,7 +997,11 @@ const pgDB = pgPool ? {
        ON CONFLICT(voyage_id,participant_nom) DO UPDATE SET email=EXCLUDED.email, saved_at=now()`,
       [vid, nom, email.toLowerCase().trim()]
     ),
-    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM participant_emails WHERE voyage_id=$1', [vid])).rows
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM participant_emails WHERE voyage_id=$1', [vid])).rows,
+    getAllByEmail: async (email) => (await pgPool.query(
+      'SELECT * FROM participant_emails WHERE LOWER(email)=LOWER($1)',
+      [email]
+    )).rows,
   },
 } : null;
 
