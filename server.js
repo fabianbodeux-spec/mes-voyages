@@ -723,18 +723,15 @@ app.delete('/api/participants/:id', authMiddleware, async (req, res) => {
 app.post('/api/voyages/:id/join-as-participant', authMiddleware, async (req, res) => {
   try {
     const voyageId = parseInt(req.params.id);
-    console.log('[JOIN-AS-PARTICIPANT] step1 voyageId=', voyageId, 'user=', req.user?.id, 'body=', req.body);
 
     // 1. Récupérer le voyage et vérifier l'ownership
     const voyage = await run(() => db.voyages.getById(voyageId));
-    console.log('[JOIN-AS-PARTICIPANT] step2 voyage=', voyage?.id, voyage?.nom);
     if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
     if (!(await checkVoyageOwnership(voyageId, req.user.id)))
       return res.status(403).json({ error: 'Accès refusé' });
 
     // 2. Trouver ou créer le participant "owner"
     const parts = await run(() => db.participants.getByVoyage(voyageId));
-    console.log('[JOIN-AS-PARTICIPANT] step3 parts=', parts?.length);
 
     // Cherche un participant existant avec role='owner' (défensif : le champ peut être absent)
     let ownerPart = parts.find(p => p.role === 'owner');
@@ -742,7 +739,6 @@ app.post('/api/voyages/:id/join-as-participant', authMiddleware, async (req, res
     if (!ownerPart) {
       const nom = (req.body.nom || 'Organisateur').trim().slice(0, 50);
       const couleur = req.body.couleur || '#FF6B35';
-      console.log('[JOIN-AS-PARTICIPANT] step4 creating participant nom=', nom);
 
       ownerPart = await run(() => db.participants.create(voyageId, {
         nom,
@@ -751,7 +747,6 @@ app.post('/api/voyages/:id/join-as-participant', authMiddleware, async (req, res
         role: 'owner',
       }));
     }
-    console.log('[JOIN-AS-PARTICIPANT] step5 ownerPart=', ownerPart?.id, ownerPart?.nom);
 
     // 3. Générer un session token
     const sessionToken = createSession({
@@ -761,7 +756,6 @@ app.post('/api/voyages/:id/join-as-participant', authMiddleware, async (req, res
       couleur: ownerPart.couleur,
       role:    'owner',
     });
-    console.log('[JOIN-AS-PARTICIPANT] step6 sessionToken=', sessionToken ? 'OK' : 'NULL');
 
     // P3 — Créer le lien user ↔ participant pour ce voyage (organisateur qui rejoint en tant que participant)
     await run(() => db.user_participant_links.upsert(
@@ -785,7 +779,7 @@ app.post('/api/voyages/:id/join-as-participant', authMiddleware, async (req, res
     });
   } catch(e) {
     console.error('[JOIN-AS-PARTICIPANT]', e);
-    res.status(500).json({ error: e?.message || 'Erreur serveur' });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

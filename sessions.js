@@ -3,6 +3,7 @@
 // aux redémarrages serveur.
 const fs = require('fs');
 const path = require('path');
+const { randomUUID } = require('crypto');
 
 const SESSIONS_FILE = path.join(__dirname, 'data', 'sessions.json');
 const SESSION_TTL = 24 * 60 * 60 * 1000; // 24h
@@ -53,7 +54,7 @@ function purgeSessions() {
 
 // ── Créer une session ──
 function createSession({ participantId, voyageId, nom, couleur, role = 'participant' }) {
-  const token = crypto.randomUUID();
+  const token = randomUUID();
   participantSessions.set(token, {
     participantId,
     voyageId,
