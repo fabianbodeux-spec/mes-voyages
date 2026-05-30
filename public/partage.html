@@ -3423,10 +3423,11 @@ function _showPwaInstallBanner() {
       if (outcome === 'accepted') localStorage.setItem('pwa_snoozed_until', String(Date.now() + 999 * 86400_000));
     };
   } else {
-    // ── iOS Safari : guide manuel ───────────────────────────────
+    // ── iOS Safari : redirige vers l'app principale (évite double-icône) ──
     if (body)    body.style.display  = 'none';
     if (bodyIOS) bodyIOS.style.display = 'block';
-    if (installBtn) installBtn.onclick = _snooze;
+    // Le bouton iOS est maintenant un <a href="/"> — on ne surcharge pas onclick
+    // On ferme juste la bannière si l'utilisateur revient sur cette page
   }
 
   // Animation d'entrée : légère pause puis slide-up
@@ -4326,8 +4327,8 @@ function escHtml(t) {
         <img src="/logo-icon.png" alt="CrewiGo">
       </div>
       <div class="pwa-hero-text">
-        <strong>Ajoute CrewiGo à ton écran</strong>
-        <span>Rejoins le voyage en un tap</span>
+        <strong>Installe l'app CrewiGO</strong>
+        <span>Tous tes voyages en un seul endroit</span>
       </div>
     </div>
 
@@ -4340,33 +4341,33 @@ function escHtml(t) {
         </li>
         <li>
           <div class="pwa-perk-icon" style="background:#F0FDF4">✈️</div>
-          <div><strong>Accès hors connexion</strong> — consulte l'itinéraire même sans réseau, à l'aéroport</div>
+          <div><strong>Tous tes voyages</strong> — retrouve chaque trip depuis une seule icône, sans chercher les liens</div>
         </li>
         <li>
           <div class="pwa-perk-icon" style="background:#FFF7ED">⚡</div>
-          <div><strong>Un tap</strong> — ton voyage directement depuis l'écran d'accueil, comme une vraie app</div>
+          <div><strong>Accès hors connexion</strong> — consulte l'itinéraire même sans réseau, à l'aéroport</div>
         </li>
       </ul>
-      <button id="pwa-install-btn" class="pwa-install-cta">Installer l'application</button>
+      <button id="pwa-install-btn" class="pwa-install-cta">Installer CrewiGO</button>
     </div>
 
-    <!-- Guide iOS Safari -->
+    <!-- Guide iOS Safari — redirige vers l'app principale pour éviter la double icône -->
     <div id="pwa-body-ios" style="display:none">
+      <p style="font-size:.9rem;color:#6B7280;line-height:1.5;margin:0 0 16px">
+        Pour accéder à <strong>tous tes voyages</strong> depuis un seul endroit,
+        installe l'app CrewiGO depuis la page principale.
+      </p>
       <div class="pwa-ios-steps">
         <div class="pwa-ios-step">
           <div class="pwa-ios-step-num">1</div>
-          <div>Appuie sur <span class="pwa-share-icon">⬆ Partager</span> en bas de Safari</div>
+          <div>Ouvre <strong>crewigo.app</strong> dans Safari</div>
         </div>
         <div class="pwa-ios-step">
           <div class="pwa-ios-step-num">2</div>
-          <div>Choisis <strong>«&nbsp;Sur l'écran d'accueil&nbsp;»</strong></div>
-        </div>
-        <div class="pwa-ios-step">
-          <div class="pwa-ios-step-num">3</div>
-          <div>Confirme avec <strong>Ajouter</strong> — c'est prêt 🎉</div>
+          <div>Appuie sur <span class="pwa-share-icon">⬆ Partager</span> puis <strong>«&nbsp;Sur l'écran d'accueil&nbsp;»</strong></div>
         </div>
       </div>
-      <button id="pwa-install-btn-ios" class="pwa-install-cta">C'est fait !</button>
+      <a href="/" id="pwa-install-btn-ios" class="pwa-install-cta" style="display:block;text-align:center;text-decoration:none">Ouvrir crewigo.app →</a>
     </div>
 
     <button id="pwa-later-btn" class="pwa-later">Pas maintenant</button>

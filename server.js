@@ -1486,7 +1486,8 @@ app.get('/share/:token', async (req, res) => {
           .replace(/(<meta property="og:description"\s+content=")[^"]*(")/,         `$1${ogDesc}$2`)
           .replace(/(<meta property="og:locale"\s+content=")[^"]*(")/,              `$1fr_FR$2`)
           .replace(/(<meta name="twitter:title"\s+content=")[^"]*(")/,              `$1${ogTitle} — CrewiGO$2`)
-          .replace(/(<meta name="twitter:description"\s+content=")[^"]*(")/,        `$1${ogDesc}$2`);
+          .replace(/(<meta name="twitter:description"\s+content=")[^"]*(")/,        `$1${ogDesc}$2`)
+          .replace(/(<meta name="apple-mobile-web-app-title"\s+content=")[^"]*(")/,`$1${nom}$2`);
 
         // Injecter og:url juste après og:locale (si la balise n'existe pas encore)
         if (!html.includes('og:url')) {
