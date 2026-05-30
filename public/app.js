@@ -588,7 +588,7 @@ function _updateParticipantModeBar() {
       av.textContent = session.nom[0].toUpperCase();
       av.style.background = session.couleur || 'var(--accent)';
     }
-    if (btn) btn.onclick = () => { window.location.href = `/voyage/${_shareTokenCourant}`; }; // URL canonique
+    if (btn) btn.onclick = () => { window.location.href = `/partage/${_shareTokenCourant}`; };
     // P6 — Bouton "Quitter" : efface la session participant pour ce voyage
     if (quitBtn) {
       quitBtn.onclick = () => {
@@ -4285,6 +4285,17 @@ async function partagerVoyage() {
 async function rejoindreVoyage() {
   if (!voyageActuel) return;
   fermerBottomSheet();
+
+  // Raccourci — session participant déjà active : navigation directe, sans modales
+  // (évite de repasser par confirmation + prénom à chaque switch org→participant)
+  if (_shareTokenCourant) {
+    let stored = null;
+    try { stored = JSON.parse(localStorage.getItem('partage_id_' + _shareTokenCourant)); } catch {}
+    if (stored?.sessionToken) {
+      window.location.href = '/partage/' + _shareTokenCourant;
+      return;
+    }
+  }
 
   // P6 — Montrer la modale de confirmation avant de basculer
   const modal = document.getElementById('modal-confirm-role-switch');
