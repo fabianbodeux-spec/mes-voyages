@@ -562,10 +562,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // Met à jour la barre orange affichée dans la vue admin quand l'organisateur
 // a déjà rejoint le voyage en tant que participant (session stockée en localStorage).
 function _updateParticipantModeBar() {
-  const bar  = document.getElementById('mode-participant-bar');
-  const btn  = document.getElementById('mpb-switch-btn');
-  const nom  = document.getElementById('mpb-nom');
-  const av   = document.getElementById('mpb-avatar');
+  const bar     = document.getElementById('mode-participant-bar');
+  const btn     = document.getElementById('mpb-switch-btn');
+  const quitBtn = document.getElementById('mpb-quit-btn');
+  const nom     = document.getElementById('mpb-nom');
+  const av      = document.getElementById('mpb-avatar');
   if (!bar) return;
 
   if (!_shareTokenCourant) { bar.classList.add('hidden'); return; }
@@ -580,6 +581,15 @@ function _updateParticipantModeBar() {
       av.style.background = session.couleur || 'var(--accent)';
     }
     if (btn) btn.onclick = () => { window.location.href = `/share/${_shareTokenCourant}`; };
+    // P6 — Bouton "Quitter" : efface la session participant pour ce voyage
+    if (quitBtn) {
+      quitBtn.onclick = () => {
+        if (_shareTokenCourant) {
+          localStorage.removeItem('partage_id_' + _shareTokenCourant);
+        }
+        _updateParticipantModeBar();
+      };
+    }
     bar.classList.remove('hidden');
   } else {
     bar.classList.add('hidden');
@@ -665,7 +675,7 @@ function changerOnglet(tab, btn) {
 
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
   if (tab === 'accueil') (window.chargerAccueil || chargerAccueil)();
@@ -3488,6 +3498,9 @@ async function chargerAdmin() {
       adminTab.appendChild(badge);
     }
   }
+  // Synchroniser le badge sur le bouton gear aussi
+  const gearBadge = document.getElementById('admin-gear-badge');
+  if (gearBadge) gearBadge.style.display = (enAttente > 0) ? 'block' : 'none';
 
   // Alimenter les caches pour voirReservation()
   _resasCache = reservations;
@@ -4153,6 +4166,28 @@ async function rejoindreVoyage() {
   if (!voyageActuel) return;
   fermerBottomSheet();
 
+  // P6 — Montrer la modale de confirmation avant de basculer
+  const modal = document.getElementById('modal-confirm-role-switch');
+  if (modal) {
+    modal.classList.remove('hidden');
+    return new Promise(resolve => {
+      const confirmBtn = document.getElementById('btn-confirm-role-yes');
+      const backdrop   = modal.querySelector('.modal-backdrop');
+      const cleanup = () => {
+        modal.classList.add('hidden');
+        confirmBtn.removeEventListener('click', onYes);
+        backdrop.removeEventListener('click', onNo);
+      };
+      const onYes = () => { cleanup(); resolve(_rejoindreVoyageConfirme()); };
+      const onNo  = () => { cleanup(); resolve(); };
+      confirmBtn.addEventListener('click', onYes);
+      backdrop.addEventListener('click', onNo);
+    });
+  }
+  return _rejoindreVoyageConfirme();
+}
+
+async function _rejoindreVoyageConfirme() {
   // Auto-créer le lien de partage si nécessaire
   if (!_shareTokenCourant) {
     try {
@@ -4207,6 +4242,11 @@ async function rejoindreVoyage() {
   } catch(e) {
     toast('❌ Erreur réseau');
   }
+}
+
+// P1 — Ouvrir Prépa depuis Road Map (chip dans le panel programme)
+function ouvrirPrepa() {
+  changerOnglet('preparation', null);
 }
 
 function copierLienPartage() {
@@ -4591,6 +4631,14 @@ function _bindStaticHandlers() {
   // ── Voyage screen header ──────────────────────────────────────────────────
   _on('btn-retour-accueil',  'click', afficherAccueil);
   _on('btn-menu-voyage',     'click', menuVoyageActuel);
+
+  // P1 — Bouton admin gear (remplace l'onglet Admin)
+  _on('btn-admin-gear', 'click', () => {
+    changerOnglet('admin', null);
+    // Cacher le badge quand on ouvre l'admin
+    const badge = document.getElementById('admin-gear-badge');
+    if (badge) badge.style.display = 'none';
+  });
 
   // ── Tab nav (delegation) ──────────────────────────────────────────────────
   const tabNav = document.querySelector('.tab-nav');

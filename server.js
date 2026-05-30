@@ -570,7 +570,15 @@ app.delete('/api/documents/:id', authMiddleware, async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-// ─── HELPERS PIN ──────────────────────────────────────────────────────────
+// ─── HELPERS PIN & NOM ────────────────────────────────────────────────────
+
+// P4 — Normalisation des prénoms : trim + casse titre (Unicode-aware, accents inclus)
+// "jean-claude" → "Jean-Claude", "  MARIE  " → "Marie"
+function _toTitleCase(str) {
+  return String(str).trim()
+    .toLowerCase()
+    .replace(/(^|[\s\-'])(.)/gu, (_, sep, c) => sep + c.toUpperCase());
+}
 
 async function hashPin(pin) {
   if (pin == null) return null;
@@ -603,7 +611,7 @@ app.post('/api/voyages/:id/participants', authMiddleware, requireVoyageOwner(), 
     const { nom, couleur, pin } = req.body;
     if (!nom?.trim()) return res.status(400).json({ error: 'Nom requis' });
     const payload = {
-      nom: nom.trim().slice(0, 50),
+      nom: _toTitleCase(nom).slice(0, 50),  // P4 : normalise casse titre
       couleur: couleur || '#6366F1',
       pin: await hashPin(pin),
       // 'role' volontairement exclu — toujours 'participant' par défaut
@@ -625,7 +633,7 @@ app.put('/api/participants/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Accès refusé' });
     const { nom, couleur, pin } = req.body;
     const payload = {};
-    if (nom !== undefined) payload.nom = String(nom).trim().slice(0, 50);
+    if (nom !== undefined) payload.nom = _toTitleCase(nom).slice(0, 50); // P4
     if (couleur !== undefined) payload.couleur = couleur;
     if (pin !== undefined) payload.pin = await hashPin(pin);
     // 'role' et 'voyage_id' volontairement exclus
