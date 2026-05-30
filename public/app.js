@@ -607,6 +607,20 @@ function afficherVoyage(id) {
       const header = document.getElementById('voyage-header');
       header.style.borderBottom = `3px solid ${voyage.couleur}`;
 
+      // ── Chip "Vue participant" si lien participant existe pour ce voyage ──
+      const _existingChip = document.getElementById('role-switch-chip');
+      if (_existingChip) _existingChip.remove();
+      const linked = _myParticipations.find(p => p.id === id);
+      if (linked && linked.share_token) {
+        const chip = document.createElement('button');
+        chip.id        = 'role-switch-chip';
+        chip.className = 'role-switch-chip';
+        chip.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> Vue participant`;
+        chip.onclick   = () => { window.location.href = `/share/${linked.share_token}`; };
+        const headerContent = header.querySelector('.header-content');
+        if (headerContent) headerContent.appendChild(chip);
+      }
+
       // Mettre à jour la barre de mode participant (session admin active ?)
       _updateParticipantModeBar();
 
@@ -769,34 +783,60 @@ function _appliquerPhoto(voyageId, photoUrl) {
   tmp.src = photoUrl;
 }
 
+// Participations liées au compte admin (chargées en parallèle avec les voyages admin)
+let _myParticipations = [];
+
 async function chargerVoyages() {
-  const data = await fetch(`${API}/api/voyages/home-summary`).then(r => r.ok ? r.json() : []).catch(() => []);
+  // Charger admin voyages + participations en parallèle
+  const [data, participations] = await Promise.all([
+    fetch(`${API}/api/voyages/home-summary`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`${API}/api/auth/my-participations`).then(r => r.ok ? r.json() : []).catch(() => [])
+  ]);
   const voyages = Array.isArray(data) ? data : [];
+  _myParticipations = Array.isArray(participations) ? participations : [];
+
   const container = document.getElementById('voyages-container');
   const empty = document.getElementById('empty-state');
 
   const joinBar = document.getElementById('join-voyage-bar');
-  if (voyages.length === 0) {
+
+  // Filtrer les participations qui ne sont pas déjà dans les voyages admin
+  const adminIds   = new Set(voyages.map(v => v.id));
+  const partUniques = _myParticipations.filter(p => !adminIds.has(p.id));
+
+  if (voyages.length === 0 && partUniques.length === 0) {
     container.innerHTML = '';
     empty.classList.remove('hidden');
     if (joinBar) joinBar.classList.add('hidden');
     return;
   }
   empty.classList.add('hidden');
-  // Barre "Tu as reçu un lien ?" — visible en bas de la liste pour les admins avec voyages
   if (joinBar) joinBar.classList.remove('hidden');
 
-  // ── Grouper par statut ─────────────────────────────────────────
+  // ── Grouper admin voyages par statut ───────────────────────────
   const MEMORY_STATUTS = new Set(['terminé', 'completed', 'archived']);
   const ongoing = [], upcoming = [], memories = [];
   for (const v of voyages) {
     if (MEMORY_STATUTS.has(v.statut)) {
-      memories.push(v);
+      memories.push({ ...v, _role: 'admin' });
     } else {
       const s = getStatut(v.date_debut, v.date_fin);
-      if (s.classe === 'ongoing') ongoing.push(v);
-      else if (s.classe === 'upcoming') upcoming.push(v);
-      else memories.push(v); // passé mais pas encore marqué terminé
+      if (s.classe === 'ongoing')       ongoing.push({ ...v, _role: 'admin' });
+      else if (s.classe === 'upcoming') upcoming.push({ ...v, _role: 'admin' });
+      else                              memories.push({ ...v, _role: 'admin' });
+    }
+  }
+
+  // ── Intégrer les participations dans les bonnes sections ───────
+  for (const p of partUniques) {
+    const opts = { role: 'participant', participantNom: p.participant_nom, shareToken: p.share_token };
+    if (MEMORY_STATUTS.has(p.statut)) {
+      memories.push({ ...p, _role: 'participant', _partOpts: opts });
+    } else {
+      const s = getStatut(p.date_debut, p.date_fin);
+      if (s.classe === 'ongoing')       ongoing.push({ ...p, _role: 'participant', _partOpts: opts });
+      else if (s.classe === 'upcoming') upcoming.push({ ...p, _role: 'participant', _partOpts: opts });
+      else                              memories.push({ ...p, _role: 'participant', _partOpts: opts });
     }
   }
 
@@ -821,7 +861,7 @@ async function chargerVoyages() {
         <span class="home-section-count">${ongoing.length}</span>
       </div>
       <div class="voyage-grid voyage-grid--ongoing">
-        ${ongoing.map(v => _renderVoyageCard(v, 'ongoing')).join('')}
+        ${ongoing.map(v => _renderVoyageCard(v, 'ongoing', v._partOpts)).join('')}
       </div>
     </section>`;
   }
@@ -834,7 +874,7 @@ async function chargerVoyages() {
         <span class="home-section-count">${upcoming.length}</span>
       </div>
       <div class="voyage-grid voyage-grid--upcoming">
-        ${upcoming.map(v => _renderVoyageCard(v, 'upcoming')).join('')}
+        ${upcoming.map(v => _renderVoyageCard(v, 'upcoming', v._partOpts)).join('')}
       </div>
     </section>`;
   }
@@ -847,7 +887,7 @@ async function chargerVoyages() {
         <span class="home-section-count">${memories.length}</span>
       </div>
       <div class="voyage-grid voyage-grid--memories">
-        ${memories.map(v => _renderVoyageCard(v, 'memories')).join('')}
+        ${memories.map(v => _renderVoyageCard(v, 'memories', v._partOpts)).join('')}
       </div>
     </section>`;
   }
@@ -855,62 +895,16 @@ async function chargerVoyages() {
   container.innerHTML = html;
 
   // ── Photos Wikipedia pour ongoing + upcoming ───────────────────
-  enrichirPhotos([...ongoing, ...upcoming]);
+  enrichirPhotos([...ongoing, ...upcoming].filter(v => v._role !== 'participant'));
   // ── Top photos internes pour les souvenirs ─────────────────────
-  _enrichirPhotosSouvenirs(memories);
-
-  // ── Voyages participants liés (via magic link) ─────────────────
-  _chargerParticipations();
+  _enrichirPhotosSouvenirs(memories.filter(v => v._role !== 'participant'));
 }
 
-async function _chargerParticipations() {
-  try {
-    const participations = await fetch(`${API}/api/auth/my-participations`)
-      .then(r => r.ok ? r.json() : []).catch(() => []);
-    if (!participations.length) return;
-
-    const container = document.getElementById('voyages-container');
-    if (!container) return;
-
-    // Ne montrer que les voyages pas déjà dans la liste admin
-    const adminIds = new Set(
-      [...container.querySelectorAll('[data-voyage-id]')].map(el => +el.dataset.voyageId)
-    );
-    const nouveaux = participations.filter(v => !adminIds.has(v.id));
-    if (!nouveaux.length) return;
-
-    const section = document.createElement('section');
-    section.className = 'home-section home-section--participations';
-    section.innerHTML = `
-      <div class="home-section-header">
-        <span class="home-section-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Mes participations
-        </span>
-      </div>
-      <div class="voyage-cards-grid">
-        ${nouveaux.map(v => `
-          <div class="voyage-card voyage-card--participant" data-voyage-id="${v.id}"
-               onclick="window.location.href='/share/${v.share_token || ''}'">
-            <div class="voyage-card-header" style="background:${v.couleur || '#6366f1'}22;border-bottom:2px solid ${v.couleur || '#6366f1'}">
-              <span class="voyage-card-nom">${v.nom}</span>
-              <span class="voyage-chip" style="background:#8B5CF622;color:#8B5CF6;border:1px solid #8B5CF6">→ Participant</span>
-            </div>
-            <div class="voyage-card-body">
-              <span class="voyage-card-dest">${v.destination || ''}</span>
-              <span class="voyage-card-dates">${v.date_debut || ''} → ${v.date_fin || ''}</span>
-              <span class="voyage-card-role" style="font-size:.78rem;color:#8B5CF6;margin-top:4px">en tant que ${v.participant_nom}</span>
-            </div>
-          </div>`).join('')}
-      </div>`;
-    container.appendChild(section);
-  } catch(e) {
-    console.warn('[participations]', e.message);
-  }
-}
-
-/** Construit le HTML d'une carte voyage selon sa section */
-function _renderVoyageCard(v, section) {
+/** Construit le HTML d'une carte voyage selon sa section
+ *  opts = { role: 'participant', participantNom, shareToken } pour les voyages participants
+ */
+function _renderVoyageCard(v, section, opts = null) {
+  const isParticipant = opts?.role === 'participant';
   const isMemory  = section === 'memories';
   const isOngoing = section === 'ongoing';
 
@@ -956,20 +950,31 @@ function _renderVoyageCard(v, section) {
   }
 
   // ── Click handler ──
-  const clickHandler = isMemory && v.share_token
-    ? `onclick="window.location.href='/partage/${v.share_token}?tab=souvenirs'"`
-    : `onclick="afficherVoyage(${v.id})"`;
+  let clickHandler, ctaLabel;
+  if (isParticipant) {
+    const shareUrl = opts.shareToken ? `/share/${opts.shareToken}` : '#';
+    clickHandler = `onclick="window.location.href='${shareUrl}'"`;
+    ctaLabel     = isMemory ? '🎞️ Voir les souvenirs' : '→ Accéder au voyage';
+  } else {
+    clickHandler = isMemory && v.share_token
+      ? `onclick="window.location.href='/partage/${v.share_token}?tab=souvenirs'"`
+      : `onclick="afficherVoyage(${v.id})"`;
+    ctaLabel = isMemory ? '🎞️ Voir les souvenirs' : 'Ouvrir le trip';
+  }
 
-  const ctaLabel = isMemory ? '🎞️ Voir les souvenirs' : 'Ouvrir le trip';
+  // ── Chip de rôle (participant = violet, admin = implicite) ──
+  const roleChip = isParticipant
+    ? `<span class="voyage-role-chip voyage-role-chip--participant">→ Participe · ${h(opts.participantNom || '')}</span>`
+    : '';
 
-  return `<div class="voyage-card${isMemory?' voyage-card--memory':''}" data-id="${h(String(v.id))}" ${clickHandler}>
+  return `<div class="voyage-card${isMemory?' voyage-card--memory':''}${isParticipant?' voyage-card--participant':''}" data-id="${h(String(v.id))}" ${clickHandler}>
     <div class="voyage-card-banner">
       <div class="voyage-card-accent" style="background:${h(v.couleur)}"></div>
       <img class="voyage-card-banner-img" src="" alt="" style="opacity:0">
       <div class="voyage-card-color-wash" style="background:linear-gradient(135deg,${h(v.couleur)}33 0%,transparent 70%)"></div>
       <div class="voyage-card-banner-content">
         <div class="voyage-card-banner-top">
-          <span class="voyage-badge badge-${statut.classe}">${statut.label}</span>
+          ${roleChip || `<span class="voyage-badge badge-${statut.classe}">${statut.label}</span>`}
         </div>
         <div class="voyage-card-banner-bottom">
           <span class="voyage-card-dest">

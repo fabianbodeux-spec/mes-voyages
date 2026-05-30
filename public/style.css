@@ -956,6 +956,64 @@ body {
 }
 .voyage-card--memory .voyage-card-banner { height: 180px; }
 
+/* ── Carte voyage participant ──────────────────────────────────── */
+.voyage-card--participant {
+  border-color: rgba(139, 92, 246, 0.18);
+}
+.voyage-card--participant:hover {
+  border-color: rgba(139, 92, 246, 0.38);
+  box-shadow: 0 8px 32px rgba(139,92,246,0.1), 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* Chip de rôle dans la carte */
+.voyage-role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.voyage-role-chip--participant {
+  background: rgba(139,92,246,.18);
+  color: #a78bfa;
+  border: 1px solid rgba(139,92,246,.35);
+}
+.voyage-role-chip--admin {
+  background: rgba(245,158,11,.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245,158,11,.35);
+}
+
+/* Chip "Vue participant" dans le header de voyage (admin → participant) */
+.role-switch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(139,92,246,.15);
+  color: #a78bfa;
+  border: 1px solid rgba(139,92,246,.4);
+  border-radius: 20px;
+  padding: 5px 11px;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: auto;
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.role-switch-chip:hover {
+  background: rgba(139,92,246,.28);
+  border-color: rgba(139,92,246,.6);
+}
+
 /* Stats mémoire (⭐ note + 👥 crew) */
 .memory-stats {
   display: flex;
