@@ -266,6 +266,22 @@
       <h2>Ton prochain trip te manque.</h2>
       <p>Crée-le en 30 secondes.</p>
       <button class="btn-primary" id="empty-create-btn">Lancer mon premier trip</button>
+      <div class="join-voyage-section">
+        <div class="join-voyage-or"><span>ou</span></div>
+        <p class="join-voyage-label">Tu as reçu un lien d'invitation ?</p>
+        <div class="join-voyage-row">
+          <input id="join-link-input-empty" type="url" inputmode="url" autocomplete="off"
+            placeholder="Colle le lien ici…" class="join-voyage-input">
+          <button id="join-link-btn-empty" class="join-voyage-btn">Rejoindre →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lien voyage reçu — toujours visible même si l'admin a déjà des trips -->
+    <div id="join-voyage-bar" class="join-voyage-bar hidden">
+      <span class="join-voyage-bar-icon">🔗</span>
+      <span class="join-voyage-bar-text">Tu as reçu un lien de voyage ?</span>
+      <button id="join-voyage-bar-btn" class="join-voyage-bar-btn">Accéder →</button>
     </div>
   </main>
 </div>

@@ -1649,6 +1649,100 @@ body {
 .empty-state p { color: var(--text-muted); font-size: 0.84rem; line-height: 1.6; max-width: 260px; margin: 0 0 18px; }
 .hidden { display: none !important; }
 
+/* ─── REJOINDRE UN VOYAGE (lien reçu) ────────────────────────── */
+.join-voyage-section {
+  margin-top: 28px;
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+}
+.join-voyage-or {
+  position: relative;
+  margin-bottom: 16px;
+}
+.join-voyage-or::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0; right: 0;
+  height: 1px;
+  background: var(--border);
+}
+.join-voyage-or span {
+  position: relative;
+  background: var(--bg);
+  padding: 0 10px;
+  font-size: .78rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.join-voyage-label {
+  font-size: .84rem;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+}
+.join-voyage-row {
+  display: flex;
+  gap: 8px;
+}
+.join-voyage-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: .88rem;
+  color: var(--text);
+  outline: none;
+  min-width: 0;
+  transition: border-color .2s;
+}
+.join-voyage-input:focus { border-color: var(--accent); }
+.join-voyage-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: .88rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity .15s;
+}
+.join-voyage-btn:active { opacity: .75; }
+
+/* Barre persistante (quand l'admin a déjà des voyages) */
+.join-voyage-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin: 8px 16px 24px;
+  cursor: pointer;
+}
+.join-voyage-bar-icon { font-size: 1.1rem; flex-shrink: 0; }
+.join-voyage-bar-text { flex: 1; font-size: .85rem; color: var(--text-muted); }
+.join-voyage-bar-btn {
+  background: none;
+  border: 1.5px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: .82rem;
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.join-voyage-bar-btn:active { background: var(--accent); color: #fff; }
+
 .empty-tab {
   padding: 48px 24px;
   text-align: center;

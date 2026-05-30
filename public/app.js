@@ -760,12 +760,16 @@ async function chargerVoyages() {
   const container = document.getElementById('voyages-container');
   const empty = document.getElementById('empty-state');
 
+  const joinBar = document.getElementById('join-voyage-bar');
   if (voyages.length === 0) {
     container.innerHTML = '';
     empty.classList.remove('hidden');
+    if (joinBar) joinBar.classList.add('hidden');
     return;
   }
   empty.classList.add('hidden');
+  // Barre "Tu as reçu un lien ?" — visible en bas de la liste pour les admins avec voyages
+  if (joinBar) joinBar.classList.remove('hidden');
 
   // ── Grouper par statut ─────────────────────────────────────────
   const MEMORY_STATUTS = new Set(['terminé', 'completed', 'archived']);
@@ -4353,6 +4357,35 @@ function _bindStaticHandlers() {
   _on('logout-btn',          'click', logout);
   _on('home-cta-btn',        'click', ouvrirCreateTrip);
   _on('empty-create-btn',    'click', ouvrirCreateTrip);
+
+  // ── Rejoindre un voyage via lien reçu ────────────────────────────────────
+  function _rejoindreViaLien(input) {
+    const raw = (input?.value || '').trim();
+    if (!raw) return;
+    // Accepte : URL complète, chemin /share/TOKEN, ou juste TOKEN
+    let token = raw;
+    try {
+      const u = new URL(raw.startsWith('http') ? raw : `https://x.com/${raw}`);
+      const m = u.pathname.match(/\/share\/([a-zA-Z0-9_\-]{4,40})/);
+      if (m) token = m[1];
+    } catch { /* raw est déjà un token ou chemin */ }
+    // Nettoyer un éventuel "/share/" en préfixe si collé directement
+    token = token.replace(/^\/?share\//, '').split('/')[0].split('?')[0];
+    if (/^[a-zA-Z0-9_\-]{4,40}$/.test(token)) {
+      window.location.href = `/share/${token}`;
+    } else {
+      if (input) { input.style.borderColor = 'var(--error, #ef4444)'; setTimeout(() => { input.style.borderColor = ''; }, 1500); }
+    }
+  }
+  _on('join-link-btn-empty', 'click', () => _rejoindreViaLien(document.getElementById('join-link-input-empty')));
+  const joinInputEmpty = document.getElementById('join-link-input-empty');
+  if (joinInputEmpty) joinInputEmpty.addEventListener('keydown', e => { if (e.key === 'Enter') _rejoindreViaLien(joinInputEmpty); });
+
+  // Barre persistante (visible même quand l'admin a des voyages) — modal inline
+  _on('join-voyage-bar-btn', 'click', () => {
+    const link = prompt('Colle le lien de voyage reçu :');
+    if (link) _rejoindreViaLien({ value: link });
+  });
 
   // ── Voyage screen header ──────────────────────────────────────────────────
   _on('btn-retour-accueil',  'click', afficherAccueil);
