@@ -491,6 +491,27 @@ app.delete('/api/documents/:id', authMiddleware, async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+// ─── HELPERS PIN ──────────────────────────────────────────────────────────
+
+async function hashPin(pin) {
+  if (pin == null) return null;
+  return bcrypt.hash(String(pin).slice(0, 20), 10);
+}
+
+/** Vérifie un PIN entré par l'utilisateur contre le hash stocké.
+ *  Fallback transparent pour les anciens PINs en clair (avant migration bcrypt). */
+async function verifyPin(inputPin, storedPin) {
+  if (!storedPin || inputPin == null) return false;
+  // Nouveau format bcrypt
+  if (storedPin.startsWith('$2b$') || storedPin.startsWith('$2a$')) {
+    return bcrypt.compare(String(inputPin), storedPin);
+  }
+  // Ancien format en clair — comparaison à temps constant
+  const a = Buffer.from(String(storedPin));
+  const b = Buffer.from(String(inputPin));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 // ─── PARTICIPANTS ──────────────────────────────────────────────────────────
 
 app.get('/api/voyages/:id/participants', authMiddleware, async (req, res) => {
@@ -505,7 +526,7 @@ app.post('/api/voyages/:id/participants', authMiddleware, async (req, res) => {
     const payload = {
       nom: nom.trim().slice(0, 50),
       couleur: couleur || '#6366F1',
-      pin: pin != null ? String(pin).slice(0, 20) : null,
+      pin: await hashPin(pin),
       // 'role' volontairement exclu — toujours 'participant' par défaut
     };
     const item = await run(() => db.participants.create(req.params.id, payload));
@@ -527,7 +548,7 @@ app.put('/api/participants/:id', authMiddleware, async (req, res) => {
     const payload = {};
     if (nom !== undefined) payload.nom = String(nom).trim().slice(0, 50);
     if (couleur !== undefined) payload.couleur = couleur;
-    if (pin !== undefined) payload.pin = pin != null ? String(pin).slice(0, 20) : null;
+    if (pin !== undefined) payload.pin = await hashPin(pin);
     // 'role' et 'voyage_id' volontairement exclus
     await run(() => db.participants.update(req.params.id, payload));
     res.json({ ok: true });
@@ -615,10 +636,7 @@ app.post('/api/partage/:token/verify-pin', async (req, res) => {
     const parts = await run(() => db.participants.getByVoyage(voyage.id));
     const p = parts.find(x => x.id === +participant_id);
     if (!p || !p.pin) return res.json({ ok: false });
-    // Comparaison à temps constant pour éviter les timing attacks
-    const a = Buffer.from(String(p.pin));
-    const b = Buffer.from(String(pin || ''));
-    const same = a.length === b.length && crypto.timingSafeEqual(a, b);
+    const same = await verifyPin(pin, p.pin);
     if (!same) return res.json({ ok: false });
 
     // Générer la session
