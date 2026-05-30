@@ -1707,6 +1707,36 @@ async function _depenseSauvegarder() {
   chargerBudget();
 }
 
+// ══════════════════════════════════════════════════════
+//  BANNIÈRE COMPTE RECONNU
+// ══════════════════════════════════════════════════════
+function _showAccountRecognizedBanner(email) {
+  const banner = document.getElementById('account-recognized-banner');
+  const inner  = document.getElementById('account-recognized-inner');
+  const sub    = document.getElementById('account-recognized-sub');
+  const link   = document.getElementById('account-recognized-link');
+  const close  = document.getElementById('account-recognized-close');
+  if (!banner || !inner) return;
+
+  const short = email.length > 28 ? email.slice(0, 25) + '…' : email;
+  if (sub)  sub.textContent  = `Tu as un compte CrewiGO avec ${short}`;
+  if (link) link.href        = `/?email=${encodeURIComponent(email)}`;
+
+  banner.style.display = 'block';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    inner.style.transform = 'translateY(0)';
+  }));
+
+  const _dismiss = () => {
+    inner.style.transform = 'translateY(-100%)';
+    setTimeout(() => { banner.style.display = 'none'; }, 420);
+    localStorage.setItem(`crewigo_account_banner_${email}`, '1');
+  };
+  if (close) close.onclick = _dismiss;
+  // Auto-dismiss après 8 secondes
+  setTimeout(_dismiss, 8000);
+}
+
 _initPartage();
 
 // ══════════════════════════════════════════════════════
@@ -1774,7 +1804,9 @@ function _showEmailBanner() {
                 </p>
                 <p style="margin:0;font-size:.82rem;color:#94a3b8;line-height:1.4">
                   ${data.magic_sent
-                    ? 'Check ta boîte mail — clique le lien pour accéder à ce voyage depuis n\'importe quel appareil 🔮'
+                    ? data.has_account
+                      ? 'Lien envoyé 🔮 Ton compte CrewiGO sera automatiquement lié — tu verras tes voyages organisés ici.'
+                      : 'Check ta boîte mail — clique le lien pour accéder à ce voyage depuis n\'importe quel appareil 🔮'
                     : 'Tu retrouveras ce voyage depuis ton adresse email.'}
                 </p>
               </div>
@@ -1817,6 +1849,14 @@ function _lancerPartage(identite) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nom: identite.nom })
       }).catch(() => {}); // silencieux — pas critique
+    }
+  }
+
+  // ── Bannière "compte reconnu" si magic link + compte admin existant ──────
+  if (identite && identite.from_magic && identite.has_account && identite.email && !_adminJWTValide()) {
+    const _accountBannerKey = `crewigo_account_banner_${identite.email}`;
+    if (!localStorage.getItem(_accountBannerKey)) {
+      setTimeout(() => _showAccountRecognizedBanner(identite.email), 1200);
     }
   }
   const badge = document.getElementById('partage-id-badge');
@@ -4431,6 +4471,19 @@ function escHtml(t) {
 
 <!-- Toast de feedback -->
 <div id="toast-partage" style="position:fixed;bottom:calc(env(safe-area-inset-bottom) + 80px);left:50%;transform:translateX(-50%) translateY(20px);background:#1C1917;color:#fff;padding:10px 20px;border-radius:20px;font-size:.85rem;font-weight:600;opacity:0;transition:opacity .25s,transform .25s;z-index:9999;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 32px);text-align:center"></div>
+
+<!-- ═══ Bannière "Compte reconnu" (magic link + compte admin existant) ═══════ -->
+<div id="account-recognized-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9995;padding:env(safe-area-inset-top) 12px 0;pointer-events:none">
+  <div id="account-recognized-inner" style="background:#0f172a;border:1px solid #f97316;border-radius:0 0 16px 16px;padding:14px 16px;display:flex;align-items:center;gap:12px;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,.4);transform:translateY(-100%);transition:transform .4s cubic-bezier(.34,1.2,.64,1)">
+    <span style="font-size:1.3rem;flex-shrink:0">✨</span>
+    <div style="flex:1;min-width:0">
+      <p style="margin:0 0 2px;font-weight:700;font-size:.88rem;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">On te reconnaît !</p>
+      <p id="account-recognized-sub" style="margin:0;font-size:.78rem;color:#94a3b8;line-height:1.3"></p>
+    </div>
+    <a id="account-recognized-link" href="/" style="background:#f97316;color:#fff;border-radius:8px;padding:8px 12px;font-size:.8rem;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">Mes voyages →</a>
+    <button id="account-recognized-close" style="background:none;border:none;color:#64748b;font-size:1.1rem;cursor:pointer;padding:4px;flex-shrink:0;line-height:1">×</button>
+  </div>
+</div>
 
 <!-- ═══ Bannière "Sauvegarde ton accès" (email optionnel) ══════════════════ -->
 <div id="email-save-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9990;padding:0 16px calc(env(safe-area-inset-bottom) + 16px);background:linear-gradient(to top,#0f172a 80%,transparent);transform:translateY(100%);transition:transform .35s cubic-bezier(.34,1.2,.64,1)">

@@ -33,8 +33,9 @@ const FICHIERS = {
   trip_memory_emails:   path.join(DATA_DIR, 'trip_memory_emails.json'),
   trip_top_photos:      path.join(DATA_DIR, 'trip_top_photos.json'),
   capsules:             path.join(DATA_DIR, 'capsules.json'),
-  participant_emails:   path.join(DATA_DIR, 'participant_emails.json'),
-  magic_links:          path.join(DATA_DIR, 'magic_links.json'),
+  participant_emails:      path.join(DATA_DIR, 'participant_emails.json'),
+  magic_links:             path.join(DATA_DIR, 'magic_links.json'),
+  user_participant_links:  path.join(DATA_DIR, 'user_participant_links.json'),
 };
 
 function charger(cle) {
@@ -376,6 +377,18 @@ const localDB = {
       if (idx !== -1) { list[idx].used_at = new Date().toISOString(); sauvegarder('magic_links', list); }
     }
   },
+  user_participant_links: {
+    upsert: (userId, participantId, voyageId, participantNom) => {
+      const list = charger('user_participant_links');
+      const idx  = list.findIndex(l => l.user_id === +userId && l.voyage_id === +voyageId && l.participant_nom === participantNom);
+      const item = { user_id: +userId, participant_id: participantId ? +participantId : null, voyage_id: +voyageId, participant_nom: participantNom, linked_at: new Date().toISOString() };
+      if (idx === -1) { list.push({ ...item, id: nextId(list) }); } else { list[idx] = { ...list[idx], ...item }; }
+      sauvegarder('user_participant_links', list);
+      return true;
+    },
+    getByUser:    (userId)    => charger('user_participant_links').filter(l => l.user_id    === +userId),
+    getByVoyage:  (voyageId)  => charger('user_participant_links').filter(l => l.voyage_id  === +voyageId),
+  },
   participant_emails: {
     save: (vid, nom, email) => {
       const list = charger('participant_emails');
@@ -573,6 +586,15 @@ if (USE_POSTGRES) {
       note INTEGER CHECK(note BETWEEN 1 AND 5),
       created_at TIMESTAMPTZ DEFAULT now(),
       UNIQUE(voyage_id, participant_nom)
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS user_participant_links (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      participant_id INTEGER,
+      voyage_id INTEGER NOT NULL,
+      participant_nom TEXT NOT NULL,
+      linked_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(user_id, voyage_id, participant_nom)
     )`);
     await m(`CREATE TABLE IF NOT EXISTS magic_links (
       id SERIAL PRIMARY KEY,
@@ -917,6 +939,17 @@ const pgDB = pgPool ? {
        data.note||null]
     )).rows[0],
     deleteByVoyage: async (vid) => pgPool.query('DELETE FROM capsules WHERE voyage_id=$1', [vid])
+  },
+  user_participant_links: {
+    upsert: async (userId, participantId, voyageId, participantNom) => pgPool.query(
+      `INSERT INTO user_participant_links(user_id, participant_id, voyage_id, participant_nom)
+       VALUES($1,$2,$3,$4)
+       ON CONFLICT(user_id, voyage_id, participant_nom) DO UPDATE
+         SET participant_id=EXCLUDED.participant_id, linked_at=now()`,
+      [userId, participantId || null, voyageId, participantNom]
+    ),
+    getByUser:   async (userId)   => (await pgPool.query('SELECT * FROM user_participant_links WHERE user_id=$1',   [userId])).rows,
+    getByVoyage: async (voyageId) => (await pgPool.query('SELECT * FROM user_participant_links WHERE voyage_id=$1', [voyageId])).rows,
   },
   magic_links: {
     create: async (data) => (await pgPool.query(

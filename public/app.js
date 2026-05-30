@@ -113,9 +113,11 @@ async function _handle401Gracieux() {
 }
 
 async function initAuth() {
-  // Lire le paramètre ?auth= (register / login)
-  const authParam = new URLSearchParams(window.location.search).get('auth');
-  if (authParam) {
+  // Lire les paramètres ?auth= et ?email= (pré-remplissage depuis magic link)
+  const params    = new URLSearchParams(window.location.search);
+  const authParam = params.get('auth');
+  const emailParam = params.get('email');
+  if (authParam || emailParam) {
     const cleanUrl = window.location.pathname + window.location.hash;
     history.replaceState(null, '', cleanUrl);
   }
@@ -133,6 +135,19 @@ async function initAuth() {
   if (!_authToken) {
     _showAuthScreen();
     if (authParam === 'register' || authParam === 'login') switchAuthForm(authParam);
+    // Pré-remplir l'email si redirigé depuis une page de partage (magic link)
+    if (emailParam) {
+      const loginEmailEl = document.getElementById('login-email');
+      if (loginEmailEl) {
+        loginEmailEl.value = emailParam;
+        loginEmailEl.dispatchEvent(new Event('input'));
+        // Petit toast discret pour contextualiser
+        setTimeout(() => {
+          const pwdEl = document.getElementById('login-password');
+          if (pwdEl) pwdEl.focus();
+        }, 300);
+      }
+    }
     return;
   }
 
@@ -843,6 +858,55 @@ async function chargerVoyages() {
   enrichirPhotos([...ongoing, ...upcoming]);
   // ── Top photos internes pour les souvenirs ─────────────────────
   _enrichirPhotosSouvenirs(memories);
+
+  // ── Voyages participants liés (via magic link) ─────────────────
+  _chargerParticipations();
+}
+
+async function _chargerParticipations() {
+  try {
+    const participations = await fetch(`${API}/api/auth/my-participations`)
+      .then(r => r.ok ? r.json() : []).catch(() => []);
+    if (!participations.length) return;
+
+    const container = document.getElementById('voyages-container');
+    if (!container) return;
+
+    // Ne montrer que les voyages pas déjà dans la liste admin
+    const adminIds = new Set(
+      [...container.querySelectorAll('[data-voyage-id]')].map(el => +el.dataset.voyageId)
+    );
+    const nouveaux = participations.filter(v => !adminIds.has(v.id));
+    if (!nouveaux.length) return;
+
+    const section = document.createElement('section');
+    section.className = 'home-section home-section--participations';
+    section.innerHTML = `
+      <div class="home-section-header">
+        <span class="home-section-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Mes participations
+        </span>
+      </div>
+      <div class="voyage-cards-grid">
+        ${nouveaux.map(v => `
+          <div class="voyage-card voyage-card--participant" data-voyage-id="${v.id}"
+               onclick="window.location.href='/share/${v.share_token || ''}'">
+            <div class="voyage-card-header" style="background:${v.couleur || '#6366f1'}22;border-bottom:2px solid ${v.couleur || '#6366f1'}">
+              <span class="voyage-card-nom">${v.nom}</span>
+              <span class="voyage-chip" style="background:#8B5CF622;color:#8B5CF6;border:1px solid #8B5CF6">→ Participant</span>
+            </div>
+            <div class="voyage-card-body">
+              <span class="voyage-card-dest">${v.destination || ''}</span>
+              <span class="voyage-card-dates">${v.date_debut || ''} → ${v.date_fin || ''}</span>
+              <span class="voyage-card-role" style="font-size:.78rem;color:#8B5CF6;margin-top:4px">en tant que ${v.participant_nom}</span>
+            </div>
+          </div>`).join('')}
+      </div>`;
+    container.appendChild(section);
+  } catch(e) {
+    console.warn('[participations]', e.message);
+  }
 }
 
 /** Construit le HTML d'une carte voyage selon sa section */

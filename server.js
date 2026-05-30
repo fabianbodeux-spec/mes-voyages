@@ -224,6 +224,27 @@ app.get('/api/auth/refresh', authMiddleware, async (req, res) => {
   res.json({ token });
 });
 
+// ── Voyages participants liés à ce compte admin (via user_participant_links) ──
+app.get('/api/auth/my-participations', authMiddleware, async (req, res) => {
+  try {
+    const links = await run(() => db.user_participant_links.getByUser(req.user.id));
+    if (!links.length) return res.json([]);
+    // Récupérer les voyages uniques
+    const voyageIds = [...new Set(links.map(l => l.voyage_id))];
+    const voyages   = await Promise.all(
+      voyageIds.map(vid => run(() => db.voyages.getById(vid)).catch(() => null))
+    );
+    const result = voyages.filter(Boolean).map(v => {
+      const link = links.find(l => l.voyage_id === v.id);
+      return { ...v, participant_nom: link.participant_nom, role_in_voyage: 'participant' };
+    });
+    res.json(result);
+  } catch(e) {
+    console.error('[my-participations]', e.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // Rate-limiter en mémoire pour les tentatives PIN
 const _pinAttempts = new Map();
 function checkPinRate(key) {
@@ -783,6 +804,10 @@ app.post('/api/partage/:token/save-email', async (req, res) => {
     // Sauvegarde dans participant_emails (idempotent)
     await run(() => db.participant_emails.save(voyage.id, participant_nom, email));
 
+    // Vérifier si cet email correspond à un compte admin existant
+    const existingUser = await run(() => db.users.getByEmail(email));
+    const has_account  = !!existingUser;
+
     // Envoi du magic link (silencieux si pas de config email)
     try {
       const { generateAndSend } = require('./services/magicLink');
@@ -793,11 +818,11 @@ app.post('/api/partage/:token/save-email', async (req, res) => {
         shareToken:     req.params.token,
         voyageNom:      voyage.nom
       });
-      console.log(`[MagicLink] Envoyé → ${email} pour voyage ${voyage.id}`);
-      res.json({ ok: true, magic_sent: true });
+      console.log(`[MagicLink] Envoyé → ${email} pour voyage ${voyage.id}${has_account ? ' (compte existant détecté)' : ''}`);
+      res.json({ ok: true, magic_sent: true, has_account });
     } catch (emailErr) {
       console.error('[MagicLink] Envoi échoué (email sauvegardé quand même):', emailErr.message);
-      res.json({ ok: true, magic_sent: false });
+      res.json({ ok: true, magic_sent: false, has_account });
     }
   } catch (e) {
     console.error('[save-email]', e.message);
@@ -829,10 +854,21 @@ app.get('/auth/magic/:magicToken', async (req, res) => {
     const shareToken = req.query.v || voyage.share_token;
     if (!shareToken) return res.send(_magicErrorPage('Token de partage manquant.'));
 
-    const participants = await run(() => db.participants.getByVoyage(record.voyage_id));
-    const participant  = participants.find(p => p.nom === record.participant_nom);
-    const couleur      = participant?.couleur || '#F97316';
+    const [participants, existingUser] = await Promise.all([
+      run(() => db.participants.getByVoyage(record.voyage_id)),
+      run(() => db.users.getByEmail(record.email))
+    ]);
+    const participant   = participants.find(p => p.nom === record.participant_nom);
+    const couleur       = participant?.couleur || '#F97316';
     const participantId = participant?.id || null;
+
+    // Créer le lien user ↔ participant si compte existant
+    if (existingUser) {
+      await run(() => db.user_participant_links.upsert(
+        existingUser.id, participantId, record.voyage_id, record.participant_nom
+      )).catch(e => console.warn('[MagicLink] user_participant_links upsert:', e.message));
+      console.log(`[MagicLink] Compte lié : user ${existingUser.id} ↔ participant "${record.participant_nom}" voyage ${record.voyage_id}`);
+    }
 
     // Construire l'identité à injecter côté client via ?_mid
     const identity = {
@@ -840,7 +876,8 @@ app.get('/auth/magic/:magicToken', async (req, res) => {
       couleur,
       email:          record.email,
       participant_id: participantId,
-      from_magic:     true
+      from_magic:     true,
+      has_account:    !!existingUser
     };
     const mid = Buffer.from(JSON.stringify(identity)).toString('base64url');
 
