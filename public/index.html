@@ -1323,9 +1323,8 @@
 </div>
 
 <!-- ═══ P6 — MODAL CONFIRMATION BASCULE RÔLE ═══ -->
-<div id="modal-confirm-role-switch" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-role-title">
-  <div class="modal-backdrop" onclick="document.getElementById('modal-confirm-role-switch').classList.add('hidden')"></div>
-  <div class="modal-content" style="max-width:380px;text-align:center;padding:32px 24px">
+<div id="modal-confirm-role-switch" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-role-title">
+  <div class="modal" style="max-width:380px;text-align:center;padding:32px 24px;border-radius:16px 16px 0 0" onclick="event.stopPropagation()">
     <div style="font-size:2.5rem;margin-bottom:12px">🎭</div>
     <h3 id="confirm-role-title" style="margin:0 0 10px;font-size:1.1rem">Basculer en mode participant ?</h3>
     <p style="color:var(--text-muted);font-size:14px;margin:0 0 24px;line-height:1.6">
@@ -1336,7 +1335,7 @@
       <button id="btn-confirm-role-yes" style="background:#f97316;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font-body)">
         Rejoindre comme participant →
       </button>
-      <button onclick="document.getElementById('modal-confirm-role-switch').classList.add('hidden')" style="background:transparent;color:var(--text-muted);border:1px solid var(--border-color);border-radius:12px;padding:12px;font-size:14px;cursor:pointer;font-family:var(--font-body)">
+      <button id="btn-confirm-role-no" style="background:transparent;color:var(--text-muted);border:1px solid var(--border-color);border-radius:12px;padding:12px;font-size:14px;cursor:pointer;font-family:var(--font-body)">
         Annuler
       </button>
     </div>

@@ -4292,16 +4292,18 @@ async function rejoindreVoyage() {
     modal.classList.remove('hidden');
     return new Promise(resolve => {
       const confirmBtn = document.getElementById('btn-confirm-role-yes');
-      const backdrop   = modal.querySelector('.modal-backdrop');
+      const cancelBtn  = document.getElementById('btn-confirm-role-no');
       const cleanup = () => {
         modal.classList.add('hidden');
         confirmBtn.removeEventListener('click', onYes);
-        backdrop.removeEventListener('click', onNo);
+        cancelBtn.removeEventListener('click', onNo);
+        modal.removeEventListener('click', onNo);
       };
       const onYes = () => { cleanup(); resolve(_rejoindreVoyageConfirme()); };
       const onNo  = () => { cleanup(); resolve(); };
       confirmBtn.addEventListener('click', onYes);
-      backdrop.addEventListener('click', onNo);
+      cancelBtn.addEventListener('click', onNo);
+      modal.addEventListener('click', onNo);   // clic sur l'overlay (hors du modal) = fermer
     });
   }
   return _rejoindreVoyageConfirme();
