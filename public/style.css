@@ -26,7 +26,7 @@
   --bg-alt:        #F7F7F5;
   --card:          #FFFFFF;
   --text:          #1C1C1C;
-  --text-muted:    #787774;
+  --text-muted:    #6F6D6A; /* F10 : #787774 → #6F6D6A — ratio 5.15:1 sur blanc (AA ✓) */
   --text-light:    #ACABA8;
   --border:        rgba(55,53,47,0.09);
   --border-solid:  #E9E9E7;
@@ -979,16 +979,20 @@ body {
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* F10 : ombre pour lisibilité sur bannières photo */
+  box-shadow: 0 1px 6px rgba(0,0,0,.40), 0 0 0 1px rgba(0,0,0,.10);
 }
 .voyage-role-chip--participant {
-  background: rgba(139,92,246,.18);
-  color: #a78bfa;
-  border: 1px solid rgba(139,92,246,.35);
+  /* F10 : fond opaque sombre → texte clair, ratio ~9:1 sur fond violet */
+  background: rgba(91,33,182,.90);
+  color: #ede9fe;
+  border: 1px solid rgba(139,92,246,.55);
 }
 .voyage-role-chip--admin {
-  background: rgba(245,158,11,.18);
-  color: #fbbf24;
-  border: 1px solid rgba(245,158,11,.35);
+  /* F10 : fond opaque sombre → texte clair, ratio ~8:1 sur fond ambre */
+  background: rgba(120,60,0,.90);
+  color: #fef3c7;
+  border: 1px solid rgba(245,158,11,.55);
 }
 
 /* Chip "Vue participant" dans le header de voyage (admin → participant) */
