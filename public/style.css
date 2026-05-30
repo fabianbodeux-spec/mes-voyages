@@ -1220,18 +1220,18 @@ body {
 
 .tab-btn {
   flex: 0 0 auto;
-  min-width: 52px;
+  min-width: 58px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  padding: 8px 6px 6px;
+  gap: 3px;
+  padding: 8px 8px 6px;
   border: none;
   background: transparent;
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 0;                 /* label masqué par défaut */
+  font-size: 0.6rem;            /* libellé toujours visible (F1) */
   font-weight: 600;
   font-family: 'Satoshi', var(--font-body);
   border-bottom: 2px solid transparent;
@@ -1243,12 +1243,11 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Label visible seulement pour l'onglet actif ou les onglets primaires */
+/* Onglet actif : légèrement plus marqué */
 .tab-btn.active,
 .tab-btn.tab-primary {
   min-width: 62px;
   font-size: 0.62rem;
-  gap: 3px;
 }
 .tab-btn.active {
   color: var(--accent);
@@ -1894,6 +1893,31 @@ body {
   margin: 16px auto -4px;
   opacity: 0.4;
 }
+
+/* ─── MODALE DE CONFIRMATION (F11) ───────────────────────────── */
+.confirm-modal { max-width: 460px; margin: 0 auto; }
+.confirm-modal-body {
+  padding: 0 24px 8px;
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.confirm-btn {
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: filter 0.12s, transform 0.08s;
+}
+.confirm-btn:active { transform: scale(0.96); }
+.confirm-btn-cancel { background: var(--bg); color: var(--text); border-color: var(--border-solid); }
+.confirm-btn-ok     { background: var(--accent); color: #fff; }
+.confirm-btn-danger { background: #DC2626; color: #fff; }
+.confirm-btn-danger:hover, .confirm-btn-ok:hover { filter: brightness(1.06); }
 
 .modal-header {
   display: flex; justify-content: space-between; align-items: center;

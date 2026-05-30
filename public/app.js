@@ -785,6 +785,9 @@ function _appliquerPhoto(voyageId, photoUrl) {
 
 // Participations liées au compte admin (chargées en parallèle avec les voyages admin)
 let _myParticipations = [];
+// Vrai quand le dashboard mélange voyages organisés + participations → on affiche
+// alors le chip de rôle « Organisateur » pour lever l'ambiguïté (F2)
+let _dashboardMixed = false;
 
 async function chargerVoyages() {
   // Charger admin voyages + participations en parallèle
@@ -803,6 +806,8 @@ async function chargerVoyages() {
   // Filtrer les participations qui ne sont pas déjà dans les voyages admin
   const adminIds   = new Set(voyages.map(v => v.id));
   const partUniques = _myParticipations.filter(p => !adminIds.has(p.id));
+  // Dashboard « mixte » : au moins un voyage organisé ET au moins une participation
+  _dashboardMixed = voyages.length > 0 && partUniques.length > 0;
 
   if (voyages.length === 0 && partUniques.length === 0) {
     container.innerHTML = '';
@@ -857,7 +862,7 @@ async function chargerVoyages() {
     html += `<section class="home-section home-section--ongoing">
       <div class="home-section-hd">
         <span class="home-section-bar"></span>
-        <span class="home-section-title">🔥 En ce moment</span>
+        <span class="home-section-title">🔥 En cours</span>
         <span class="home-section-count">${ongoing.length}</span>
       </div>
       <div class="voyage-grid voyage-grid--ongoing">
@@ -883,7 +888,7 @@ async function chargerVoyages() {
     html += `<section class="home-section home-section--memories">
       <div class="home-section-hd">
         <span class="home-section-bar"></span>
-        <span class="home-section-title">🏆 Mur de Trophées</span>
+        <span class="home-section-title">🏆 Souvenirs</span>
         <span class="home-section-count">${memories.length}</span>
       </div>
       <div class="voyage-grid voyage-grid--memories">
@@ -962,10 +967,12 @@ function _renderVoyageCard(v, section, opts = null) {
     ctaLabel = isMemory ? '🎞️ Voir les souvenirs' : 'Ouvrir le trip';
   }
 
-  // ── Chip de rôle (participant = violet, admin = implicite) ──
+  // ── Chip de rôle (participant = violet, organisateur = ambre) ──
+  // Le chip « Organisateur » n'apparaît que sur un dashboard mixte (admin + participations),
+  // sinon il serait redondant sur toutes les cartes → on garde alors le badge de statut.
   const roleChip = isParticipant
     ? `<span class="voyage-role-chip voyage-role-chip--participant">→ Participe · ${h(opts.participantNom || '')}</span>`
-    : '';
+    : (_dashboardMixed ? `<span class="voyage-role-chip voyage-role-chip--admin">★ Organisateur</span>` : '');
 
   return `<div class="voyage-card${isMemory?' voyage-card--memory':''}${isParticipant?' voyage-card--participant':''}" data-id="${h(String(v.id))}" ${clickHandler}>
     <div class="voyage-card-banner">
@@ -1518,8 +1525,14 @@ function modifierVoyageActuel() {
 }
 
 async function supprimerVoyageActuel() {
-  if (!confirm('Supprimer ce voyage et toutes ses données ?')) return;
   fermerBottomSheet();
+  const ok = await _confirmModal({
+    title:        'Supprimer ce voyage ?',
+    message:      'Toutes les données (programme, photos, dépenses, participants…) seront <b>définitivement supprimées</b>. Cette action est irréversible.',
+    confirmLabel: 'Supprimer définitivement',
+    danger:       true
+  });
+  if (!ok) return;
   const r = await fetch(`${API}/api/voyages/${voyageActuel}`, { method: 'DELETE' });
   if (!r.ok) { toast('❌ Erreur lors de la suppression'); return; }
   toast('🗑️ Voyage supprimé');
@@ -4021,6 +4034,35 @@ async function supprimerAttribution(id) {
 
 function fermerModal(id) {
   document.getElementById(id).classList.add('hidden');
+}
+
+// Modale de confirmation custom (Promise<bool>). Remplace confirm() qui est
+// bloqué en mode PWA standalone iOS (retourne false immédiatement → F11).
+function _confirmModal({ title = 'Confirmer', message = '', confirmLabel = 'Confirmer', cancelLabel = 'Annuler', danger = false } = {}) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay confirm-overlay';
+    overlay.innerHTML = `
+      <div class="modal confirm-modal" role="alertdialog" aria-modal="true" aria-label="${title}">
+        <div class="modal-header"><h2>${title}</h2></div>
+        <div class="confirm-modal-body">${message}</div>
+        <div class="modal-footer">
+          <button type="button" class="confirm-btn confirm-btn-cancel" data-act="cancel">${cancelLabel}</button>
+          <button type="button" class="confirm-btn ${danger ? 'confirm-btn-danger' : 'confirm-btn-ok'}" data-act="ok">${confirmLabel}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const done = (val) => { document.removeEventListener('keydown', onKey); overlay.remove(); resolve(val); };
+    const onKey = (e) => { if (e.key === 'Escape') done(false); };
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) return done(false);
+      const act = e.target.closest('[data-act]')?.dataset.act;
+      if (act === 'ok') done(true);
+      else if (act === 'cancel') done(false);
+    });
+    document.addEventListener('keydown', onKey);
+    setTimeout(() => overlay.querySelector('[data-act="ok"]')?.focus(), 60);
+  });
 }
 
 // Helper : modal de saisie du prénom admin pour rejoindre en vue participant
