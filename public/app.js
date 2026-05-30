@@ -1101,7 +1101,7 @@ function ouvrirCreateTrip() {
   if (suggestions) suggestions.innerHTML = '';
 
   // ── Séquence splash robuste ─────────────────────────────
-  // Phase 1 : attendre 2,3s puis déclencher le fade-out CSS
+  // Phase 1 : déclencher immédiatement le fade-out CSS (QW5 — splash superflu supprimé)
   _splashT1 = setTimeout(() => {
     const splashEl = document.getElementById('create-splash');
     if (!splashEl) return;
@@ -1137,7 +1137,7 @@ function ouvrirCreateTrip() {
 
     splashEl.addEventListener('transitionend', proceed, { once: true });
     _splashT2 = setTimeout(proceed, 650); // fallback si transitionend ne se déclenche pas
-  }, 2300);
+  }, 0);
 }
 
 function createSelectType(type, btn) {
@@ -1404,6 +1404,21 @@ async function _creerTrip() {
         const urlEl = document.getElementById('create-confirm-share-url');
         if (urlEl) urlEl.textContent = displayUrl;
         shareEl.classList.remove('hidden');
+
+        // QW9 — Bloc CTA de partage contextuel (injecté dynamiquement)
+        const existingCta = document.getElementById('wizard-share-cta');
+        if (!existingCta && shareEl.parentNode) {
+          const ctaBlock = document.createElement('div');
+          ctaBlock.id = 'wizard-share-cta';
+          ctaBlock.className = 'share-cta-block';
+          ctaBlock.style.cssText = 'margin:16px 0;padding:16px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.30);border-radius:12px;text-align:center';
+          ctaBlock.innerHTML = `
+            <p style="margin:0 0 12px;font-size:14px;color:#fed7aa;font-weight:600">📱 Envoie ce lien à ton équipe</p>
+            <button id="wizard-share-btn" onclick="wizardShare()" style="background:#f97316;color:#fff;border:none;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:700;cursor:pointer;width:100%">
+              Partager via WhatsApp / SMS ↗
+            </button>`;
+          shareEl.parentNode.insertBefore(ctaBlock, shareEl.nextSibling);
+        }
       }
 
       // Stocker l'id pour la navigation depuis les boutons
@@ -1458,6 +1473,34 @@ function _confirmGo() {
   if (!id) return;
   chargerVoyages();
   afficherVoyage(id);
+}
+
+// QW9 — Partage contextuel depuis le wizard
+function wizardShare() {
+  const shareUrl = window._confirmShareFullUrl
+    || document.getElementById('wizard-share-link')?.href
+    || document.querySelector('[data-share-url]')?.dataset.shareUrl
+    || window.location.origin;
+  const voyageNom = document.getElementById('create-confirm-sub')?.textContent?.split(' · ')[0]
+    || document.querySelector('.wizard-result-nom')?.textContent
+    || 'notre voyage';
+
+  if (navigator.share) {
+    navigator.share({
+      title: `CrewiGO — ${voyageNom}`,
+      text: `Rejoins-moi sur CrewiGO pour organiser ${voyageNom} ! 🗺️`,
+      url: shareUrl
+    }).catch(() => {}); // L'utilisateur peut annuler — pas une erreur
+  } else {
+    // Fallback : copier dans le presse-papier
+    navigator.clipboard?.writeText(shareUrl).then(() => {
+      const btn = document.getElementById('wizard-share-btn');
+      if (btn) { btn.textContent = '✅ Lien copié !'; setTimeout(() => { btn.textContent = 'Partager via WhatsApp / SMS ↗'; }, 2000); }
+    }).catch(() => {
+      // Dernier fallback : prompt
+      prompt('Copie ce lien et envoie-le à ton équipe :', shareUrl);
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════════

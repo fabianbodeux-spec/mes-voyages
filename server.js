@@ -960,7 +960,7 @@ app.get('/auth/magic/:magicToken', async (req, res) => {
     if (record.used_at) return res.send(_magicErrorPage('Ce lien a déjà été utilisé. Demande un nouveau lien depuis la page du voyage.'));
 
     // Expiré
-    if (new Date(record.expires_at) < new Date()) return res.send(_magicErrorPage('Ce lien a expiré (15 minutes). Demande un nouveau lien depuis la page du voyage.'));
+    if (new Date(record.expires_at) < new Date()) return res.send(_magicErrorPage('Ce lien a expiré. Demande un nouveau lien depuis la page du voyage.', record.voyage_id));
 
     // Marquer comme utilisé
     await run(() => db.magic_links.markUsed(req.params.magicToken));
@@ -1008,16 +1008,57 @@ app.get('/auth/magic/:magicToken', async (req, res) => {
   }
 });
 
-function _magicErrorPage(msg) {
+function _magicErrorPage(msg, voyageId) {
+  // Bouton "Renvoyer" visible uniquement si on connaît le voyage
+  const renvoyerBtn = voyageId
+    ? `<button onclick="resendLink()" style="display:inline-block;background:#f97316;color:#fff;border-radius:10px;padding:12px 24px;font-size:15px;font-weight:700;border:none;cursor:pointer;margin-bottom:12px">
+         Renvoyer un lien magique →
+       </button>`
+    : '';
+
+  const renvoyerScript = voyageId
+    ? `<script>
+async function resendLink() {
+  const email = prompt('Ton adresse email pour recevoir le lien :');
+  if (!email || !email.includes('@')) return;
+  const btn = document.querySelector('button');
+  btn.textContent = 'Envoi…';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/partage/${voyageId}/magic-link', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email, participantNom: '' })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      btn.textContent = '✅ Lien envoyé ! Vérifie tes emails.';
+    } else {
+      btn.textContent = 'Erreur — réessaie';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.textContent = 'Erreur réseau — réessaie';
+    btn.disabled = false;
+  }
+}
+<\/script>`
+    : '';
+
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CrewiGO — Lien expiré</title>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;background:#0f172a;color:#f1f5f9;text-align:center;padding:24px}
 .card{background:#1e293b;border-radius:20px;padding:40px 32px;max-width:400px}
 h2{margin:0 0 12px;font-size:1.4rem}p{color:#94a3b8;margin:0 0 24px;line-height:1.6}
-a{display:inline-block;background:#f97316;color:#fff;border-radius:10px;padding:12px 24px;text-decoration:none;font-weight:700}</style>
+a{display:inline-block;background:#475569;color:#fff;border-radius:10px;padding:12px 24px;text-decoration:none;font-weight:700;margin-top:8px;font-size:14px}
+.btn-group{display:flex;flex-direction:column;gap:8px;align-items:center}</style>
+${renvoyerScript}
 </head><body><div class="card"><div style="font-size:2.5rem;margin-bottom:16px">🔮</div>
 <h2>Lien magique</h2><p>${msg}</p>
-<a href="/">Retour à CrewiGO</a></div></body></html>`;
+<div class="btn-group">
+${renvoyerBtn}
+<a href="/">Retour à CrewiGO</a>
+</div></div></body></html>`;
 }
 
 app.get('/api/partage/:token', async (req, res) => {
@@ -1714,6 +1755,38 @@ app.get('/partage/:token', (req, res) => {
   const safe = encodeURIComponent(t);
   res.set('Cache-Control', 'no-store');
   res.redirect(301, `/share/${safe}`);
+});
+
+// ─── MANIFEST PARTICIPANT DYNAMIQUE (QW2) ────────────────────────────────────
+// Quand un participant installe la PWA depuis /share/:token, ce manifest
+// encode start_url = /share/TOKEN → l'app s'ouvre directement sur son voyage.
+app.get('/manifest-participant/:token', (req, res) => {
+  const t = req.params.token;
+  // Valider le format (anti-injection)
+  if (!/^[a-zA-Z0-9_\-]{6,30}$/.test(t)) return res.status(400).json({ error: 'token invalide' });
+
+  const manifest = {
+    id: `/share/${t}`,
+    name: "CrewiGo — Mon voyage",
+    short_name: "CrewiGo",
+    description: "Accéder à mon voyage de groupe.",
+    start_url: `/share/${t}`,
+    display: "standalone",
+    orientation: "portrait",
+    theme_color: "#F97316",
+    background_color: "#0f172a",
+    lang: "fr",
+    scope: "/",
+    icons: [
+      { src: "/logo-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/logo-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+    ],
+    categories: ["travel", "lifestyle", "social"]
+  };
+
+  res.set('Content-Type', 'application/manifest+json');
+  res.set('Cache-Control', 'no-store'); // Le manifest change si le token change
+  res.json(manifest);
 });
 
 app.get('/share/:token', async (req, res) => {

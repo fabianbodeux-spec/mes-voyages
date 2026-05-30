@@ -4,7 +4,7 @@ const crypto  = require('crypto');
 const db      = require('../database');
 const run     = db.isAsync ? (fn) => fn() : (fn) => Promise.resolve(fn());
 
-const EXPIRES_MINUTES = 15;
+const EXPIRES_MINUTES = 4320; // QW1 : 15 min → 72h (abandons −65 %)
 const APP_URL         = process.env.APP_URL || 'https://crewigo.app';
 const FROM            = process.env.MEMORY_EMAIL_FROM || 'CrewiGo <noreply@crewigo.app>';
 
@@ -43,7 +43,7 @@ function _buildHtml({ magicUrl, participantNom, voyageNom }) {
       Accéder à mon voyage →
     </a>
     <div style="margin-top:16px;font-size:12px;color:#94a3b8">
-      Ce lien expire dans ${EXPIRES_MINUTES} minutes.<br>
+      Ce lien est valable 72 heures.<br>
       Si tu n'es pas à l'origine de cette demande, ignore cet email.
     </div>
   </td></tr>

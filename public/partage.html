@@ -346,7 +346,7 @@
     <!-- Formulaire prénom masqué par défaut → affiché si pas de participants ou via lien -->
     <button id="id-nouveau-btn" onclick="_afficherFormulairePrenom()"
       style="background:none;border:none;color:var(--text-muted);font-size:.82rem;cursor:pointer;padding:8px 0;font-family:var(--font-body);text-decoration:underline;display:none">
-      Mon prénom n'est pas là
+      Rejoindre avec un autre prénom
     </button>
     <div class="id-form" id="id-nom-form" style="display:none">
       <input id="id-nom-input" class="id-input" placeholder="Ton prénom…"
@@ -1094,6 +1094,19 @@ function _he(str) {
 
 const _partageToken = location.pathname.replace(/^\/(partage|share)\//, '');
 
+// QW2 — Manifest participant dynamique : start_url = /share/TOKEN pour PWA
+(function _patchParticipantManifest(token) {
+  if (!token) return;
+  try {
+    const existing = document.querySelector('link[rel="manifest"]');
+    const link = existing || document.createElement('link');
+    link.rel = 'manifest';
+    link.crossOrigin = 'use-credentials';
+    link.href = '/manifest-participant/' + token;
+    if (!existing) document.head.appendChild(link);
+  } catch(e) {}
+})(_partageToken);
+
 // ── Stockage identité robuste (Safari privé = QuotaExceededError silencieux) ──
 // localStorage → sessionStorage → mémoire uniquement
 const _IDENT_KEY = () => 'partage_id_' + _partageToken;
@@ -1106,6 +1119,10 @@ function _safeStoreIdentite(identite) {
     // Safari navigation privée : quota 0 — fallback sessionStorage (survive au rechargement)
     try { sessionStorage.setItem(_IDENT_KEY(), val); } catch(e2) {}
     console.warn('[CrewiGo] localStorage indisponible — identité en sessionStorage');
+  }
+  // QW3 — backup IndexedDB (résiste à la purge iOS localStorage 7 jours)
+  if (identite && identite.nom) {
+    _idbSaveIdentity(_partageToken, identite).catch(() => {});
   }
 }
 
@@ -1124,6 +1141,41 @@ function _safeGetIdentite() {
 function _safeRemoveIdentite() {
   try { localStorage.removeItem(_IDENT_KEY()); } catch(e) {}
   try { sessionStorage.removeItem(_IDENT_KEY()); } catch(e) {}
+}
+
+// QW3 — IndexedDB backup identité participant (résiste à la purge iOS localStorage)
+const _IDB_PARTAGE = { db: null, DB_NAME: 'crewigo_partage', STORE: 'identity', VERSION: 1 };
+
+function _idbOpen() {
+  if (_IDB_PARTAGE.db) return Promise.resolve(_IDB_PARTAGE.db);
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(_IDB_PARTAGE.DB_NAME, _IDB_PARTAGE.VERSION);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(_IDB_PARTAGE.STORE);
+    req.onsuccess = e => { _IDB_PARTAGE.db = e.target.result; res(_IDB_PARTAGE.db); };
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+async function _idbSaveIdentity(token, data) {
+  try {
+    const db = await _idbOpen();
+    await new Promise((res, rej) => {
+      const tx = db.transaction(_IDB_PARTAGE.STORE, 'readwrite');
+      const req = tx.objectStore(_IDB_PARTAGE.STORE).put(data, 'participant_' + token);
+      req.onsuccess = res; req.onerror = () => rej(req.error);
+    });
+  } catch(e) { /* silencieux — localStorage reste le fallback */ }
+}
+
+async function _idbReadIdentity(token) {
+  try {
+    const db = await _idbOpen();
+    return await new Promise((res, rej) => {
+      const req = db.transaction(_IDB_PARTAGE.STORE).objectStore(_IDB_PARTAGE.STORE).get('participant_' + token);
+      req.onsuccess = () => res(req.result || null);
+      req.onerror   = () => rej(req.error);
+    });
+  } catch(e) { return null; }
 }
 
 // ── PWA : capturer beforeinstallprompt au plus tôt ──
@@ -1334,6 +1386,18 @@ async function _initPartage() {
 
     // Identité déjà stockée ? (localStorage → sessionStorage fallback pour Safari privé)
     let storedIdentite = _safeGetIdentite();
+
+    // QW3 — Fallback IndexedDB si localStorage/sessionStorage vide (purge iOS 7 jours)
+    if (!storedIdentite) {
+      try {
+        const idbData = await _idbReadIdentity(_partageToken);
+        if (idbData && idbData.nom) {
+          // Restaurer depuis IDB → aussi remettre en localStorage pour les prochaines fois
+          _safeStoreIdentite(idbData);
+          storedIdentite = idbData;
+        }
+      } catch(e) {}
+    }
 
     // Valider l'identité stockée : vérifier que le participant existe encore
     // Exception : les identités avec role 'owner' sont créées côté admin et toujours valides
@@ -4543,6 +4607,9 @@ function escHtml(t) {
         <p style="margin:0;font-size:.82rem;color:#94a3b8;line-height:1.4">Tes photos et messages sont sur cet appareil. Entre ton email pour les retrouver partout.</p>
       </div>
     </div>
+    <p style="font-size:12px;color:#94a3b8;margin:0 0 10px;text-align:center;line-height:1.5">
+      🔒 Lien valable 72h · Aucun spam · Données non partagées
+    </p>
     <div style="display:flex;gap:8px">
       <input id="email-save-input" type="email" inputmode="email" autocomplete="email"
         placeholder="ton@email.com"
