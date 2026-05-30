@@ -1772,6 +1772,19 @@ function _lancerPartage(identite) {
   _partageIdentite = identite;
   document.getElementById('id-overlay').style.display = 'none';
   document.getElementById('screen-voyage').classList.add('active');
+
+  // ── Notifier l'admin au premier accès (une seule fois par device et par voyage) ──
+  if (identite && identite.nom && !_adminJWTValide()) {
+    const _accessKey = `crewigo_first_access_${_partageToken}`;
+    if (!localStorage.getItem(_accessKey)) {
+      localStorage.setItem(_accessKey, '1');
+      fetch(`/api/partage/${_partageToken}/first-access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom: identite.nom })
+      }).catch(() => {}); // silencieux — pas critique
+    }
+  }
   const badge = document.getElementById('partage-id-badge');
   if (badge && identite && identite.nom) {
     badge.textContent = identite.nom;

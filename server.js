@@ -728,6 +728,48 @@ app.post('/api/voyages/:id/partager', authMiddleware, async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+// ── Notification admin : un participant vient de rejoindre ────────────────────
+app.post('/api/partage/:token/first-access', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Token invalide' });
+    const { nom } = req.body;
+    if (!nom) return res.status(400).json({ error: 'nom requis' });
+
+    // Push uniquement aux abonnements admin (participant_id IS NULL)
+    const allSubs = await run(() => db.push_subscriptions.getByVoyage(voyage.id));
+    const adminSubs = allSubs.filter(s => !s.participant_id);
+    if (!adminSubs.length) return res.json({ ok: true, sent: 0 });
+
+    const payload = JSON.stringify({
+      title: `🧭 ${nom} vient de rejoindre !`,
+      body:  `${nom} a rejoint le voyage "${voyage.nom}"`,
+      tag:   `join-${voyage.id}-${nom.replace(/\s+/g,'_')}`,
+      url:   '/'
+    });
+
+    let sent = 0;
+    for (const sub of adminSubs) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload
+        );
+        sent++;
+      } catch(e) {
+        if (e.statusCode === 410 || e.statusCode === 404) {
+          run(() => db.push_subscriptions.deleteByEndpoint?.(sub.endpoint)).catch(() => {});
+        }
+      }
+    }
+    console.log(`[Join] ${nom} → voyage ${voyage.id} — ${sent} push admin envoyés`);
+    res.json({ ok: true, sent });
+  } catch(e) {
+    console.error('[first-access]', e.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // ── Sauvegarde email participant (pont vers continuité cross-device) ──────────
 app.post('/api/partage/:token/save-email', async (req, res) => {
   try {
