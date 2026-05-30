@@ -283,7 +283,40 @@
       <span class="join-voyage-bar-text">Tu as reçu un lien de voyage ?</span>
       <button id="join-voyage-bar-btn" class="join-voyage-bar-btn">Accéder →</button>
     </div>
+
+    <!-- ── Pied de page RGPD ── -->
+    <footer style="text-align:center;padding:24px 16px 8px;font-size:.78rem;color:var(--text-muted,#64748b)">
+      <a href="/confidentialite" target="_blank" style="color:inherit;text-decoration:underline">Politique de confidentialité</a>
+      &nbsp;·&nbsp;
+      <button id="btn-compte-rgpd" style="background:none;border:none;color:inherit;font-size:inherit;text-decoration:underline;cursor:pointer;padding:0">Gérer mon compte</button>
+    </footer>
   </main>
+</div>
+
+<!-- ── Modal RGPD — gestion du compte ── -->
+<div id="modal-compte-rgpd" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3 class="modal-title">Mon compte</h3>
+      <button class="modal-close" id="btn-close-compte-rgpd">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 16px;display:flex;flex-direction:column;gap:14px">
+      <p style="color:var(--text-muted,#94a3b8);font-size:.88rem;line-height:1.5">
+        Conformément au RGPD, tu peux exporter ou supprimer toutes tes données à tout moment.
+      </p>
+      <button id="btn-export-donnees" class="btn-secondary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exporter mes données (JSON)
+      </button>
+      <button id="btn-supprimer-compte" style="width:100%;background:#ef4444;color:#fff;border:none;border-radius:10px;padding:12px;font-weight:600;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Supprimer mon compte
+      </button>
+      <p style="color:#ef4444;font-size:.78rem;text-align:center;display:none" id="compte-rgpd-warning">
+        ⚠️ Cette action est irréversible — tous tes voyages et données seront supprimés définitivement.
+      </p>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ ÉCRAN DÉTAIL VOYAGE ═══ -->

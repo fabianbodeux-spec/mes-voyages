@@ -4469,6 +4469,53 @@ function _bindStaticHandlers() {
   _on('home-cta-btn',        'click', ouvrirCreateTrip);
   _on('empty-create-btn',    'click', ouvrirCreateTrip);
 
+  // ── RGPD — gestion du compte ──────────────────────────────────────────────
+  _on('btn-compte-rgpd', 'click', () => {
+    const m = document.getElementById('modal-compte-rgpd');
+    if (m) { m.style.display = 'flex'; document.getElementById('compte-rgpd-warning').style.display = 'none'; }
+  });
+  _on('btn-close-compte-rgpd', 'click', () => {
+    const m = document.getElementById('modal-compte-rgpd');
+    if (m) m.style.display = 'none';
+  });
+  _on('btn-export-donnees', 'click', async () => {
+    const btn = document.getElementById('btn-export-donnees');
+    if (!btn || !_authToken) return;
+    btn.disabled = true; btn.textContent = 'Préparation…';
+    try {
+      const r = await fetch('/api/auth/export', { headers: { Authorization: 'Bearer ' + _authToken } });
+      if (!r.ok) throw new Error('Erreur serveur');
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'crewigo-export.json'; a.click();
+      URL.revokeObjectURL(url);
+    } catch(e) { alert('Erreur lors de l\'export : ' + e.message); }
+    finally { btn.disabled = false; btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exporter mes données (JSON)'; }
+  });
+  let _deleteConfirmStep = 0;
+  _on('btn-supprimer-compte', 'click', async () => {
+    const btn = document.getElementById('btn-supprimer-compte');
+    const warn = document.getElementById('compte-rgpd-warning');
+    if (!btn || !_authToken) return;
+    if (_deleteConfirmStep === 0) {
+      // Premier clic : afficher l'avertissement, demander confirmation
+      warn.style.display = ''; btn.textContent = 'Confirmer la suppression';
+      _deleteConfirmStep = 1; return;
+    }
+    // Deuxième clic : suppression effective
+    btn.disabled = true; btn.textContent = 'Suppression…';
+    try {
+      const r = await fetch('/api/auth/account', { method: 'DELETE', headers: { Authorization: 'Bearer ' + _authToken } });
+      if (!r.ok) throw new Error('Erreur serveur');
+      document.getElementById('modal-compte-rgpd').style.display = 'none';
+      _doLogout();
+    } catch(e) {
+      alert('Erreur lors de la suppression : ' + e.message);
+      btn.disabled = false; btn.textContent = 'Confirmer la suppression';
+    }
+  });
+
   // ── Rejoindre un voyage via lien reçu ────────────────────────────────────
   function _rejoindreViaLien(input) {
     const raw = (input?.value || '').trim();

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Politique de confidentialité — CrewiGO</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 0 0 60px;
+    }
+    header {
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header a {
+      color: #f97316;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: .9rem;
+    }
+    header span { color: #64748b; font-size: .9rem; }
+    .container {
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 0 24px;
+    }
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: #94a3b8;
+      font-size: .95rem;
+      margin-bottom: 40px;
+    }
+    .card {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 20px;
+      border: 1px solid #334155;
+    }
+    h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #f97316;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    p { color: #cbd5e1; line-height: 1.65; margin-bottom: 12px; }
+    p:last-child { margin-bottom: 0; }
+    ul {
+      color: #cbd5e1;
+      line-height: 1.65;
+      padding-left: 20px;
+      margin-bottom: 12px;
+    }
+    ul:last-child { margin-bottom: 0; }
+    li { margin-bottom: 6px; }
+    .tag {
+      display: inline-block;
+      background: #0f172a;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: .8rem;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+    .highlight {
+      background: #0f172a;
+      border-left: 3px solid #f97316;
+      border-radius: 0 8px 8px 0;
+      padding: 12px 16px;
+      margin: 12px 0;
+      color: #94a3b8;
+      font-size: .9rem;
+    }
+    a { color: #f97316; }
+    footer {
+      text-align: center;
+      color: #475569;
+      font-size: .85rem;
+      margin-top: 48px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/">← CrewiGO</a>
+  <span>/</span>
+  <span>Politique de confidentialité</span>
+</header>
+
+<div class="container">
+  <h1>Politique de confidentialité</h1>
+  <p class="subtitle">Dernière mise à jour : mai 2025 · Application CrewiGO</p>
+
+  <div class="card">
+    <h2>🏢 Responsable du traitement</h2>
+    <p>
+      CrewiGO est une application de gestion de voyages en groupe. Le responsable du traitement
+      est l'exploitant de l'instance sur laquelle vous accédez à cette application.
+    </p>
+    <p>
+      Pour toute question relative à vos données personnelles :
+      <strong>utilisez le formulaire de contact disponible dans l'application ou adressez-vous
+      directement à l'administrateur de votre instance.</strong>
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>📋 Données collectées</h2>
+    <p>Nous collectons uniquement les données nécessaires au bon fonctionnement de l'application :</p>
+    <ul>
+      <li><span class="tag">Compte</span> Adresse e-mail, nom d'affichage, mot de passe hashé (bcrypt)</li>
+      <li><span class="tag">Voyage</span> Nom du voyage, destination, dates, statut</li>
+      <li><span class="tag">Participants</span> Prénom, couleur d'avatar, PIN optionnel (hashé)</li>
+      <li><span class="tag">Contenu</span> Réservations, agenda, dépenses, bagages, commentaires, photos, documents</li>
+      <li><span class="tag">Messages</span> Messages privés entre l'organisateur et les participants</li>
+      <li><span class="tag">Géolocalisation</span> Position GPS en temps réel — <strong>uniquement si vous activez le partage de position</strong> et pour la durée de la session</li>
+      <li><span class="tag">Technique</span> Tokens d'authentification JWT (durée 30 jours), adresse IP (logs de sécurité, rate-limiting)</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>⚖️ Bases légales du traitement</h2>
+    <ul>
+      <li><strong>Exécution du contrat</strong> (art. 6.1.b RGPD) — données nécessaires à la fourniture du service (compte, voyage, participants)</li>
+      <li><strong>Consentement</strong> (art. 6.1.a RGPD) — partage de position GPS, notifications push, envoi de l'e-mail de souvenir</li>
+      <li><strong>Intérêt légitime</strong> (art. 6.1.f RGPD) — journalisation de sécurité, protection contre les abus (rate-limiting)</li>
+    </ul>
+    <div class="highlight">
+      La géolocalisation en temps réel ne s'active que sur votre demande explicite et peut être
+      arrêtée à tout moment en fermant la page ou en révoquant la permission dans votre navigateur.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⏱️ Durée de conservation</h2>
+    <ul>
+      <li><strong>Données de compte</strong> — conservées jusqu'à la suppression du compte</li>
+      <li><strong>Données de voyage</strong> — conservées jusqu'à la suppression du voyage ou du compte</li>
+      <li><strong>Magic links</strong> — expiration automatique 15 minutes après création</li>
+      <li><strong>Tokens JWT</strong> — expiration automatique après 30 jours d'inactivité</li>
+      <li><strong>Géolocalisation</strong> — non persistée au-delà de la session active</li>
+      <li><strong>Logs serveur</strong> — rotation selon la politique de l'hébergeur (Railway)</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>🔒 Sécurité des données</h2>
+    <ul>
+      <li>Mots de passe hashés avec bcrypt (coût 12)</li>
+      <li>PINs participants hashés avec bcrypt (coût 10)</li>
+      <li>Authentification par JWT signé (secret obligatoire en production)</li>
+      <li>Contrôle d'accès par ownership sur toutes les ressources</li>
+      <li>Uploads limités aux types MIME autorisés</li>
+      <li>Rate-limiting sur les endpoints d'authentification et de PIN</li>
+      <li>Transport chiffré HTTPS (en production)</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>🌍 Transferts hors UE</h2>
+    <p>
+      L'application peut être hébergée sur <strong>Railway</strong> (infrastructure AWS/GCP).
+      Ces hébergeurs offrent des garanties de conformité RGPD (clauses contractuelles types).
+      Aucune donnée n'est partagée avec des tiers à des fins commerciales.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>✅ Vos droits (RGPD art. 15–22)</h2>
+    <p>Conformément au RGPD, vous disposez des droits suivants :</p>
+    <ul>
+      <li><strong>Accès</strong> (art. 15) — obtenir une copie de vos données</li>
+      <li><strong>Rectification</strong> (art. 16) — corriger des données inexactes</li>
+      <li><strong>Effacement</strong> (art. 17) — supprimer votre compte et vos données</li>
+      <li><strong>Portabilité</strong> (art. 20) — exporter vos données dans un format structuré</li>
+      <li><strong>Opposition</strong> (art. 21) — vous opposer à un traitement basé sur l'intérêt légitime</li>
+      <li><strong>Limitation</strong> (art. 18) — demander la suspension du traitement</li>
+    </ul>
+    <div class="highlight">
+      Pour exercer vos droits, contactez l'administrateur de l'application.
+      Vous disposez également du droit d'introduire une réclamation auprès de l'autorité de contrôle
+      de votre pays (<a href="https://www.autoriteprotectiondonnees.be" target="_blank" rel="noopener">APD Belgique</a>,
+      <a href="https://www.cnil.fr" target="_blank" rel="noopener">CNIL France</a>…).
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🍪 Cookies et stockage local</h2>
+    <p>
+      CrewiGO n'utilise <strong>pas de cookies tiers</strong> ni de traceurs publicitaires.
+      Nous utilisons uniquement :
+    </p>
+    <ul>
+      <li><strong>localStorage / sessionStorage</strong> — token d'authentification, préférences d'affichage, identité participant (supprimés à la déconnexion)</li>
+      <li><strong>IndexedDB</strong> — cache applicatif pour le mode hors-ligne (Service Worker)</li>
+    </ul>
+    <p>Ces données restent sur votre appareil et ne sont pas transmises à des tiers.</p>
+  </div>
+
+  <footer>
+    <p>CrewiGO · <a href="/">Retour à l'application</a></p>
+  </footer>
+</div>
+
+</body>
+</html>

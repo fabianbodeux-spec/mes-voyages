@@ -59,7 +59,8 @@ const localDB = {
     // Mode local : les comptes sont persistés dans data/users.json
     // Permet login + register normaux sans PostgreSQL
     getByEmail: (email) => charger('users').find(u => u.email === email) || null,
-    getById:    (id)    => charger('users').find(u => u.id === +id)     || null,
+    // Même sélection qu'en cloud : on n'expose jamais password_hash via getById
+    getById: (id) => { const u = charger('users').find(u => u.id === +id); if (!u) return null; const { password_hash, ...safe } = u; return safe; },
     create: (email, hash, nom) => {
       const list = charger('users');
       const item = { id: nextId(list), email, password_hash: hash, nom, created_at: new Date().toISOString() };
@@ -67,12 +68,23 @@ const localDB = {
       sauvegarder('users', list);
       return item;
     },
+    getAll: () => charger('users'),
     count: () => charger('users').length,
     claimOrphanVoyages: (userId) => {
       const list = charger('voyages');
       let changed = false;
       list.forEach(v => { if (!v.owner_id) { v.owner_id = userId; changed = true; } });
       if (changed) sauvegarder('voyages', list);
+    },
+    // RGPD art. 17 — supprime le compte + données liées à l'email
+    delete: (id) => {
+      const user = charger('users').find(u => u.id === +id);
+      sauvegarder('users', charger('users').filter(u => u.id !== +id));
+      sauvegarder('user_participant_links', charger('user_participant_links').filter(l => l.user_id !== +id));
+      if (user?.email) {
+        sauvegarder('magic_links', charger('magic_links').filter(m => m.email !== user.email));
+        sauvegarder('participant_emails', charger('participant_emails').filter(p => p.email !== user.email));
+      }
     }
   },
   voyages: {
@@ -627,7 +639,18 @@ const pgDB = pgPool ? {
       [email, passwordHash, nom]
     )).rows[0],
     count: async () => parseInt((await pgPool.query('SELECT COUNT(*) FROM users')).rows[0].count, 10),
-    claimOrphanVoyages: async (userId) => pgPool.query('UPDATE voyages SET owner_id=$1 WHERE owner_id IS NULL', [userId])
+    claimOrphanVoyages: async (userId) => pgPool.query('UPDATE voyages SET owner_id=$1 WHERE owner_id IS NULL', [userId]),
+    // RGPD art. 17 — supprime le compte + données liées à l'email
+    delete: async (id) => {
+      const { rows } = await pgPool.query('SELECT email FROM users WHERE id=$1', [id]);
+      const email = rows[0]?.email;
+      if (email) {
+        await pgPool.query('DELETE FROM magic_links WHERE email=$1', [email]);
+        await pgPool.query('DELETE FROM participant_emails WHERE email=$1', [email]);
+      }
+      await pgPool.query('DELETE FROM user_participant_links WHERE user_id=$1', [id]);
+      await pgPool.query('DELETE FROM users WHERE id=$1', [id]);
+    }
   },
   voyages: {
     getAll: async (ownerId) => (await pgPool.query('SELECT * FROM voyages WHERE owner_id=$1 ORDER BY date_debut ASC NULLS LAST', [ownerId])).rows,

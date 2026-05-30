@@ -115,6 +115,11 @@ app.get('/sw.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'sw.js'), { etag: false, lastModified: false });
 });
 
+app.get('/confidentialite', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.sendFile(path.join(__dirname, 'public', 'confidentialite.html'), { etag: false, lastModified: false });
+});
+
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders(res, filePath) {
     if (/\.(js|css|html)$/.test(filePath)) {
@@ -156,8 +161,14 @@ function checkAuthRate(ip) {
 }
 
 // Middleware JWT — skip en mode local (JSON files)
+// En local, on résout l'id du premier utilisateur existant (évite les décalages d'id après tests)
 function authMiddleware(req, res, next) {
-  if (!IS_CLOUD) { req.user = { id: 1, email: 'local' }; return next(); }
+  if (!IS_CLOUD) {
+    const users = db.users.getAll ? db.users.getAll() : [];
+    const first = (Array.isArray(users) ? users : [])[0];
+    req.user = { id: first?.id ?? 1, email: first?.email ?? 'local' };
+    return next();
+  }
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Non authentifié' });
   try {
@@ -187,7 +198,7 @@ app.post('/api/auth/register', async (req, res) => {
     // Premier inscrit → hérite de tous les voyages sans propriétaire
     const total = await db.users.count();
     if (total <= 1) await db.users.claimOrphanVoyages(user.id);
-    const token = jwt.sign({ id: user.id, email: user.email, nom: user.nom }, JWT_SECRET, { expiresIn: '365d' });
+    const token = jwt.sign({ id: user.id, email: user.email, nom: user.nom }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, email: user.email, nom: user.nom } });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
@@ -201,7 +212,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-    const token = jwt.sign({ id: user.id, email: user.email, nom: user.nom }, JWT_SECRET, { expiresIn: '365d' });
+    const token = jwt.sign({ id: user.id, email: user.email, nom: user.nom }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, email: user.email, nom: user.nom } });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
@@ -214,14 +225,58 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-// Sliding window : renouvelle le token pour 365j supplémentaires
+// Sliding window : renouvelle le token pour 30j supplémentaires
 app.get('/api/auth/refresh', authMiddleware, async (req, res) => {
   const token = jwt.sign(
     { id: req.user.id, email: req.user.email, nom: req.user.nom },
     JWT_SECRET,
-    { expiresIn: '365d' }
+    { expiresIn: '30d' }
   );
   res.json({ token });
+});
+
+// ── RGPD art. 20 — export des données personnelles ───────────────────────────
+app.get('/api/auth/export', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user    = await run(() => db.users.getById(userId));
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    const voyages = await run(() => db.voyages.getAll(userId));
+    const data = {
+      exported_at: new Date().toISOString(),
+      compte: { id: user.id, email: user.email, nom: user.nom, created_at: user.created_at },
+      voyages: []
+    };
+    for (const v of voyages) {
+      const [participants, reservations, agenda, depenses, bagages] = await Promise.all([
+        run(() => db.participants.getByVoyage(v.id)),
+        run(() => db.reservations.getByVoyage(v.id)),
+        run(() => db.agenda.getByVoyage(v.id)),
+        run(() => db.depenses.getByVoyage(v.id)),
+        run(() => db.bagages.getByVoyage(v.id)),
+      ]);
+      // Exclure le contenu binaire des documents/photos (trop lourd, non lisible)
+      data.voyages.push({ ...v, participants, reservations, agenda, depenses, bagages });
+    }
+    res.setHeader('Content-Disposition', `attachment; filename="crewigo-export-${Date.now()}.json"`);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.json(data);
+  } catch(e) { console.error('[EXPORT]', e); res.status(500).json({ error: 'Erreur lors de l\'export' }); }
+});
+
+// ── RGPD art. 17 — suppression du compte ─────────────────────────────────────
+app.delete('/api/auth/account', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Supprimer tous les voyages (cascade participants, docs, photos…)
+    const voyages = await run(() => db.voyages.getAll(userId));
+    for (const v of voyages) {
+      await run(() => db.voyages.delete(v.id));
+    }
+    // Supprimer le compte, les magic_links et participant_emails liés à l'email
+    await run(() => db.users.delete(userId));
+    res.json({ ok: true });
+  } catch(e) { console.error('[ACCOUNT DELETE]', e); res.status(500).json({ error: 'Erreur lors de la suppression' }); }
 });
 
 // ── Voyages participants liés à ce compte admin (via user_participant_links) ──
@@ -267,6 +322,26 @@ async function checkVoyageOwnership(voyageId, userId) {
   if (!IS_CLOUD) return true;
   const voyage = await run(() => db.voyages.getById(voyageId));
   return voyage && voyage.owner_id === userId;
+}
+
+// Middleware d'ownership pour les routes scopées par voyage (/api/voyages/:id/...).
+// À placer APRÈS authMiddleware (a besoin de req.user). No-op en mode local.
+// `param` = nom du paramètre d'URL portant l'id du voyage ('id' par défaut, sinon 'vid'/'voyageId').
+function requireVoyageOwner(param = 'id') {
+  return async (req, res, next) => {
+    if (!IS_CLOUD) return next();
+    try {
+      const voyageId = req.params[param];
+      const voyage = await run(() => db.voyages.getById(voyageId));
+      if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
+      if (voyage.owner_id !== req.user.id)
+        return res.status(403).json({ error: 'Accès refusé' });
+      next();
+    } catch(e) {
+      console.error('[OWNERSHIP]', e);
+      res.status(500).json({ error: 'Erreur interne' });
+    }
+  };
 }
 
 // ─── VOYAGES ───────────────────────────────────────────────────────────────
@@ -333,7 +408,7 @@ app.delete('/api/voyages/:id', authMiddleware, async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.patch('/api/voyages/:id/statut', authMiddleware, async (req, res) => {
+app.patch('/api/voyages/:id/statut', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
     const { statut } = req.body;
     const VALID = ['actif', 'terminé', 'draft', 'planned', 'active', 'completed', 'archived'];
@@ -350,12 +425,12 @@ app.patch('/api/voyages/:id/statut', authMiddleware, async (req, res) => {
 
 // ─── RÉSERVATIONS ──────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/reservations', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/reservations', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { res.json(await run(() => db.reservations.getByVoyage(req.params.id))); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.post('/api/voyages/:id/reservations', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:id/reservations', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { const item = await run(() => db.reservations.create(req.params.id, req.body)); res.json({ id: item.id }); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
@@ -384,12 +459,12 @@ app.delete('/api/reservations/:id', authMiddleware, async (req, res) => {
 
 // ─── AGENDA ────────────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/agenda', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/agenda', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { res.json(await run(() => db.agenda.getByVoyage(req.params.id))); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.post('/api/voyages/:id/agenda', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:id/agenda', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
     const { date, titre } = req.body || {};
     if (!date || !titre) return res.status(400).json({ error: 'Date et titre requis' });
@@ -402,8 +477,12 @@ app.post('/api/voyages/:id/agenda', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/agenda/:id/documents', async (req, res) => {
+app.get('/api/agenda/:id/documents', authMiddleware, async (req, res) => {
   try {
+    const event = await run(() => db.agenda.getById(req.params.id));
+    if (!event) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(event.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
     const docs = await run(() => db.documents.getByEvent ? db.documents.getByEvent(req.params.id) : []);
     res.json(docs);
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
@@ -433,12 +512,12 @@ app.delete('/api/agenda/:id', authMiddleware, async (req, res) => {
 
 // ─── DOCUMENTS ─────────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/documents', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/documents', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { res.json(await run(() => db.documents.getByVoyage(req.params.id))); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.post('/api/voyages/:id/documents', authMiddleware, upload.single('fichier'), async (req, res) => {
+app.post('/api/voyages/:id/documents', authMiddleware, requireVoyageOwner(), upload.single('fichier'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Fichier manquant' });
   if (!ALLOWED_MIMES.has(req.file.mimetype)) return res.status(400).json({ error: 'Type de fichier non autorisé' });
   try {
@@ -514,12 +593,12 @@ async function verifyPin(inputPin, storedPin) {
 
 // ─── PARTICIPANTS ──────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/participants', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/participants', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { res.json(await run(() => db.participants.getByVoyage(req.params.id))); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.post('/api/voyages/:id/participants', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:id/participants', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
     const { nom, couleur, pin } = req.body;
     if (!nom?.trim()) return res.status(400).json({ error: 'Nom requis' });
@@ -654,12 +733,12 @@ app.post('/api/partage/:token/verify-pin', async (req, res) => {
 
 // ─── DÉPENSES ──────────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/depenses', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/depenses', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { res.json(await run(() => db.depenses.getByVoyage(req.params.id))); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.post('/api/voyages/:id/depenses', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:id/depenses', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
     const item = await run(() => db.depenses.create(req.params.id, req.body));
     res.json({ id: item.id });
@@ -704,17 +783,17 @@ app.delete('/api/depenses/:id', authMiddleware, async (req, res) => {
 
 // ─── BAGAGES ───────────────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/bagages', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/bagages', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { res.json(await run(() => db.bagages.getByVoyage(req.params.id))); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.post('/api/voyages/:id/bagages', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:id/bagages', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { const item = await run(() => db.bagages.create(req.params.id, req.body)); res.json({ id: item.id }); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.post('/api/voyages/:vid/bagages/bulk', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:vid/bagages/bulk', authMiddleware, requireVoyageOwner('vid'), async (req, res) => {
   try {
     const { participant_id, items } = req.body;
     await run(() => db.bagages.deleteByVoyageParticipant(req.params.vid, participant_id));
@@ -753,7 +832,7 @@ function genererToken() {
   return crypto.randomBytes(9).toString('base64url'); // 72 bits, URL-safe
 }
 
-app.post('/api/voyages/:id/partager', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:id/partager', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getById(req.params.id));
     if (!voyage) return res.status(404).json({ error: 'Voyage non trouvé' });
@@ -848,6 +927,27 @@ app.post('/api/partage/:token/save-email', async (req, res) => {
   }
 });
 
+// ── Store éphémère pour les jetons _mid (single-use, 60s TTL) ─────────────────
+// Évite de mettre l'identité (email, nom) en clair dans l'URL / les logs serveur.
+const _pendingMidTokens = new Map(); // token → { identity, expires }
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _pendingMidTokens) {
+    if (v.expires < now) _pendingMidTokens.delete(k);
+  }
+}, 60_000); // nettoyage toutes les 60s
+
+// Échange du jeton opaque contre l'identité (single-use)
+app.get('/api/magic/decode/:token', (req, res) => {
+  const entry = _pendingMidTokens.get(req.params.token);
+  if (!entry || entry.expires < Date.now()) {
+    _pendingMidTokens.delete(req.params.token);
+    return res.status(404).json({ error: 'Token expiré ou invalide' });
+  }
+  _pendingMidTokens.delete(req.params.token); // consommé une seule fois
+  res.json(entry.identity);
+});
+
 // ── Validation du magic link et redirection ───────────────────────────────────
 app.get('/auth/magic/:magicToken', async (req, res) => {
   try {
@@ -888,7 +988,8 @@ app.get('/auth/magic/:magicToken', async (req, res) => {
       console.log(`[MagicLink] Compte lié : user ${existingUser.id} ↔ participant "${record.participant_nom}" voyage ${record.voyage_id}`);
     }
 
-    // Construire l'identité à injecter côté client via ?_mid
+    // Construire l'identité et la stocker sous un jeton opaque (60s, single-use)
+    // → ni l'email ni les données personnelles ne transitent dans l'URL / les logs
     const identity = {
       nom:            record.participant_nom,
       couleur,
@@ -897,9 +998,10 @@ app.get('/auth/magic/:magicToken', async (req, res) => {
       from_magic:     true,
       has_account:    !!existingUser
     };
-    const mid = Buffer.from(JSON.stringify(identity)).toString('base64url');
+    const midToken = crypto.randomBytes(16).toString('base64url');
+    _pendingMidTokens.set(midToken, { identity, expires: Date.now() + 60_000 });
 
-    res.redirect(302, `/share/${shareToken}?_mid=${mid}`);
+    res.redirect(302, `/share/${shareToken}?_mid=${midToken}`);
   } catch (e) {
     console.error('[magic-link]', e.message);
     res.send(_magicErrorPage('Une erreur est survenue. Réessaie depuis la page du voyage.'));
@@ -959,7 +1061,7 @@ app.get('/api/push/vapid-key', (req, res) => {
   res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || 'BCV64icXiouIl1g8KVeaEyGMLbhD0M5RFx_qDc5LGiAbIS49-QGP1XOeQWnLEGUnOfmMBH6dQbn20J1sekxQWF0' });
 });
 
-app.post('/api/push/subscribe/:voyageId', authMiddleware, async (req, res) => {
+app.post('/api/push/subscribe/:voyageId', authMiddleware, requireVoyageOwner('voyageId'), async (req, res) => {
   try {
     await run(() => db.push_subscriptions.upsert(req.params.voyageId, req.body));
     res.json({ ok: true });
@@ -1007,7 +1109,7 @@ app.post('/api/demandes/:token', async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.get('/api/voyages/:id/demandes', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/demandes', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { res.json(await run(() => db.demandes.getByVoyage(req.params.id))); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
@@ -1036,12 +1138,12 @@ app.delete('/api/demandes/:id', authMiddleware, async (req, res) => {
 
 // ─── ATTRIBUTIONS PRIVÉES ────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/attributions', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/attributions', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { res.json(await run(() => db.attributions.getByVoyage(req.params.id))); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.post('/api/voyages/:id/attributions', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:id/attributions', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { const item = await run(() => db.attributions.create(req.params.id, req.body)); res.json({ id: item.id }); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
@@ -1074,12 +1176,12 @@ app.get('/api/partage/:token/mes-infos/:participantId', async (req, res) => {
 
 // ─── MESSAGES PRIVÉS ───────────────────────────────────────────────────────
 
-app.get('/api/voyages/:id/messages-prives', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/messages-prives', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { res.json(await run(() => db.messages_prives.getByVoyage(req.params.id))); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.post('/api/voyages/:id/messages-prives', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:id/messages-prives', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
     const { participant_id, message } = req.body;
     if (!participant_id || !message?.trim()) return res.status(400).json({ error: 'Données manquantes' });
@@ -1182,12 +1284,12 @@ app.delete('/api/partage/:token/commentaires/:id', async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
-app.get('/api/voyages/:id/commentaires', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/commentaires', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { res.json(await run(() => db.commentaires.getByVoyage(req.params.id))); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.post('/api/voyages/:id/commentaires', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:id/commentaires', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
     const { auteur, message } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
@@ -1271,12 +1373,12 @@ app.delete('/api/partage/:token/mes-docs/:docId', async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.get('/api/voyages/:id/docs-participants', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/docs-participants', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try { res.json(await run(() => db.docs_participants.getByVoyage(req.params.id))); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
-app.get('/api/voyages/:id/docs-participants/:docId/download', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/docs-participants/:docId/download', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
     const doc = await run(() => db.docs_participants.getById(req.params.docId));
     if (!doc || doc.voyage_id !== +req.params.id) return res.status(404).json({ error: 'Document introuvable' });
@@ -1810,7 +1912,7 @@ app.post('/api/partage/:token/photos/:id/like', async (req, res) => {
 // ─── CREWIREWIND — Top photos, résumé IA, email, mémoires ──────────────────
 
 // GET top photos scorées (admin)
-app.get('/api/voyages/:id/top-photos', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/top-photos', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getById(req.params.id));
     if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
@@ -1823,7 +1925,7 @@ app.get('/api/voyages/:id/top-photos', authMiddleware, async (req, res) => {
 });
 
 // POST résumé IA (admin, derrière ENABLE_AI_SUMMARY)
-app.post('/api/voyages/:id/summary', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:id/summary', authMiddleware, requireVoyageOwner(), async (req, res) => {
   if (process.env.ENABLE_AI_SUMMARY !== 'true')
     return res.status(503).json({ error: 'Résumé IA désactivé (ENABLE_AI_SUMMARY)' });
   try {
@@ -1841,7 +1943,7 @@ app.post('/api/voyages/:id/summary', authMiddleware, async (req, res) => {
 });
 
 // POST email souvenir (admin)
-app.post('/api/voyages/:id/send-memory-email', authMiddleware, async (req, res) => {
+app.post('/api/voyages/:id/send-memory-email', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getById(req.params.id));
     if (!voyage) return res.status(404).json({ error: 'Voyage introuvable' });
@@ -1925,7 +2027,7 @@ app.post('/api/partage/:token/capsule', async (req, res) => {
 });
 
 // GET /api/voyages/:id/capsules — admin : voir toutes les capsules d'un voyage
-app.get('/api/voyages/:id/capsules', authMiddleware, async (req, res) => {
+app.get('/api/voyages/:id/capsules', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
     const capsules = await run(() => db.capsules.getByVoyage(req.params.id));
     res.json(capsules);

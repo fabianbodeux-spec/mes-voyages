@@ -1314,13 +1314,17 @@ async function _initPartage() {
       if (nomForm) nomForm.style.display = '';
     }
 
-    // ── Magic Link : récupérer l'identité depuis ?_mid et nettoyer l'URL ──────
+    // ── Magic Link : récupérer l'identité via le serveur (jeton opaque, single-use) ──
+    // Le jeton ne contient aucune donnée personnelle — seul le serveur connaît l'identité.
     const _midParam = new URLSearchParams(window.location.search).get('_mid');
     if (_midParam) {
       try {
-        const magicIdentite = JSON.parse(atob(_midParam.replace(/-/g,'+').replace(/_/g,'/')));
-        if (magicIdentite.nom) {
-          _safeStoreIdentite(magicIdentite);
+        const r = await fetch(`/api/magic/decode/${encodeURIComponent(_midParam)}`);
+        if (r.ok) {
+          const magicIdentite = await r.json();
+          if (magicIdentite.nom) _safeStoreIdentite(magicIdentite);
+        } else {
+          console.warn('[MagicLink] Jeton _mid expiré ou invalide (', r.status, ')');
         }
       } catch(e) { console.warn('[MagicLink] Décodage _mid échoué:', e.message); }
       // Retirer le paramètre de l'URL sans recharger la page
@@ -2378,7 +2382,39 @@ async function _rafraichirPositions() {
 }
 
 function _togglePartagerPosition() {
-  _geoActive ? _geoArreter() : _geoDemarrer();
+  if (_geoActive) { _geoArreter(); return; }
+  // ── Consentement RGPD (art. 6.1.a) ─────────────────────────────────────────
+  // Afficher l'info une seule fois par voyage. Consentement stocké localement.
+  const _geoConsentKey = `crewigo_geo_consent_${_partageToken}`;
+  if (!localStorage.getItem(_geoConsentKey)) {
+    _showGeoConsentModal(() => {
+      try { localStorage.setItem(_geoConsentKey, '1'); } catch {}
+      _geoDemarrer();
+    });
+    return;
+  }
+  _geoDemarrer();
+}
+
+function _showGeoConsentModal(onAccept) {
+  const overlay = document.createElement('div');
+  overlay.id = '_geo-consent-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:20px';
+  overlay.innerHTML =
+    '<div style="background:#1e293b;border-radius:20px;padding:28px;max-width:400px;width:100%;color:#e2e8f0;font-family:system-ui,sans-serif;border:1px solid #334155">' +
+    '<div style="font-size:2rem;margin-bottom:10px">📍</div>' +
+    '<h3 style="margin:0 0 10px;font-size:1.1rem;color:#f1f5f9">Partage de position</h3>' +
+    '<p style="color:#94a3b8;font-size:.9rem;line-height:1.6;margin:0 0 18px">' +
+    'Ta position GPS sera <strong style="color:#e2e8f0">visible par tous les participants</strong> de ce voyage via leur lien de partage.<br><br>' +
+    'Elle est <strong style="color:#e2e8f0">supprimée dès que tu arrêtes le partage</strong> et n\'est pas conservée après la session.' +
+    '</p>' +
+    '<div style="display:flex;gap:10px">' +
+    '<button id="_geo-ok" style="flex:1;background:#f97316;color:#fff;border:0;border-radius:10px;padding:12px;font-weight:700;cursor:pointer;font-size:.95rem">Partager</button>' +
+    '<button id="_geo-cancel" style="flex:1;background:#334155;color:#e2e8f0;border:0;border-radius:10px;padding:12px;font-weight:600;cursor:pointer;font-size:.95rem">Annuler</button>' +
+    '</div></div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#_geo-ok').onclick    = () => { overlay.remove(); onAccept(); };
+  overlay.querySelector('#_geo-cancel').onclick = () => overlay.remove();
 }
 
 function _geoDemarrer() {
