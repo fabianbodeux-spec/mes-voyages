@@ -4334,7 +4334,12 @@ async function _rejoindreVoyageConfirme() {
       },
       body: JSON.stringify({ nom: nomAdmin.trim(), couleur: '#FF6B35' }),
     });
-    if (!resp.ok) { toast('❌ Erreur lors de la connexion'); return; }
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      toast(`❌ Erreur ${resp.status} : ${errData.error || 'connexion impossible'}`);
+      console.error('[join-as-participant]', resp.status, errData);
+      return;
+    }
     const data = await resp.json();
 
     // Stocker la session participant dans localStorage
