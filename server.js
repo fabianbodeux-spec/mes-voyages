@@ -779,7 +779,7 @@ app.post('/api/voyages/:id/join-as-participant', authMiddleware, async (req, res
     });
   } catch(e) {
     console.error('[JOIN-AS-PARTICIPANT]', e);
-    res.status(500).json({ error: 'Erreur serveur' });
+    res.status(500).json({ error: 'Erreur serveur', detail: e?.message, stack: e?.stack?.split('\n').slice(0,3) });
   }
 });
 
