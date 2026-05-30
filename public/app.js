@@ -295,7 +295,7 @@ async function submitRegister() {
   const btn      = document.getElementById('register-btn');
   errEl.textContent = '';
   if (!email || !password) { errEl.textContent = 'Email et mot de passe requis'; return; }
-  if (password.length < 6) { errEl.textContent = 'Mot de passe trop court (6 caractères minimum)'; return; }
+  if (password.length < 8) { errEl.textContent = 'Mot de passe trop court (8 caractères minimum)'; return; }
   btn.disabled = true; btn.textContent = 'Création…';
   try {
     const r = await fetch('/api/auth/register', {

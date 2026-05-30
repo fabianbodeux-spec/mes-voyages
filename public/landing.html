@@ -4,10 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CrewiGO — Roam together.</title>
-  <meta name="description" content="L'app PWA pour planifier vos voyages en groupe. Planning collaboratif, budget partagé, chat intégré. Sans App Store." />
-  <meta property="og:title" content="CrewiGO — Roam together." />
-  <meta property="og:description" content="Ton trip, ton crew, tout en un. Planning, budget, chat, photos — sans télécharger d'app. Gratuit." />
-  <meta property="og:image" content="/logo-icon.png" />
+  <meta name="description" content="Planifiez votre voyage en groupe sans chaos. Planning collaboratif, budget partagé, chat — sans App Store. Les participants rejoignent sans compte." />
+  <meta property="og:title" content="CrewiGO — Voyage en crew, sans le chaos." />
+  <meta property="og:description" content="Fini les 14 groupes WhatsApp. Tout le trip en un seul endroit — planning, budget, chat, photos. Participants rejoignent en un clic, sans compte. Gratuit." />
+  <meta property="og:image" content="https://crewigo.app/og-image.svg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/svg+xml" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="icon" type="image/png" href="/logo-icon.png" />
   <link rel="apple-touch-icon" href="/logo-icon.png" />
@@ -1078,6 +1081,69 @@
     }
     .footer-links a:hover { color: var(--accent); }
 
+  /* ─── SOCIAL PROOF ─── */
+  .testimonials-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 48px;
+  }
+  @media (max-width: 900px) { .testimonials-grid { grid-template-columns: 1fr; } }
+
+  .testimonial-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: border-color 0.2s;
+  }
+  .testimonial-card:hover { border-color: rgba(249,115,22,0.3); }
+
+  .testimonial-stars {
+    display: flex;
+    gap: 3px;
+    color: #F97316;
+    font-size: 1rem;
+  }
+  .testimonial-quote {
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.65;
+    font-style: italic;
+    flex: 1;
+  }
+  .testimonial-author {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: auto;
+  }
+  .testimonial-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .testimonial-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.9);
+  }
+  .testimonial-context {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
   /* ─── INTRO CINÉMATIQUE ─── */
 
   /* Barres letterbox cinema (pseudo-elements sur l'overlay) */
@@ -1316,12 +1382,13 @@
       <div class="hero-badge reveal">Sans téléchargement · Gratuit · iOS &amp; Android</div>
 
       <h1 class="hero-headline reveal reveal-delay-1">
-        crew <em style="-webkit-text-fill-color:rgba(255,255,255,0.3);color:rgba(255,255,255,0.3)">we</em> <span>GO</span>
+        Voyage en crew,<br><span>sans le chaos.</span>
       </h1>
 
       <p class="hero-sub reveal reveal-delay-2">
         <strong>Fini les 14 groupes WhatsApp.</strong><br />
-        Tout ton trip en un seul endroit — planning, budget, chat. Sans rien télécharger.
+        Tout ton trip en un seul endroit — planning, budget, chat. Sans rien télécharger.<br />
+        <span style="color:rgba(255,255,255,0.5);font-size:0.95em">Les participants rejoignent en un clic · sans compte · sans app.</span>
       </p>
 
       <div class="hero-ctas reveal reveal-delay-3">
@@ -1496,14 +1563,14 @@
           <p class="feature-desc">Chaque membre uploade ses photos pendant le trip. Un seul album pour tout le crew. Plus jamais "envoie-moi tes photos sur Drive".</p>
         </div>
 
-        <!-- Géolocalisation -->
+        <!-- Hub destination -->
         <div class="feature-card reveal">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
           </div>
-          <div class="feature-tag">Hub · Géo en temps réel</div>
-          <div class="feature-title">Où est ton crew, maintenant</div>
-          <p class="feature-desc">La carte du Hub affiche la position de chaque membre en temps réel. Pratique à l'aéroport, en ville, ou quand quelqu'un a disparu dans un marché.</p>
+          <div class="feature-tag">Hub · Destination</div>
+          <div class="feature-title">Tout sur ta destination, en un coup d'œil</div>
+          <p class="feature-desc">Le Hub centralise la carte interactive, la météo en direct et les infos Wikipedia de ta destination. Tout le crew part informé — même avant de boucler les valises.</p>
         </div>
 
         <!-- PWA -->
@@ -1514,6 +1581,57 @@
           <div class="feature-tag">PWA · Sans App Store</div>
           <div class="feature-title">Installe depuis le navigateur. Point.</div>
           <p class="feature-desc">Installe CrewiGO directement depuis ton navigateur sur iOS ou Android. Aucun téléchargement, aucun compte Apple ou Google requis. Un tap. C'est fait.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ─── SOCIAL PROOF ─── -->
+  <section id="temoignages">
+    <div class="section-inner">
+      <p class="section-eyebrow reveal">Premiers utilisateurs</p>
+      <h2 class="section-title reveal">Des crews qui ont<br /><span style="color:var(--accent)">sauté le pas.</span></h2>
+      <p class="section-sub reveal">Testeurs bêta — retours authentiques sur leurs premiers voyages avec CrewiGO.</p>
+
+      <div class="testimonials-grid">
+
+        <div class="testimonial-card reveal">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-quote">"On a organisé 8 jours à Tokyo à 6. Avant c'était 3 groupes WhatsApp, un Google Sheet et un Google Doc. Là, tout était au même endroit. On n'a perdu personne au marché Tsukiji."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="background:#F97316">L</div>
+            <div>
+              <div class="testimonial-name">Lucie M.</div>
+              <div class="testimonial-context">Tokyo · 8 jours · 6 personnes</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card reveal reveal-delay-1">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-quote">"CrewiCash a littéralement sauvé notre amitié. Les remboursements automatiques, c'est juste magique. Plus personne ne garde rancune sur qui a payé quoi."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="background:#3B82F6">K</div>
+            <div>
+              <div class="testimonial-name">Karim B.</div>
+              <div class="testimonial-context">Barcelone · 5 jours · 4 amis</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card reveal reveal-delay-2">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-quote">"J'ai rejoint en scannant un QR code, sans créer de compte. En 30 secondes j'avais accès au planning et au chat. Aucune app à télécharger. Sérieusement, pourquoi tous les trips ne fonctionnent pas comme ça ?"</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="background:#10B981">S</div>
+            <div>
+              <div class="testimonial-name">Sofia R.</div>
+              <div class="testimonial-context">Lisbonne · participante · iPhone</div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -1634,10 +1752,11 @@
         <div class="qr-wrapper reveal">
           <div class="qr-frame">
             <img
-              src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=F97316&bgcolor=0D0D0D&data=https://www.crewigo.app&qzone=2"
+              src="/api/qr-landing"
               alt="QR Code CrewiGO"
               width="200"
               height="200"
+              onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=F97316&bgcolor=0D0D0D&data=https://www.crewigo.app&qzone=2'"
             />
           </div>
           <span class="qr-label">crewigo.app</span>

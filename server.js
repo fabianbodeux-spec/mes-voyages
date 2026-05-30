@@ -61,7 +61,8 @@ app.use(helmet({
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc:      ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "api.fontshare.com", "https://api.fontshare.com"],
       fontSrc:       ["'self'", "api.fontshare.com", "https://api.fontshare.com"],
-      imgSrc:        ["'self'", "data:", "blob:", "upload.wikimedia.org", "commons.wikimedia.org", "api.qrserver.com", "*.tile.openstreetmap.org", "*.wikimedia.org"],
+      imgSrc:        ["'self'", "data:", "blob:", "upload.wikimedia.org", "commons.wikimedia.org", "*.tile.openstreetmap.org", "*.wikimedia.org"],
+      // api.qrserver.com supprimé : QR code généré en local via /api/qr-landing (L7)
       connectSrc:    ["'self'", "api.fontshare.com", "fr.wikipedia.org", "commons.wikimedia.org", "geocoding-api.open-meteo.com", "api.open-meteo.com", "nominatim.openstreetmap.org", "api.anthropic.com"],
       workerSrc:     ["'self'", "blob:", "cdn.jsdelivr.net"],
       frameSrc:      ["'self'", "https://maps.google.com", "https://www.google.com", "https://www.openstreetmap.org"],
@@ -120,6 +121,32 @@ app.get('/confidentialite', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'confidentialite.html'), { etag: false, lastModified: false });
 });
 
+// ─── L7 — QR code local (remplace api.qrserver.com) ────────────────────────
+// Généré en SVG côté serveur via le package qrcode — aucun appel externe.
+app.get('/api/qr-landing', async (req, res) => {
+  try {
+    const QRCode = require('qrcode');
+    const svg = await QRCode.toString('https://crewigo.app', {
+      type:   'svg',
+      color:  { dark: '#F97316ff', light: '#0D0D0Dff' },
+      margin: 2,
+      scale:  4
+    });
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h
+    res.send(svg);
+  } catch (e) {
+    console.warn('[QR] Génération échouée:', e.message);
+    res.status(503).end();
+  }
+});
+
+// ─── OG image SVG (1200×630) ────────────────────────────────────────────────
+app.get('/og-image.svg', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(path.join(__dirname, 'public', 'og-image.svg'));
+});
+
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders(res, filePath) {
     if (/\.(js|css|html)$/.test(filePath)) {
@@ -160,6 +187,24 @@ function checkAuthRate(ip) {
   return rec.count <= 15;
 }
 
+// Rate-limiter pour les demandes de magic link (5 / heure / IP)
+const _magicLinkAttempts = new Map();
+function checkMagicLinkRate(ip) {
+  const now = Date.now();
+  let rec = _magicLinkAttempts.get(ip);
+  if (!rec || now > rec.resetAt) rec = { count: 0, resetAt: now + 60 * 60_000 };
+  rec.count++;
+  _magicLinkAttempts.set(ip, rec);
+  return rec.count <= 5;
+}
+
+// S4 — Nettoyage périodique des Maps de rate-limiting (évite les fuites mémoire)
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _authAttempts)      { if (now > v.resetAt) _authAttempts.delete(k); }
+  for (const [k, v] of _magicLinkAttempts) { if (now > v.resetAt) _magicLinkAttempts.delete(k); }
+}, 3_600_000); // toutes les heures
+
 // Middleware JWT — skip en mode local (JSON files)
 // En local, on résout l'id du premier utilisateur existant (évite les décalages d'id après tests)
 function authMiddleware(req, res, next) {
@@ -184,8 +229,8 @@ function authMiddleware(req, res, next) {
 app.post('/api/auth/register', async (req, res) => {
   if (!checkAuthRate(req.ip)) return res.status(429).json({ error: 'Trop de tentatives, réessaie dans 15 min' });
   const { email, password, nom } = req.body;
-  if (!email || !password || password.length < 6)
-    return res.status(400).json({ error: 'Email et mot de passe requis (6 car. minimum)' });
+  if (!email || !password || password.length < 8)
+    return res.status(400).json({ error: 'Email et mot de passe requis (8 caractères minimum)' });
   try {
     const existing = await db.users.getByEmail(email.toLowerCase().trim());
     if (existing) return res.status(409).json({ error: 'Cet email est déjà utilisé' });
@@ -925,6 +970,8 @@ app.post('/api/partage/:token/first-access', async (req, res) => {
 
 // ── Sauvegarde email + envoi magic link ───────────────────────────────────────
 app.post('/api/partage/:token/save-email', async (req, res) => {
+  // S4 — rate limit : 5 demandes de magic link / heure / IP
+  if (!checkMagicLinkRate(req.ip)) return res.status(429).json({ error: 'Trop de demandes, réessaie dans une heure' });
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
@@ -2182,6 +2229,37 @@ if (process.env.ENABLE_TRIP_CLOSURE !== 'false') {
   runDailyJob().catch(e => console.error('[CrewiRewind] Boot job:', e.message));
   setInterval(() => runDailyJob().catch(e => console.error('[CrewiRewind] Cron:', e.message)), 24 * 60 * 60 * 1000);
 }
+
+// ─── R7 — Purge des magic links expirés (24h) ─────────────────────────────
+// En mode PostgreSQL : DELETE SQL direct.
+// En mode JSON local : purge du fichier via fs (dev uniquement).
+async function purgeExpiredMagicLinks() {
+  try {
+    if (IS_CLOUD) {
+      const result = await db._pool.query("DELETE FROM magic_links WHERE expires_at < NOW()");
+      console.log(`[PURGE] ${result.rowCount} magic link(s) expiré(s) supprimé(s)`);
+    } else {
+      // Mode fichiers JSON — accès direct (chemin connu)
+      const DATA_DIR   = path.join(__dirname, 'data');
+      const linksPath  = path.join(DATA_DIR, 'magic_links.json');
+      if (fs.existsSync(linksPath)) {
+        const links  = JSON.parse(fs.readFileSync(linksPath, 'utf8') || '[]');
+        const now    = new Date().toISOString();
+        const valid  = links.filter(l => l.expires_at > now);
+        const purged = links.length - valid.length;
+        if (purged > 0) {
+          fs.writeFileSync(linksPath, JSON.stringify(valid, null, 2));
+          console.log(`[PURGE] ${purged} magic link(s) expiré(s) supprimé(s) (local)`);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[PURGE] Erreur nettoyage magic links:', e.message);
+  }
+}
+// Première purge 5 min après démarrage, puis toutes les 24h
+setTimeout(purgeExpiredMagicLinks, 5 * 60_000);
+setInterval(purgeExpiredMagicLinks, 24 * 60 * 60_000);
 
 // ─── DÉMARRAGE ─────────────────────────────────────────────────────────────
 

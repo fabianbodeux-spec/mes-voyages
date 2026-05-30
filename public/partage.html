@@ -1852,10 +1852,21 @@ function _showEmailBanner() {
   document.getElementById('email-save-later').onclick = () => {
     banner.style.transform = 'translateY(100%)';
     setTimeout(() => { banner.style.display = 'none'; }, 350);
+    // Reset consentement pour la prochaine ouverture
+    const c = document.getElementById('email-consent-check');
+    if (c) c.checked = false;
     localStorage.setItem(_EMAIL_SNOOZE_KEY, String(Date.now() + 7 * 86400_000));
   };
 
   document.getElementById('email-save-btn').onclick = async () => {
+    // R4 — Vérifier le consentement explicite avant tout stockage d'email
+    const consentCheck = document.getElementById('email-consent-check');
+    const consentLabel = document.getElementById('email-consent-label');
+    if (consentCheck && !consentCheck.checked) {
+      if (consentLabel) { consentLabel.style.color = '#f87171'; }
+      setTimeout(() => { if (consentLabel) consentLabel.style.color = '#94a3b8'; }, 2500);
+      return;
+    }
     const email = document.getElementById('email-save-input').value.trim();
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRe.test(email)) {
@@ -4610,6 +4621,12 @@ function escHtml(t) {
     <p style="font-size:12px;color:#94a3b8;margin:0 0 10px;text-align:center;line-height:1.5">
       🔒 Lien valable 72h · Aucun spam · Données non partagées
     </p>
+    <!-- R4 — Consentement explicite RGPD avant stockage de l'email -->
+    <label id="email-consent-label" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;cursor:pointer;font-size:0.78rem;color:#94a3b8;line-height:1.5">
+      <input id="email-consent-check" type="checkbox" style="margin-top:2px;flex-shrink:0;accent-color:#f97316;width:15px;height:15px">
+      J'accepte que mon email soit utilisé uniquement pour m'envoyer ce lien d'accès.
+      <a href="/confidentialite" target="_blank" style="color:#64748b;text-decoration:underline;white-space:nowrap">Politique de confidentialité</a>
+    </label>
     <div style="display:flex;gap:8px">
       <input id="email-save-input" type="email" inputmode="email" autocomplete="email"
         placeholder="ton@email.com"

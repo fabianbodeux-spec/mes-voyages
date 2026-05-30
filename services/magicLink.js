@@ -51,6 +51,11 @@ function _buildHtml({ magicUrl, participantNom, voyageNom }) {
     <div style="font-size:11px;color:#94a3b8;text-align:center">
       CrewiGO · Roam together.
     </div>
+    <div style="font-size:10px;color:#cbd5e1;text-align:center;margin-top:6px;line-height:1.5">
+      Emails acheminés via Resend (sous-traitant, accord de traitement disponible sur
+      <a href="https://resend.com/legal/dpa" style="color:#cbd5e1">resend.com/legal/dpa</a>).
+      Conformément au RGPD, ton email est utilisé uniquement pour t'envoyer ce lien d'accès.
+    </div>
   </td></tr>
 </table></td></tr></table></body></html>`;
 }
