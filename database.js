@@ -33,6 +33,7 @@ const FICHIERS = {
   trip_memory_emails:   path.join(DATA_DIR, 'trip_memory_emails.json'),
   trip_top_photos:      path.join(DATA_DIR, 'trip_top_photos.json'),
   capsules:             path.join(DATA_DIR, 'capsules.json'),
+  participant_emails:   path.join(DATA_DIR, 'participant_emails.json'),
 };
 
 function charger(cle) {
@@ -359,6 +360,17 @@ const localDB = {
     },
     deleteByVoyage: (vid) => sauvegarder('capsules', charger('capsules').filter(c => c.voyage_id !== +vid))
   },
+  participant_emails: {
+    save: (vid, nom, email) => {
+      const list = charger('participant_emails');
+      const idx = list.findIndex(e => e.voyage_id === +vid && e.participant_nom === nom);
+      const item = { voyage_id: +vid, participant_nom: nom, email: email.toLowerCase().trim(), saved_at: new Date().toISOString() };
+      if (idx === -1) { list.push({ ...item, id: nextId(list) }); } else { list[idx] = { ...list[idx], ...item }; }
+      sauvegarder('participant_emails', list);
+      return true;
+    },
+    getByVoyage: (vid) => charger('participant_emails').filter(e => e.voyage_id === +vid)
+  },
 };
 
 // ─── MODE CLOUD : PostgreSQL ───────────────────────────────────────────────
@@ -544,6 +556,14 @@ if (USE_POSTGRES) {
       ferait_differemment TEXT,
       note INTEGER CHECK(note BETWEEN 1 AND 5),
       created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(voyage_id, participant_nom)
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS participant_emails (
+      id SERIAL PRIMARY KEY,
+      voyage_id INTEGER NOT NULL,
+      participant_nom TEXT NOT NULL,
+      email TEXT NOT NULL,
+      saved_at TIMESTAMPTZ DEFAULT now(),
       UNIQUE(voyage_id, participant_nom)
     )`);
     console.log('[DB] Migrations PostgreSQL OK');
@@ -871,6 +891,15 @@ const pgDB = pgPool ? {
        data.note||null]
     )).rows[0],
     deleteByVoyage: async (vid) => pgPool.query('DELETE FROM capsules WHERE voyage_id=$1', [vid])
+  },
+  participant_emails: {
+    save: async (vid, nom, email) => pgPool.query(
+      `INSERT INTO participant_emails(voyage_id, participant_nom, email)
+       VALUES($1,$2,$3)
+       ON CONFLICT(voyage_id,participant_nom) DO UPDATE SET email=EXCLUDED.email, saved_at=now()`,
+      [vid, nom, email.toLowerCase().trim()]
+    ),
+    getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM participant_emails WHERE voyage_id=$1', [vid])).rows
   },
 } : null;
 

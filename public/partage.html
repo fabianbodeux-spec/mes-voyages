@@ -409,7 +409,7 @@
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></span>
       <span>CrewiPics</span>
     </button>
-    <button class="tab-btn" data-tab="programme" onclick="changerOnglet('programme', this)">
+    <button class="tab-btn" data-tab="programme" onclick="changerOnglet('programme', this); _trackInteraction()">
       <span class="tab-svg-icon"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
       <span>Road Map</span>
     </button>
@@ -1696,6 +1696,72 @@ async function _depenseSauvegarder() {
 _initPartage();
 
 // ══════════════════════════════════════════════════════
+//  EMAIL SAVE — Bannière "garde ton accès"
+// ══════════════════════════════════════════════════════
+const _EMAIL_SAVED_KEY   = 'crewigo_email_saved';
+const _EMAIL_SNOOZE_KEY  = 'crewigo_email_snooze';
+const _EMAIL_COUNT_KEY   = 'crewigo_interaction_count';
+const _EMAIL_THRESHOLD   = 3;
+
+function _trackInteraction() {
+  // Ne pas afficher si déjà sauvegardé ou snoozé
+  if (localStorage.getItem(_EMAIL_SAVED_KEY)) return;
+  const snoozed = localStorage.getItem(_EMAIL_SNOOZE_KEY);
+  if (snoozed && Date.now() < +snoozed) return;
+  // Ne pas afficher si l'utilisateur est admin (JWT valide)
+  if (_adminJWTValide()) return;
+
+  const count = (+localStorage.getItem(_EMAIL_COUNT_KEY) || 0) + 1;
+  localStorage.setItem(_EMAIL_COUNT_KEY, count);
+  if (count >= _EMAIL_THRESHOLD) _showEmailBanner();
+}
+
+function _showEmailBanner() {
+  const banner = document.getElementById('email-save-banner');
+  if (!banner || banner.dataset.shown) return;
+  banner.dataset.shown = '1';
+  banner.style.display = 'block';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    banner.style.transform = 'translateY(0)';
+  }));
+
+  document.getElementById('email-save-later').onclick = () => {
+    banner.style.transform = 'translateY(100%)';
+    setTimeout(() => { banner.style.display = 'none'; }, 350);
+    localStorage.setItem(_EMAIL_SNOOZE_KEY, String(Date.now() + 7 * 86400_000));
+  };
+
+  document.getElementById('email-save-btn').onclick = async () => {
+    const email = document.getElementById('email-save-input').value.trim();
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRe.test(email)) {
+      document.getElementById('email-save-input').style.borderColor = '#ef4444';
+      return;
+    }
+    const btn = document.getElementById('email-save-btn');
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const r = await fetch(`/api/partage/${_partageToken}/save-email`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, participant_nom: _partageIdentite?.nom || 'Anonyme' })
+      });
+      if (r.ok) {
+        localStorage.setItem(_EMAIL_SAVED_KEY, '1');
+        banner.style.transform = 'translateY(100%)';
+        setTimeout(() => { banner.style.display = 'none'; }, 350);
+        _toast('✅ Email sauvegardé — retrouve ce voyage partout !');
+      } else {
+        btn.textContent = 'Réessayer';
+        btn.disabled = false;
+      }
+    } catch {
+      btn.textContent = 'Réessayer';
+      btn.disabled = false;
+    }
+  };
+}
+
+// ══════════════════════════════════════════════════════
 //  DEMANDES — Invités envoient des demandes de modif
 // ══════════════════════════════════════════════════════
 
@@ -2534,6 +2600,7 @@ async function _envoyerCommentaire() {
     input.value = '';
     input.style.height = '';
     await chargerCommentaires();
+    _trackInteraction();
   } catch { _toast('⚠️ Erreur d\'envoi'); }
   finally { if (btn) btn.disabled = false; }
 }
@@ -3483,6 +3550,7 @@ async function envoyerPhoto() {
     annulerUploadPhoto();
     await chargerPhotos();
     changerOnglet('photos', document.querySelector('[data-tab="photos"]'));
+    _trackInteraction();
   } catch(e) {
     _toast('❌ Erreur : ' + e.message);
   } finally {
@@ -4316,6 +4384,32 @@ function escHtml(t) {
 
 <!-- Toast de feedback -->
 <div id="toast-partage" style="position:fixed;bottom:calc(env(safe-area-inset-bottom) + 80px);left:50%;transform:translateX(-50%) translateY(20px);background:#1C1917;color:#fff;padding:10px 20px;border-radius:20px;font-size:.85rem;font-weight:600;opacity:0;transition:opacity .25s,transform .25s;z-index:9999;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 32px);text-align:center"></div>
+
+<!-- ═══ Bannière "Sauvegarde ton accès" (email optionnel) ══════════════════ -->
+<div id="email-save-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9990;padding:0 16px calc(env(safe-area-inset-bottom) + 16px);background:linear-gradient(to top,#0f172a 80%,transparent);transform:translateY(100%);transition:transform .35s cubic-bezier(.34,1.2,.64,1)">
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:20px;padding:20px;max-width:480px;margin:0 auto">
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <span style="font-size:1.5rem;flex-shrink:0">💾</span>
+      <div>
+        <p style="margin:0 0 4px;font-weight:700;font-size:.95rem;color:#f1f5f9">Garde ton accès pour toujours</p>
+        <p style="margin:0;font-size:.82rem;color:#94a3b8;line-height:1.4">Tes photos et messages sont sur cet appareil. Entre ton email pour les retrouver partout.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <input id="email-save-input" type="email" inputmode="email" autocomplete="email"
+        placeholder="ton@email.com"
+        style="flex:1;background:#0f172a;border:1px solid #475569;border-radius:12px;padding:10px 14px;color:#f1f5f9;font-size:.9rem;outline:none;min-width:0">
+      <button id="email-save-btn"
+        style="background:#f97316;color:#fff;border:none;border-radius:12px;padding:10px 16px;font-weight:700;font-size:.9rem;cursor:pointer;white-space:nowrap;flex-shrink:0">
+        Sauvegarder
+      </button>
+    </div>
+    <button id="email-save-later"
+      style="width:100%;background:none;border:none;color:#64748b;font-size:.8rem;margin-top:10px;cursor:pointer;padding:4px">
+      Plus tard
+    </button>
+  </div>
+</div>
 
 <!-- ═══ PWA Install Sheet ══════════════════════════════ -->
 <div id="pwa-install-banner">

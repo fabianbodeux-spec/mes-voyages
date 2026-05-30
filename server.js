@@ -728,6 +728,24 @@ app.post('/api/voyages/:id/partager', authMiddleware, async (req, res) => {
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+// ── Sauvegarde email participant (pont vers continuité cross-device) ──────────
+app.post('/api/partage/:token/save-email', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const { email, participant_nom } = req.body;
+    if (!email || !participant_nom) return res.status(400).json({ error: 'email et participant_nom requis' });
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRe.test(email)) return res.status(400).json({ error: 'Email invalide' });
+    await run(() => db.participant_emails.save(voyage.id, participant_nom, email));
+    console.log(`[Email] ${participant_nom} a sauvegardé son email pour le voyage ${voyage.id}`);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[save-email]', e.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.get('/api/partage/:token', async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
