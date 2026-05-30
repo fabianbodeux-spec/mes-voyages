@@ -113,10 +113,14 @@ async function _handle401Gracieux() {
 }
 
 async function initAuth() {
-  // Lire les paramètres ?auth= et ?email= (pré-remplissage depuis magic link)
+  // Lire les paramètres ?auth=, ?email=, ?v= (deep-link interface unique)
   const params    = new URLSearchParams(window.location.search);
   const authParam = params.get('auth');
   const emailParam = params.get('email');
+  // ?v=TOKEN : deep-link depuis /voyage/:token → ouvrir automatiquement ce voyage
+  const voyageToken = params.get('v');
+  if (voyageToken) window._pendingVoyageToken = voyageToken;
+
   if (authParam || emailParam) {
     const cleanUrl = window.location.pathname + window.location.hash;
     history.replaceState(null, '', cleanUrl);
@@ -584,7 +588,7 @@ function _updateParticipantModeBar() {
       av.textContent = session.nom[0].toUpperCase();
       av.style.background = session.couleur || 'var(--accent)';
     }
-    if (btn) btn.onclick = () => { window.location.href = `/share/${_shareTokenCourant}`; };
+    if (btn) btn.onclick = () => { window.location.href = `/voyage/${_shareTokenCourant}`; }; // URL canonique
     // P6 — Bouton "Quitter" : efface la session participant pour ce voyage
     if (quitBtn) {
       quitBtn.onclick = () => {
@@ -630,7 +634,7 @@ function afficherVoyage(id) {
         chip.id        = 'role-switch-chip';
         chip.className = 'role-switch-chip';
         chip.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> Vue participant`;
-        chip.onclick   = () => { window.location.href = `/share/${linked.share_token}`; };
+        chip.onclick   = () => { window.location.href = `/voyage/${linked.share_token}`; }; // URL canonique unifiée
         const headerContent = header.querySelector('.header-content');
         if (headerContent) headerContent.appendChild(chip);
       }
@@ -923,6 +927,19 @@ async function chargerVoyages() {
   enrichirPhotos([...ongoing, ...upcoming].filter(v => v._role !== 'participant'));
   // ── Top photos internes pour les souvenirs ─────────────────────
   _enrichirPhotosSouvenirs(memories.filter(v => v._role !== 'participant'));
+
+  // ── Interface unique : deep-link ?v=TOKEN ──────────────────────
+  // Quand l'organisateur clique "Gérer le voyage →" depuis /voyage/:token,
+  // l'app ouvre directement le voyage correspondant au share_token.
+  if (window._pendingVoyageToken) {
+    const dvt = window._pendingVoyageToken;
+    window._pendingVoyageToken = null;
+    const match = voyages.find(v => v.share_token === dvt);
+    if (match) {
+      history.replaceState(null, '', '/app'); // nettoyer ?v= de l'URL
+      setTimeout(() => afficherVoyage(match.id), 80);
+    }
+  }
 }
 
 /** Construit le HTML d'une carte voyage selon sa section
@@ -977,7 +994,8 @@ function _renderVoyageCard(v, section, opts = null) {
   // ── Click handler ──
   let clickHandler, ctaLabel;
   if (isParticipant) {
-    const shareUrl = opts.shareToken ? `/share/${opts.shareToken}` : '#';
+    // /voyage/ = URL canonique interface unique (les deux routes fonctionnent, /voyage/ est la référence)
+    const shareUrl = opts.shareToken ? `/voyage/${opts.shareToken}` : '#';
     clickHandler = `onclick="window.location.href='${shareUrl}'"`;
     ctaLabel     = isMemory ? '🎞️ Voir les souvenirs' : '→ Accéder au voyage';
   } else {

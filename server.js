@@ -1871,7 +1871,11 @@ app.get('/manifest-participant/:token', (req, res) => {
   res.json(manifest);
 });
 
-app.get('/share/:token', async (req, res) => {
+// ─── Serveur de voyage unifié (/share/:token ET /voyage/:token) ─────────────
+// Interface unique : un seul HTML, le rôle (organisateur vs participant) est
+// déterminé côté client via _checkOrganizerMode() dans partage.html.
+// /voyage/:token = URL canonique · /share/:token = alias rétrocompatible.
+async function _serveVoyagePage(req, res) {
   res.set({
     'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
     'Pragma':        'no-cache',
@@ -1924,8 +1928,9 @@ app.get('/share/:token', async (req, res) => {
           ? descParts.join(' · ')
           : 'Rejoignez ce voyage en groupe sur CrewiGO.';
 
-        // URL canonique pour og:url
-        const ogUrl = `${req.protocol}://${req.get('host')}/share/${esc(t)}`;
+        // URL canonique pour og:url — /voyage/ est l'URL de référence
+        const isUnified = req.path.startsWith('/voyage/');
+        const ogUrl = `${req.protocol}://${req.get('host')}/${isUnified ? 'voyage' : 'share'}/${esc(t)}`;
 
         html = html
           .replace(/<title>[^<]*<\/title>/,                                          `<title>${nom} — CrewiGO</title>`)
@@ -1951,6 +1956,27 @@ app.get('/share/:token', async (req, res) => {
   }
 
   res.end(html);
+}
+
+// /share/:token = alias rétrocompatible (tous les liens déjà envoyés continuent de fonctionner)
+app.get('/share/:token',  _serveVoyagePage);
+// /voyage/:token = URL canonique unifiée (organisateur + participant, même HTML)
+app.get('/voyage/:token', _serveVoyagePage);
+
+// ── API : l'utilisateur connecté est-il propriétaire de ce voyage ? ───────────
+// Utilisé par partage.html pour afficher la bannière "Gérer le voyage" si l'org.
+// visite son propre lien (/voyage/:token ou /share/:token).
+app.get('/api/voyages/by-token/:token/is-owner', authMiddleware, async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.json({ isOwner: false });
+    const isOwner = IS_CLOUD
+      ? voyage.owner_id === req.user.id
+      : true; // local JSON = mono-utilisateur, toujours propriétaire
+    res.json({ isOwner, voyageId: voyage.id });
+  } catch(e) {
+    res.json({ isOwner: false });
+  }
 });
 
 // ─── PHOTOS PARTAGÉES ────────────────────────────────────────────────────────

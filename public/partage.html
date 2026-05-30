@@ -316,6 +316,52 @@
       margin-left: 6px;
       vertical-align: middle;
     }
+
+    /* ── Interface unique — bannière organisateur ──────────────────── */
+    #org-admin-banner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 9997;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .org-admin-banner-inner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: #0f172a;
+      border-bottom: 2px solid #F97316;
+      font-family: var(--font-ui, -apple-system, BlinkMacSystemFont, sans-serif);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.75);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+    .org-admin-banner-btn {
+      background: #F97316;
+      color: #fff !important;
+      text-decoration: none;
+      padding: 5px 13px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .org-admin-banner-btn:hover { background: #ea6b0b; }
+    .org-admin-banner-close {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.35);
+      font-size: 1.25rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+    .org-admin-banner-close:hover { color: rgba(255,255,255,0.75); }
   </style>
 </head>
 <body>
@@ -1818,6 +1864,58 @@ function _showAccountRecognizedBanner(email) {
 }
 
 _initPartage();
+
+// ══════════════════════════════════════════════════════
+//  INTERFACE UNIQUE — Détection organisateur
+//  Si l'utilisateur a un JWT valide ET est propriétaire,
+//  une bannière discrète "Gérer le voyage →" est affichée.
+// ══════════════════════════════════════════════════════
+
+async function _checkOrganizerMode() {
+  // Prérequis : JWT présent et non expiré
+  if (!_adminJWTValide()) return;
+  const jwtToken = localStorage.getItem('crewigo_token');
+  if (!jwtToken) return;
+  // Ne pas re-afficher si déjà fermé dans cette session
+  if (sessionStorage.getItem('crewigo_org_banner_dismissed')) return;
+
+  try {
+    const r = await fetch(`/api/voyages/by-token/${_partageToken}/is-owner`, {
+      headers: { 'Authorization': `Bearer ${jwtToken}` }
+    });
+    if (!r.ok) return;
+    const { isOwner } = await r.json();
+    if (!isOwner) return;
+    _showOrganisateurBanner();
+  } catch { /* silencieux — participant normal si erreur réseau */ }
+}
+
+function _showOrganisateurBanner() {
+  if (document.getElementById('org-admin-banner')) return; // déjà présent
+  const banner = document.createElement('div');
+  banner.id = 'org-admin-banner';
+  banner.innerHTML =
+    '<div class="org-admin-banner-inner">' +
+    '<svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>' +
+    '<span>Tu es l’organisateur de ce voyage</span>' +
+    '<a href="/app?v=' + _partageToken + '" class="org-admin-banner-btn">Gérer le voyage →</a>' +
+    '<button class="org-admin-banner-close" onclick="_dismissOrganisateurBanner()" aria-label="Fermer">×</button>' +
+    '</div>';
+  document.body.prepend(banner);
+}
+
+function _dismissOrganisateurBanner() {
+  const b = document.getElementById('org-admin-banner');
+  if (b) {
+    b.style.opacity  = '0';
+    b.style.transform = 'translateY(-100%)';
+    setTimeout(() => b.remove(), 320);
+  }
+  sessionStorage.setItem('crewigo_org_banner_dismissed', '1');
+}
+
+// Lancer la détection 1,2s après le boot (laisse le temps au voyage de se charger)
+setTimeout(_checkOrganizerMode, 1200);
 
 // ══════════════════════════════════════════════════════
 //  EMAIL SAVE — Bannière "garde ton accès"
