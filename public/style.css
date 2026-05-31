@@ -1261,7 +1261,7 @@ body {
 
 .tab-btn {
   flex: 0 0 auto;
-  min-width: 58px;
+  min-width: 44px;  /* icône seule = 44px (WCAG zone tactile) */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1272,7 +1272,7 @@ body {
   background: transparent;
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 0.6rem;            /* libellé toujours visible (F1) */
+  font-size: 0.6rem;
   font-weight: 600;
   font-family: 'Satoshi', var(--font-body);
   border-bottom: 2px solid transparent;
@@ -1283,11 +1283,25 @@ body {
   position: relative;
   -webkit-tap-highlight-color: transparent;
 }
+/* ── Label masqué sur les onglets inactifs (icône seule) ─────── */
+.tab-btn > span:not(.tab-svg-icon) {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.2s cubic-bezier(0.4,0,0.2,1), opacity 0.15s;
+}
+.tab-btn.active > span:not(.tab-svg-icon),
+.tab-btn.tab-primary > span:not(.tab-svg-icon) {
+  max-height: 1.5em;
+  opacity: 1;
+}
 
-/* Onglet actif : légèrement plus marqué */
+/* Onglet actif : plus large pour accueillir le label + icône */
 .tab-btn.active,
 .tab-btn.tab-primary {
-  min-width: 62px;
+  min-width: 68px;
+  padding-left: 10px;
+  padding-right: 10px;
   font-size: 0.62rem;
 }
 .tab-btn.active {

@@ -1568,6 +1568,58 @@ function ouvrirModalVoyage(id = null) {
   modal.classList.remove('hidden');
 }
 
+// ── Confetti canvas — moment de joie à la création d'un voyage ──────────────
+function _joyConfetti() {
+  const COLORS = ['#F97316', '#FBBF24', '#34D399', '#60A5FA', '#F472B6', '#A78BFA'];
+  const N = 72;
+  const canvas = document.createElement('canvas');
+  canvas.setAttribute('aria-hidden', 'true');
+  canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;width:100%;height:100%';
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+
+  const pieces = Array.from({ length: N }, () => ({
+    x:     Math.random() * canvas.width,
+    y:     -10 - Math.random() * 100,
+    r:     3 + Math.random() * 5,
+    dx:    (Math.random() - 0.5) * 5,
+    dy:    1.5 + Math.random() * 4,
+    rot:   Math.random() * 360,
+    drot:  (Math.random() - 0.5) * 10,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    isRect: Math.random() > 0.45,
+  }));
+
+  let frame = 0;
+  const FALL = 110;   // frames de chute
+  const FADE = 30;    // frames de fondu
+
+  function draw() {
+    frame++;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const alpha = frame < FALL ? 1 : Math.max(0, 1 - (frame - FALL) / FADE);
+    pieces.forEach(p => {
+      p.x   += p.dx;
+      p.y   += p.dy;
+      p.dy  += 0.09; // gravité
+      p.rot += p.drot;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle   = p.color;
+      if (p.isRect) ctx.fillRect(-p.r, -p.r * 0.55, p.r * 2, p.r * 1.1);
+      else { ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+    });
+    if (frame < FALL + FADE) requestAnimationFrame(draw);
+    else canvas.remove();
+  }
+  requestAnimationFrame(draw);
+}
+
 async function sauvegarderVoyage(e) {
   e.preventDefault();
   const id = document.getElementById('v-id').value;
@@ -1586,7 +1638,8 @@ async function sauvegarderVoyage(e) {
   if (!r.ok) { toast('❌ Erreur lors de la sauvegarde'); return; }
 
   fermerModal('modal-voyage');
-  toast(id ? '✅ Voyage modifié' : '✅ Voyage créé');
+  if (!id) setTimeout(_joyConfetti, 180); // confetti après fermeture de la modale
+  toast(id ? '✅ Voyage modifié' : '🎉 Voyage créé !');
   chargerVoyages();
 }
 
