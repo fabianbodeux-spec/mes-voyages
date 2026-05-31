@@ -1977,6 +1977,189 @@ function modifierReservation(id) {
   ouvrirModalReservation(id);
 }
 
+// ─── EXPORT PDF ──────────────────────────────────────────────────────────────
+
+async function exporterVoyagePDF() {
+  fermerBottomSheet();
+  toast('⏳ Génération du PDF…');
+  try {
+    const [voyage, participants, reservations, agenda, depenses] = await Promise.all([
+      fetch(`${API}/api/voyages/${voyageActuel}`).then(r => r.json()),
+      fetch(`${API}/api/voyages/${voyageActuel}/participants`).then(r => r.json()),
+      fetch(`${API}/api/voyages/${voyageActuel}/reservations`).then(r => r.json()),
+      fetch(`${API}/api/voyages/${voyageActuel}/agenda`).then(r => r.json()),
+      fetch(`${API}/api/voyages/${voyageActuel}/depenses`).then(r => r.json())
+    ]);
+
+    const total = depenses.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
+    const ppp   = participants.length > 0 ? total / participants.length : 0;
+    const byId  = {};
+    participants.forEach(p => { byId[p.id] = p; });
+
+    // ── Transactions (remboursements) ─────────────────────────────────────
+    const transactions = _calculerTransactions(depenses, participants);
+
+    // ── Agréger événements + réservations par date ─────────────────────────
+    const items = [];
+    agenda.forEach(ev => {
+      if (!ev.date) return;
+      items.push({ date: toDateStr(ev.date), heure: ev.heure || '', titre: ev.titre, lieu: ev.lieu || '', source: 'agenda', type: ev.type });
+    });
+    reservations.forEach(r => {
+      const date = toDateStr(r.date_debut || r.date);
+      if (!date) return;
+      items.push({ date, heure: r.heure_debut || '', titre: r.titre, lieu: r.adresse || r.lieu || '', source: 'resa', type: r.type, confirmation: r.numero_confirmation || '', notes: r.notes || '' });
+    });
+    items.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.heure < b.heure ? -1 : 1));
+
+    const typeLabel = { transport:'Transport', hebergement:'Hébergement', vehicule:'Véhicule', activite:'Activité', restaurant:'Restaurant', autre:'Autre' };
+    const catLabel  = { transport:'Transport', hebergement:'Hébergement', vehicule:'Véhicule', activite:'Activités', restaurant:'Restauration', courses:'Courses', autre:'Divers' };
+
+    function fmtD(d) { if (!d) return ''; try { return new Date(d + 'T00:00:00').toLocaleDateString('fr-BE', {day:'2-digit',month:'long',year:'numeric'}); } catch { return d; } }
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    // Group items by date
+    const grouped = {};
+    items.forEach(it => { if (!grouped[it.date]) grouped[it.date] = []; grouped[it.date].push(it); });
+
+    const timelineHtml = Object.entries(grouped).map(([date, dayItems]) => `
+      <div class="pdf-day">
+        <div class="pdf-day-header">${fmtD(date)}</div>
+        ${dayItems.map(it => `
+          <div class="pdf-item pdf-item--${it.source}">
+            <div class="pdf-item-type">${esc(typeLabel[it.type] || it.type)}</div>
+            <div class="pdf-item-title">${esc(it.titre)}</div>
+            ${it.heure ? `<div class="pdf-item-detail">🕐 ${esc(it.heure)}</div>` : ''}
+            ${it.lieu ? `<div class="pdf-item-detail">📍 ${esc(it.lieu)}</div>` : ''}
+            ${it.confirmation ? `<div class="pdf-item-detail">🔖 ${esc(it.confirmation)}</div>` : ''}
+            ${it.notes ? `<div class="pdf-item-detail">📝 ${esc(it.notes)}</div>` : ''}
+          </div>`).join('')}
+      </div>`).join('');
+
+    // Dépenses par catégorie
+    const byCat = {};
+    depenses.forEach(d => { const c = d.categorie || 'autre'; byCat[c] = (byCat[c] || 0) + parseFloat(d.montant || 0); });
+    const catHtml = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([c, amt]) =>
+      `<tr><td>${esc(catLabel[c]||c)}</td><td style="text-align:right;font-weight:600">${amt.toFixed(2)} €</td></tr>`
+    ).join('');
+
+    // Soldes par personne
+    const net = {};
+    participants.forEach(p => { net[p.id] = 0; });
+    depenses.forEach(d => {
+      const parts = parseIds(d.participants_ids);
+      if (!parts.length) return;
+      const share = parseFloat(d.montant) / parts.length;
+      parts.forEach(pid => { if (net[pid] !== undefined) net[pid] -= share; });
+      if (byId[d.payeur_id]) net[d.payeur_id] = (net[d.payeur_id] || 0) + parseFloat(d.montant);
+    });
+    const soldesHtml = participants.map(p => {
+      const n = Math.round((net[p.id] || 0) * 100) / 100;
+      const cl = n > 0.01 ? 'pdf-credit' : n < -0.01 ? 'pdf-debt' : '';
+      return `<tr><td>${esc(p.nom)}</td><td class="${cl}" style="text-align:right;font-weight:600">${n >= 0 ? '+' : ''}${n.toFixed(2)} €</td></tr>`;
+    }).join('');
+
+    const rembHtml = transactions.length === 0
+      ? '<p style="color:#6b7280;font-size:12px">Tout est équilibré 🎉</p>'
+      : transactions.map(t => `<div class="pdf-remb">${esc(t.from.nom)} → ${esc(t.to.nom)} : <strong>${t.amount.toFixed(2)} €</strong></div>`).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>CrewiGO — ${esc(voyage.nom || 'Mon voyage')}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: #111827; background: #fff; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 800; color: #F97316; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
+  h2 { font-size: 14px; font-weight: 700; color: #111827; margin: 24px 0 10px; padding-bottom: 6px; border-bottom: 2px solid #F97316; }
+  .crew-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .crew-chip { background: #FFF7ED; border: 1px solid #FDBA74; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 8px; }
+  .kpi { background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 10px; padding: 10px 14px; text-align: center; }
+  .kpi-val { font-size: 18px; font-weight: 800; color: #F97316; }
+  .kpi-lbl { font-size: 10px; color: #6b7280; margin-top: 2px; }
+  .pdf-day { margin-bottom: 14px; }
+  .pdf-day-header { font-size: 12px; font-weight: 700; color: #F97316; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; padding: 4px 0; }
+  .pdf-item { border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; background: #FAFAFA; }
+  .pdf-item--resa { border-left: 3px solid #F97316; }
+  .pdf-item--agenda { border-left: 3px solid #6366F1; }
+  .pdf-item-type { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+  .pdf-item-title { font-size: 13px; font-weight: 600; color: #111827; margin-bottom: 4px; }
+  .pdf-item-detail { font-size: 11px; color: #6b7280; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #F3F4F6; }
+  tr:last-child td { border-bottom: none; }
+  .pdf-credit { color: #16A34A; }
+  .pdf-debt   { color: #DC2626; }
+  .pdf-remb { font-size: 12px; padding: 5px 0; border-bottom: 1px solid #F3F4F6; color: #374151; }
+  .pdf-remb:last-child { border-bottom: none; }
+  .pdf-legend { display: flex; gap: 16px; margin-top: 6px; font-size: 11px; color: #6b7280; }
+  .pdf-legend span { display: flex; align-items: center; gap: 4px; }
+  .pdf-legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  @media print {
+    body { padding: 16px; }
+    @page { margin: 15mm; }
+    h2 { page-break-after: avoid; }
+    .pdf-day { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<h1>✈️ ${esc(voyage.nom || 'Mon voyage')}</h1>
+<div class="subtitle">${voyage.destination ? esc(voyage.destination) + ' · ' : ''}${fmtD(voyage.date_debut) || ''}${voyage.date_fin ? ' → ' + fmtD(voyage.date_fin) : ''} · Exporté le ${new Date().toLocaleDateString('fr-BE')}</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="kpi-val">${participants.length}</div><div class="kpi-lbl">Voyageurs</div></div>
+  <div class="kpi"><div class="kpi-val">${reservations.length}</div><div class="kpi-lbl">Réservations</div></div>
+  <div class="kpi"><div class="kpi-val">${agenda.length}</div><div class="kpi-lbl">Événements</div></div>
+  <div class="kpi"><div class="kpi-val">${total.toFixed(0)}€</div><div class="kpi-lbl">Budget total</div></div>
+</div>
+
+<h2>👥 Le Crew</h2>
+<div class="crew-chips">${participants.map(p => `<span class="crew-chip" style="border-color:${esc(p.couleur)}30;background:${esc(p.couleur)}12">${esc(p.nom)}</span>`).join('')}</div>
+
+${items.length > 0 ? `<h2>📅 Programme chronologique</h2>
+<div class="pdf-legend"><span><div class="pdf-legend-dot" style="background:#F97316"></div>Réservation</span><span><div class="pdf-legend-dot" style="background:#6366F1"></div>Agenda</span></div>
+${timelineHtml}` : ''}
+
+${depenses.length > 0 ? `
+<h2>💰 Bilan financier</h2>
+<div class="kpis" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px">
+  <div class="kpi"><div class="kpi-val">${total.toFixed(2)}€</div><div class="kpi-lbl">Total dépensé</div></div>
+  <div class="kpi"><div class="kpi-val">${ppp.toFixed(2)}€</div><div class="kpi-lbl">Par personne</div></div>
+</div>
+
+<table style="margin-bottom:12px">
+  <thead><tr><td style="font-weight:700;color:#6b7280;font-size:11px;padding-bottom:4px">Catégorie</td><td style="font-weight:700;color:#6b7280;font-size:11px;text-align:right;padding-bottom:4px">Total</td></tr></thead>
+  <tbody>${catHtml}</tbody>
+</table>
+
+<table style="margin-bottom:12px">
+  <thead><tr><td style="font-weight:700;color:#6b7280;font-size:11px;padding-bottom:4px">Personne</td><td style="font-weight:700;color:#6b7280;font-size:11px;text-align:right;padding-bottom:4px">Solde</td></tr></thead>
+  <tbody>${soldesHtml}</tbody>
+</table>
+
+<div style="background:#FFF7ED;border:1px solid #FDBA74;border-radius:8px;padding:10px 14px">
+  <div style="font-size:11px;font-weight:700;color:#F97316;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Remboursements à effectuer</div>
+  ${rembHtml}
+</div>` : ''}
+
+<div style="margin-top:32px;padding-top:12px;border-top:1px solid #E5E7EB;font-size:11px;color:#9CA3AF;text-align:center">Généré par CrewiGO • crewigo.app</div>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 600);
+  } catch (e) {
+    console.error('[exportPDF]', e);
+    toast('❌ Erreur lors de la génération du PDF');
+  }
+}
+
 // ─── EMAIL IMPORT ─────────────────────────────────────────────────────────────
 // Parse un email de confirmation et pré-remplit le formulaire de réservation.
 
@@ -5191,6 +5374,7 @@ function _bindStaticHandlers() {
   _on('btn-ajouter-agenda',         'click', () => ouvrirModalAgenda());
   _on('btn-import-email-analyse',   'click', analyserEmailImport);
   _on('btn-import-email-importer',  'click', confirmerImportEmail);
+  _on('btn-exporter-pdf',           'click', exporterVoyagePDF);
   _on('btn-generer-suggestions',    'click', genererSuggestions);
   _on('btn-ajouter-article-bagages','click', ouvrirModalAjoutArticle);
   _on('btn-ajouter-depense',        'click', () => ouvrirModalDepense());
