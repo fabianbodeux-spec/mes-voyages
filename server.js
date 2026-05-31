@@ -175,6 +175,40 @@ app.get('/api/qr-landing', async (req, res) => {
   }
 });
 
+// ─── QR code générique : /api/qr?url=<encodedUrl> ───────────────────────────
+// Utilisé par le modal de partage pour afficher le QR du lien de partage.
+// Authentification requise pour limiter l'abus.
+app.get('/api/qr', authMiddleware, async (req, res) => {
+  try {
+    const raw = String(req.query.url || '').trim();
+    if (!raw) return res.status(400).json({ error: 'Paramètre url manquant' });
+    // Accepte uniquement les URLs relatives /partage/... ou absolues du même domaine
+    const allowed = /^(https?:\/\/[^/]+)?\/partage\/[a-zA-Z0-9_-]{6,}$/.test(raw) ||
+                    /^(https?:\/\/[^/]+)?\/share\/[a-zA-Z0-9_-]{6,}$/.test(raw);
+    if (!allowed) return res.status(400).json({ error: 'URL non autorisée' });
+    const QRCode = require('qrcode');
+    // Résoudre les chemins relatifs en URL absolue pour le QR code
+    let fullUrl = raw;
+    if (raw.startsWith('/')) {
+      const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
+      const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+      fullUrl = `${proto}://${host}${raw}`;
+    }
+    const svg = await QRCode.toString(fullUrl, {
+      type:   'svg',
+      color:  { dark: '#F97316ff', light: '#00000000' }, // fond transparent
+      margin: 1,
+      scale:  5
+    });
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(svg);
+  } catch (e) {
+    console.warn('[QR] Génération échouée:', e.message);
+    res.status(503).end();
+  }
+});
+
 // ─── OG image SVG (1200×630) ────────────────────────────────────────────────
 app.get('/og-image.svg', (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=86400');

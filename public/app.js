@@ -1977,6 +1977,178 @@ function modifierReservation(id) {
   ouvrirModalReservation(id);
 }
 
+// ─── EMAIL IMPORT ─────────────────────────────────────────────────────────────
+// Parse un email de confirmation et pré-remplit le formulaire de réservation.
+
+let _importedResa = null; // données parsées en attente d'import
+
+function ouvrirImportEmail() {
+  _importedResa = null;
+  const modal = document.getElementById('modal-import-email');
+  if (!modal) return;
+  document.getElementById('import-email-text').value = '';
+  document.getElementById('import-email-preview').classList.add('hidden');
+  document.getElementById('btn-import-email-importer').classList.add('hidden');
+  modal.classList.remove('hidden');
+  setTimeout(() => document.getElementById('import-email-text')?.focus(), 300);
+}
+
+function _parseEmailTexte(txt) {
+  const result = { titre: '', type: 'transport', date_debut: '', date_fin: '', heure_debut: '', heure_fin: '', lieu: '', confirmation: '', notes: '' };
+
+  // ── Numéro de confirmation / PNR ──────────────────────────────────────────
+  const refPatterns = [
+    /\b(?:PNR|booking\s*(?:ref(?:erence)?|number|code)|reservation\s*(?:number|code|ref)|confirmation\s*(?:number|code|ref|no\.?|#)|réf(?:érence)?(?:\s*de\s*réservation)?|code\s*de\s*réservation|n°\s*de\s*réservation|numéro\s*de\s*réservation)\s*[:\-]?\s*([A-Z0-9]{4,12})/i,
+    /\b([A-Z]{2,3}-[A-Z0-9]{4,10})\b/,
+    /\bRef\s*[:\-]\s*([A-Z0-9]{5,12})/i
+  ];
+  for (const rx of refPatterns) {
+    const m = txt.match(rx);
+    if (m) { result.confirmation = m[1]; break; }
+  }
+
+  // ── Type de réservation ──────────────────────────────────────────────────
+  const txtLow = txt.toLowerCase();
+  if (/\b(?:vol|flight|avion|airline|airways|air\s+\w+|airport|aéroport|départ\s+de\s+\w|arrivée\s+à\s+\w)\b/.test(txtLow)) result.type = 'transport';
+  else if (/\b(?:train|tgv|thalys|eurostar|sncf|intercités|bus|coach|ferry|bateau|navette)\b/.test(txtLow)) result.type = 'transport';
+  else if (/\b(?:hôtel|hotel|auberge|hostel|b&b|chambre|check.?in|check.?out|nuit|séjour|appartement|airbnb|booking\.com)\b/.test(txtLow)) result.type = 'hebergement';
+  else if (/\b(?:voiture|car|rental|location\s+de\s+véhicule|hertz|europcar|sixt|avis|enterprise|alamo)\b/.test(txtLow)) result.type = 'vehicule';
+  else if (/\b(?:restaurant|table|réservation\s+de\s+table|dîner|déjeuner|repas)\b/.test(txtLow)) result.type = 'restaurant';
+  else if (/\b(?:activité|excursion|visite|tour|billet|ticket|entrée|attraction|événement)\b/.test(txtLow)) result.type = 'activite';
+
+  // ── Dates : formats multiples ────────────────────────────────────────────
+  const moisFr = { janvier:1,février:2,mars:3,avril:4,mai:5,juin:6,juillet:7,août:8,septembre:9,octobre:10,novembre:11,décembre:12,
+                   jan:1,fév:2,mar:3,avr:4,jun:6,jul:7,aoû:8,sep:9,oct:10,nov:11,déc:12 };
+  const moisEn = { january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,
+                   jan:1,feb:2,mar:3,apr:4,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12 };
+  const mois = { ...moisFr, ...moisEn };
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function toISO(d, m, y) {
+    const yr = y.length === 2 ? (parseInt(y) > 50 ? '19' + y : '20' + y) : y;
+    return `${yr}-${pad(m)}-${pad(d)}`;
+  }
+
+  const datePatterns = [
+    // DD/MM/YYYY or DD-MM-YYYY
+    /\b(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})\b/g,
+    // YYYY-MM-DD
+    /\b(\d{4})-(\d{2})-(\d{2})\b/g,
+    // "15 mars 2025" or "15 March 2025"
+    /\b(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec|fév|avr|aoû|déc)\s+(\d{4})\b/gi,
+    // "March 15, 2025" or "Mar 15 2025"
+    /\b(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec|fév|avr|aoû|déc)\s+(\d{1,2}),?\s+(\d{4})\b/gi
+  ];
+
+  const foundDates = [];
+  let m;
+  // DD/MM/YYYY
+  const rx1 = /\b(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})\b/g;
+  while ((m = rx1.exec(txt)) !== null) {
+    const d = parseInt(m[1]), mo = parseInt(m[2]), y = m[3];
+    if (d >= 1 && d <= 31 && mo >= 1 && mo <= 12) foundDates.push(toISO(d, mo, y));
+  }
+  // YYYY-MM-DD
+  const rx2 = /\b(\d{4})-(\d{2})-(\d{2})\b/g;
+  while ((m = rx2.exec(txt)) !== null) {
+    const y = m[1], mo = parseInt(m[2]), d = parseInt(m[3]);
+    if (d >= 1 && d <= 31 && mo >= 1 && mo <= 12) foundDates.push(`${y}-${pad(mo)}-${pad(d)}`);
+  }
+  // "15 mars 2025"
+  const rx3 = /\b(\d{1,2})\s+(jan(?:vier)?|f[eé]v(?:rier)?|mar(?:s|ch)?|avr(?:il)?|apr(?:il)?|mai|may|jun(?:e|i)?|juil(?:let)?|jul(?:y)?|ao[uû]t?|aug(?:ust)?|sep(?:t(?:embre|ember)?)?|oct(?:obre|ober)?|nov(?:embre|ember)?|d[eé]c(?:embre|ember)?)\s+(\d{4})\b/gi;
+  while ((m = rx3.exec(txt)) !== null) {
+    const d = parseInt(m[1]), moName = m[2].toLowerCase(), y = m[3];
+    const moNum = Object.entries(mois).find(([k]) => moName.startsWith(k))?.[1];
+    if (moNum) foundDates.push(toISO(d, moNum, y));
+  }
+  // "mars 15 2025"
+  const rx4 = /\b(jan(?:vier)?|f[eé]v(?:rier)?|mar(?:s|ch)?|avr(?:il)?|apr(?:il)?|mai|may|jun(?:e|i)?|juil(?:let)?|jul(?:y)?|ao[uû]t?|aug(?:ust)?|sep(?:t(?:embre|ember)?)?|oct(?:obre|ober)?|nov(?:embre|ember)?|d[eé]c(?:embre|ember)?)\s+(\d{1,2}),?\s+(\d{4})\b/gi;
+  while ((m = rx4.exec(txt)) !== null) {
+    const moName = m[1].toLowerCase(), d = parseInt(m[2]), y = m[3];
+    const moNum = Object.entries(mois).find(([k]) => moName.startsWith(k))?.[1];
+    if (moNum) foundDates.push(toISO(d, moNum, y));
+  }
+
+  // Dédupliquer et trier
+  const uniqDates = [...new Set(foundDates)].sort();
+  if (uniqDates.length >= 1) result.date_debut = uniqDates[0];
+  if (uniqDates.length >= 2) result.date_fin = uniqDates[uniqDates.length - 1];
+
+  // ── Heures ───────────────────────────────────────────────────────────────
+  const heures = [...txt.matchAll(/\b(\d{1,2})[h:](\d{2})(?:\s*(?:AM|PM))?\b/gi)].map(mx => {
+    let h = parseInt(mx[1]), min = mx[2];
+    if (/PM/i.test(mx[0]) && h < 12) h += 12;
+    if (/AM/i.test(mx[0]) && h === 12) h = 0;
+    return `${pad(h)}:${min}`;
+  });
+  if (heures.length >= 1) result.heure_debut = heures[0];
+  if (heures.length >= 2) result.heure_fin = heures[1];
+
+  // ── Titre : détecter route, nom de l'activité ─────────────────────────────
+  // Patterns vol : BRU → AJA, Paris-CDG → Ajaccio
+  const routeRx = /\b([A-Z]{3})\s*[→→>→\-–—]{1,3}\s*([A-Z]{3})\b/;
+  const routeM = txt.match(routeRx);
+  if (routeM) {
+    result.titre = `Vol ${routeM[1]} → ${routeM[2]}`;
+    result.type = 'transport';
+  } else {
+    // Première ligne non vide comme titre
+    const lines = txt.split('\n').map(l => l.trim()).filter(l => l.length > 3 && l.length < 80);
+    if (lines.length > 0) result.titre = lines[0].replace(/^(objet|subject|sujet)\s*:\s*/i, '').trim();
+  }
+
+  // ── Lieu ──────────────────────────────────────────────────────────────────
+  const lieuRx = /(?:à|at|lieu|place|location|adresse|address|hôtel|hotel)\s*[:\-]?\s*([^\n,]{4,60})/i;
+  const lieuM = txt.match(lieuRx);
+  if (lieuM) result.lieu = lieuM[1].trim();
+
+  return result;
+}
+
+function analyserEmailImport() {
+  const txt = document.getElementById('import-email-text').value.trim();
+  if (!txt) { toast('⚠️ Colle le texte de l\'email d\'abord'); return; }
+
+  _importedResa = _parseEmailTexte(txt);
+
+  const preview = document.getElementById('import-email-preview');
+  const body = document.getElementById('import-email-preview-body');
+  const btnImport = document.getElementById('btn-import-email-importer');
+
+  const typeLabels = { transport:'✈️ Transport', hebergement:'🏨 Hébergement', vehicule:'🚗 Véhicule', activite:'🎯 Activité', restaurant:'🍽️ Restaurant' };
+  const rows = [];
+  if (_importedResa.titre) rows.push(`<div><strong>Titre :</strong> ${h(_importedResa.titre)}</div>`);
+  rows.push(`<div><strong>Type :</strong> ${typeLabels[_importedResa.type] || _importedResa.type}</div>`);
+  if (_importedResa.date_debut) rows.push(`<div><strong>Date début :</strong> ${_importedResa.date_debut}${_importedResa.heure_debut ? ' · ' + _importedResa.heure_debut : ''}</div>`);
+  if (_importedResa.date_fin && _importedResa.date_fin !== _importedResa.date_debut) rows.push(`<div><strong>Date fin :</strong> ${_importedResa.date_fin}${_importedResa.heure_fin ? ' · ' + _importedResa.heure_fin : ''}</div>`);
+  if (_importedResa.lieu) rows.push(`<div><strong>Lieu :</strong> ${h(_importedResa.lieu)}</div>`);
+  if (_importedResa.confirmation) rows.push(`<div><strong>Confirmation :</strong> ${h(_importedResa.confirmation)}</div>`);
+
+  body.innerHTML = rows.length > 0 ? rows.join('') : '<em style="color:var(--text-muted)">Aucune donnée détectée — vérifie le texte collé.</em>';
+  preview.classList.remove('hidden');
+  btnImport.classList.toggle('hidden', rows.length === 0);
+}
+
+function confirmerImportEmail() {
+  if (!_importedResa) return;
+  fermerModal('modal-import-email');
+  setTimeout(() => {
+    ouvrirModalReservation(null);
+    // Pré-remplir le formulaire avec les données parsées
+    if (_importedResa.titre) document.getElementById('r-titre').value = _importedResa.titre;
+    if (_importedResa.date_debut) document.getElementById('r-date-debut').value = _importedResa.date_debut;
+    if (_importedResa.date_fin) document.getElementById('r-date-fin').value = _importedResa.date_fin;
+    if (_importedResa.heure_debut) document.getElementById('r-heure-debut').value = _importedResa.heure_debut;
+    if (_importedResa.heure_fin) document.getElementById('r-heure-fin').value = _importedResa.heure_fin;
+    if (_importedResa.lieu) document.getElementById('r-lieu').value = _importedResa.lieu;
+    if (_importedResa.confirmation) document.getElementById('r-confirmation').value = _importedResa.confirmation;
+    // Sélectionner le type
+    document.getElementById('r-type').value = _importedResa.type;
+    document.querySelectorAll('#modal-reservation .type-opt').forEach(el => el.classList.toggle('active', el.dataset.type === _importedResa.type));
+    _importedResa = null;
+  }, 250);
+}
+
 async function sauvegarderReservation(e) {
   e.preventDefault();
   const id = document.getElementById('r-id').value;
@@ -2143,6 +2315,58 @@ async function chargerAccueil() {
 
   // ── Total dépenses ────────────────────────────────────────────────────────
   const totalDepenses = depenses.reduce((s, d) => s + parseFloat(d.montant || 0), 0);
+  const depParPers    = participants.length > 0 ? totalDepenses / participants.length : 0;
+
+  // ── Récap post-trip (affiché uniquement si voyage terminé) ────────────────
+  const isTripped = heroClass === 'past' && fin && fin < today;
+  let postTripRecap = '';
+  if (isTripped && depenses.length > 0) {
+    // Top catégories
+    const catLabels = { transport:'Transport', hebergement:'Hébergement', restaurant:'Resto', activite:'Activités', autre:'Autres', courses:'Courses', vehicule:'Véhicule' };
+    const catEmojis  = { transport:'✈️', hebergement:'🏨', restaurant:'🍽️', activite:'🎉', autre:'📦', courses:'🛒', vehicule:'🚗' };
+    const byCat = {};
+    depenses.forEach(d => {
+      const cat = d.categorie || 'autre';
+      byCat[cat] = (byCat[cat] || 0) + parseFloat(d.montant || 0);
+    });
+    const sorted = Object.entries(byCat).sort((a,b) => b[1] - a[1]).slice(0, 3);
+    const maxCat = sorted[0]?.[1] || 1;
+    const catBars = sorted.map(([cat, amt]) => {
+      const pct = Math.round(amt / maxCat * 100);
+      const label = catLabels[cat] || cat;
+      const emoji = catEmojis[cat] || '📦';
+      return `<div class="recap-cat-row">
+        <span class="recap-cat-label">${emoji} ${label}</span>
+        <div class="recap-cat-bar-track"><div class="recap-cat-bar-fill" style="width:${pct}%"></div></div>
+        <span class="recap-cat-amt">${amt.toFixed(0)}€</span>
+      </div>`;
+    }).join('');
+    // Dépense la plus grosse
+    const bigDep = depenses.reduce((prev, cur) => parseFloat(cur.montant) > parseFloat(prev.montant) ? cur : prev, depenses[0]);
+    postTripRecap = `
+    <div class="recap-card">
+      <div class="recap-card-header">
+        <span class="recap-card-title">Récapitulatif du voyage</span>
+        <button class="btn-sm" onclick="ouvrirCloture()">Bilan complet</button>
+      </div>
+      <div class="recap-kpis">
+        <div class="recap-kpi">
+          <span class="recap-kpi-val">${totalDepenses.toFixed(0)}€</span>
+          <span class="recap-kpi-lbl">Total dépenses</span>
+        </div>
+        <div class="recap-kpi">
+          <span class="recap-kpi-val">${depParPers.toFixed(0)}€</span>
+          <span class="recap-kpi-lbl">Par personne</span>
+        </div>
+        <div class="recap-kpi">
+          <span class="recap-kpi-val">${participants.length}</span>
+          <span class="recap-kpi-lbl">Voyageurs</span>
+        </div>
+      </div>
+      ${sorted.length > 0 ? `<div class="recap-cat-section">${catBars}</div>` : ''}
+      ${bigDep ? `<div class="recap-bigdep"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="flex-shrink:0;color:var(--accent)"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>Plus grosse dépense : <strong>${h(bigDep.titre)}</strong> · ${parseFloat(bigDep.montant).toFixed(2)}€</div>` : ''}
+    </div>`;
+  }
 
   // ── Rendu principal ────────────────────────────────────────────────────────
   const resaIcons = { transport: cgoIcon('send',36), hebergement: cgoIcon('home',36), vehicule: cgoIcon('car',36), activite: cgoIcon('activity',36), restaurant: cgoIcon('food',36) };
@@ -2172,8 +2396,11 @@ async function chargerAccueil() {
       </div>
     </div>
 
+    <!-- Récap post-trip -->
+    ${postTripRecap}
+
     <!-- Prochaine réservation -->
-    ${prochaine ? `
+    ${prochaine && !isTripped ? `
     <div class="dash-section-title"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M20 12c0-1.1.9-2 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v4c1.1 0 2 .9 2 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2zm-5 5.5H9v-3h6v3zm0-6H9v-3h6v3zm0-6H9v-3h6v3z"/></svg>Prochaine réservation</div>
     <div class="dash-next-card" onclick="voirReservation(${prochaine.id})">
       <div class="dash-next-icon">${resaIcons[prochaine.type] || '📌'}</div>
@@ -4440,8 +4667,20 @@ async function partagerVoyage() {
   fermerBottomSheet();
   const resp = await fetch(`${API}/api/voyages/${voyageActuel}/partager`, { method: 'POST' });
   const data = await resp.json();
-  document.getElementById('partage-url').textContent = data.url;
+  const shareUrl = data.url || '';
+  document.getElementById('partage-url').textContent = shareUrl;
   document.getElementById('modal-partage').classList.remove('hidden');
+  // Charger le QR code via /api/qr
+  const qrWrap = document.getElementById('partage-qr');
+  if (qrWrap && shareUrl) {
+    const urlParam = encodeURIComponent(shareUrl);
+    const img = new Image();
+    img.alt = 'QR code du lien de partage';
+    img.style.cssText = 'width:140px;height:140px;object-fit:contain';
+    img.onload = () => { qrWrap.innerHTML = ''; qrWrap.appendChild(img); };
+    img.onerror = () => { qrWrap.style.display = 'none'; document.getElementById('partage-qr-wrap').style.display = 'none'; };
+    img.src = `${API}/api/qr?url=${urlParam}`;
+  }
 }
 
 async function rejoindreVoyage() {
@@ -4950,6 +5189,8 @@ function _bindStaticHandlers() {
   // ── Tab panels ────────────────────────────────────────────────────────────
   _on('btn-ajouter-participant',    'click', ouvrirModalParticipant);
   _on('btn-ajouter-agenda',         'click', () => ouvrirModalAgenda());
+  _on('btn-import-email-analyse',   'click', analyserEmailImport);
+  _on('btn-import-email-importer',  'click', confirmerImportEmail);
   _on('btn-generer-suggestions',    'click', genererSuggestions);
   _on('btn-ajouter-article-bagages','click', ouvrirModalAjoutArticle);
   _on('btn-ajouter-depense',        'click', () => ouvrirModalDepense());
