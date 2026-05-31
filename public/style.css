@@ -10,7 +10,7 @@
 
 /* ─── DESIGN TOKENS ─────────────────────────────────────────── */
 :root {
-  /* Accent — CrewiGo Orange */
+  /* Accent — CrewiGO Orange */
   --accent:        #F97316;
   --accent-dark:   #EA6B0B;
   --accent-light:  #FFF7ED;
@@ -322,7 +322,7 @@ body {
    HOME SCREEN
    ════════════════════════════════════════════════════════════════ */
 /* ════════════════════════════════════════════════════════════════
-   HOME SCREEN — CrewiGo brand header
+   HOME SCREEN — CrewiGO brand header
    ════════════════════════════════════════════════════════════════ */
 #screen-home .app-header {
   position: relative;
@@ -711,11 +711,13 @@ body {
 .header-title h1 {
   font-size: .95rem;
   font-weight: 700;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   color: var(--text);
   letter-spacing: -.01em;
+  line-height: 1.2;
 }
 .header-title .subtitle {
   font-size: 0.68rem;
@@ -727,6 +729,7 @@ body {
 /* ─── BUTTONS ────────────────────────────────────────────────── */
 .btn-icon {
   width: 36px; height: 36px;
+  min-width: 44px; min-height: 44px; /* WCAG 2.5.5 — zone tactile ≥ 44×44px */
   border: none;
   background: transparent;
   border-radius: var(--radius);
@@ -1363,7 +1366,7 @@ body {
   align-items: flex-start;
 }
 
-/* ── Système d'icônes CrewiGo — gradient orange ─────────────── */
+/* ── Système d'icônes CrewiGO — gradient orange ─────────────── */
 .cgo-icon {
   display: inline-flex;
   align-items: center;

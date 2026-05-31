@@ -355,7 +355,7 @@ function parseIds(str) {
   try { return JSON.parse(str || '[]'); } catch { return []; }
 }
 
-// ─── Système d'icônes CrewiGo ─────────────────────────────────
+// ─── Système d'icônes CrewiGO ─────────────────────────────────
 // Icônes SVG filled blancs sur fond dégradé orange
 const _CGO_PATHS = {
   link:     '<path fill="white" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7C4.24 7 2 9.24 2 12s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zm4.1 1h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>',
@@ -1961,7 +1961,7 @@ async function supprimerReservation(id) {
 
 // ─── DASHBOARD ACCUEIL ───────────────────────────────────────────────────────
 
-// P5 — Construit le fil d'activité récente pour le Basecamp
+// P5 — Construit le fil d'activité récente pour le Hub
 function _buildActivityFeed(participants, depenses, agenda, reservations) {
   const items = [];
 
@@ -4391,7 +4391,7 @@ function copierLienPartage() {
   const url = document.getElementById('partage-url').textContent;
   // Web Share API — ouvre le menu de partage natif (WhatsApp, SMS, etc.)
   if (navigator.share) {
-    navigator.share({ title: 'CrewiGo — Rejoins le trip 🌍', url })
+    navigator.share({ title: 'CrewiGO — Rejoins le trip 🌍', url })
       .then(() => toast('✅ Lien partagé !'))
       .catch(() => {}); // annulation par l'utilisateur → silencieux
     return;

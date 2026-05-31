@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "test": "node tests/smoke.mjs",
+    "test:prod": "node tests/smoke.mjs --base https://crewgo.up.railway.app"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

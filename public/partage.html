@@ -5,24 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="CrewiGo">
+  <meta name="apple-mobile-web-app-title" content="CrewiGO">
   <meta name="theme-color" content="#F97316">
-  <meta name="description" content="CrewiGo — Rejoignez ce voyage en groupe et accédez au programme, budget et documents partagés.">
-  <title>CrewiGo — Trip partagé</title>
+  <meta name="description" content="CrewiGO — Rejoignez ce voyage en groupe et accédez au programme, budget et documents partagés.">
+  <title>CrewiGO — Trip partagé</title>
   <link rel="icon" type="image/png" href="/logo-icon.png">
   <link rel="apple-touch-icon" href="/logo-icon.png">
   <link rel="manifest" href="/manifest.json">
 
   <!-- Open Graph (dynamic content injected server-side if available) -->
   <meta property="og:type"        content="website">
-  <meta property="og:title"       content="CrewiGo — Trip partagé">
+  <meta property="og:title"       content="CrewiGO — Trip partagé">
   <meta property="og:description" content="Rejoignez ce voyage en groupe et accédez au programme, budget et documents partagés.">
   <meta property="og:image"       content="/logo-512.png">
   <meta property="og:locale"      content="fr_FR">
 
   <!-- Twitter / X Card -->
   <meta name="twitter:card"        content="summary">
-  <meta name="twitter:title"       content="CrewiGo — Trip partagé">
+  <meta name="twitter:title"       content="CrewiGO — Trip partagé">
   <meta name="twitter:description" content="Rejoignez ce voyage en groupe et accédez au programme, budget et documents.">
   <meta name="twitter:image"       content="/logo-512.png">
 
@@ -369,7 +369,7 @@
 <!-- ═══ WELCOME SPLASH ════════════════════════════════════════════ -->
 <div id="welcome-splash">
   <div class="ws-inner">
-    <img src="/logo-icon.png" alt="CrewiGo" class="ws-img">
+    <img src="/logo-icon.png" alt="CrewiGO" class="ws-img">
     <div class="ws-wordmark"><span class="cs-crew">Crewi</span><span class="cs-go">GO</span></div>
     <p class="ws-bienvenue">Bienvenue sur</p>
     <p class="ws-nom" id="ws-nom">…</p>
@@ -382,7 +382,7 @@
   <div class="id-card">
     <div class="id-hero">
       <div class="crewigo-logo" style="justify-content:center;gap:10px">
-        <img src="/logo-icon.png" width="48" height="48" class="crewigo-logo-img crewigo-logo-img--lg" alt="CrewiGo">
+        <img src="/logo-icon.png" width="48" height="48" class="crewigo-logo-img crewigo-logo-img--lg" alt="CrewiGO">
         <span class="logo-wordmark" style="font-size:1.4rem"><span class="logo-crew">Crewi</span><span class="logo-go">GO</span></span>
       </div>
     </div>
@@ -1164,7 +1164,7 @@ function _safeStoreIdentite(identite) {
   } catch(e) {
     // Safari navigation privée : quota 0 — fallback sessionStorage (survive au rechargement)
     try { sessionStorage.setItem(_IDENT_KEY(), val); } catch(e2) {}
-    console.warn('[CrewiGo] localStorage indisponible — identité en sessionStorage');
+    console.warn('[CrewiGO] localStorage indisponible — identité en sessionStorage');
   }
   // QW3 — backup IndexedDB (résiste à la purge iOS localStorage 7 jours)
   if (identite && identite.nom) {
@@ -4748,7 +4748,7 @@ function escHtml(t) {
 
     <div class="pwa-hero">
       <div class="pwa-icon-wrap">
-        <img src="/logo-icon.png" alt="CrewiGo">
+        <img src="/logo-icon.png" alt="CrewiGO">
       </div>
       <div class="pwa-hero-text">
         <strong>Installe l'app CrewiGO</strong>

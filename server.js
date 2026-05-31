@@ -16,7 +16,7 @@ const IS_CLOUD = db.usePostgres;
 
 // Version de l'app — doit correspondre à CACHE_VERSION dans sw.js
 // Changer ici ET dans sw.js à chaque déploiement pour forcer le rechargement
-const APP_VERSION = 'v40';
+const APP_VERSION = 'v41';
 const fs = require('fs');
 if (!process.env.JWT_SECRET && IS_CLOUD) {
   console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
@@ -50,14 +50,29 @@ app.use(cors({
   origin: allowedOrigins || true,
   methods: ['GET','POST','PUT','PATCH','DELETE']
 }));
+// S3 — Nonce CSP : généré par la directive scriptSrc et stocké dans res.locals
+// pour être injecté dans les balises <script> inline lors du rendu HTML.
+// Plus d'unsafe-inline pour script-src : chaque bloc inline porte son nonce.
+// scriptSrcAttr reste unsafe-inline car l'app utilise encore des attributs
+// onclick=/oninput= dans le HTML (refacto à prévoir en court terme).
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:    ["'self'"],
-      scriptSrc:     ["'self'", "cdn.jsdelivr.net", "'unsafe-inline'"],
+      scriptSrc:     [
+        "'self'",
+        "cdn.jsdelivr.net",
+        // Nonce généré par requête — remplace unsafe-inline pour les blocs <script>
+        (req, res) => {
+          if (!res.locals.cspNonce) {
+            res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+          }
+          return `'nonce-${res.locals.cspNonce}'`;
+        },
+      ],
       // Helmet 7 ajoute script-src-attr 'none' par défaut, ce qui bloque tous
       // les handlers onclick/oninput/... dans le HTML. On l'autorise explicitement
-      // car l'app utilise des attributs inline partout.
+      // car l'app utilise des attributs inline partout (refacto court terme).
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc:      ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "api.fontshare.com", "https://api.fontshare.com"],
       fontSrc:       ["'self'", "api.fontshare.com", "https://api.fontshare.com"],
@@ -78,9 +93,15 @@ app.use(express.json({ limit: '20mb' }));
 // no-store : le navigateur ne cache jamais ces pages HTML
 // Les URLs versionnées app.js?v=XX et style.css?v=XX garantissent le rechargement du JS/CSS
 app.get('/', (req, res) => {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-  // etag:false + lastModified:false : évite que Safari retourne 304 malgré no-store
-  res.sendFile(path.join(__dirname, 'public', 'landing.html'), { etag: false, lastModified: false });
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+    'Content-Type':  'text/html; charset=utf-8'
+  });
+  // Servi dynamiquement pour injecter le nonce CSP dans les blocs <script> inline
+  let html = fs.readFileSync(path.join(__dirname, 'public', 'landing.html'), 'utf8');
+  const nonce = res.locals.cspNonce || '';
+  if (nonce) html = html.replace(/<script>/g, `<script nonce="${nonce}">`);
+  res.end(html);
 });
 
 app.get('/app', (req, res) => {
@@ -94,9 +115,11 @@ app.get('/app', (req, res) => {
     'Content-Type':  'text/html; charset=utf-8'
   });
   let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+  const nonce = res.locals.cspNonce || '';
   html = html
     .replace('href="style.css"', `href="style.css?${APP_VERSION}"`)
     .replace('src="app.js"',     `src="app.js?${APP_VERSION}"`);
+  if (nonce) html = html.replace(/<script>/g, `<script nonce="${nonce}">`);
   res.end(html);
 });
 
@@ -449,6 +472,9 @@ app.get('/api/voyages/:id', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/voyages', authMiddleware, async (req, res) => {
+  if (!req.body.nom || !String(req.body.nom).trim()) {
+    return res.status(400).json({ error: 'Le champ nom est obligatoire' });
+  }
   try { const item = await run(() => db.voyages.create({ ...req.body, owner_id: req.user.id })); res.json({ id: item.id }); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
@@ -1849,8 +1875,8 @@ app.get('/manifest-participant/:token', (req, res) => {
 
   const manifest = {
     id: `/share/${t}`,
-    name: "CrewiGo — Mon voyage",
-    short_name: "CrewiGo",
+    name: "CrewiGO — Mon voyage",
+    short_name: "CrewiGO",
     description: "Accéder à mon voyage de groupe.",
     start_url: `/share/${t}`,
     display: "standalone",
@@ -1883,9 +1909,11 @@ async function _serveVoyagePage(req, res) {
     'Content-Type':  'text/html; charset=utf-8'
   });
   let html = fs.readFileSync(path.join(__dirname, 'public', 'partage.html'), 'utf8');
+  const nonce = res.locals.cspNonce || '';
   html = html
     .replace('href="/style.css"', `href="/style.css?${APP_VERSION}"`)
     .replace('src="/app.js"',     `src="/app.js?${APP_VERSION}"`);
+  if (nonce) html = html.replace(/<script>/g, `<script nonce="${nonce}">`);
 
   // ─── INJECTION OG DYNAMIQUE ──────────────────────────────────────────────────
   // Les bots (WhatsApp, Telegram, Slack…) ne font jamais tourner le JS —
