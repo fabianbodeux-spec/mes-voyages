@@ -2279,7 +2279,25 @@ async function chargerProgramme() {
   });
 
   if (items.length === 0) {
-    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon"><svg viewBox="0 0 24 24" fill="currentColor" width="36" height="36" style="opacity:.35"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></div><p>Aucun élément planifié</p><p style="font-size:.83rem;margin-top:6px;color:var(--text-muted)">Ajoutez des réservations ou des événements avec une date</p></div>`;
+    container.innerHTML = `<div class="empty-tab" style="padding:52px 24px">
+  <div class="empty-state-visual">
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="10" y="18" width="56" height="46" rx="9" fill="#FFF7ED"/>
+      <rect x="10" y="18" width="56" height="13" rx="9" fill="#FDBA74"/>
+      <rect x="10" y="25" width="56" height="6" fill="#FDBA74"/>
+      <rect x="20" y="40" width="36" height="5" rx="2.5" fill="#FED7AA"/>
+      <rect x="20" y="51" width="24" height="5" rx="2.5" fill="#FED7AA" opacity=".55"/>
+      <circle cx="57" cy="56" r="10" fill="#F97316" opacity=".1"/>
+      <path d="M57 51v5.5l3 2" stroke="#F97316" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>
+  </div>
+  <p class="empty-state-title" style="font-size:.95rem;margin:0 0 6px">Road Map vide</p>
+  <p class="empty-state-sub" style="margin:0 0 18px">Ajoutez des étapes, hébergements et activités pour construire le programme du voyage.</p>
+  <button class="empty-state-cta" onclick="ouvrirModalAgenda()">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+    Ajouter une étape
+  </button>
+</div>`;
     return;
   }
 
@@ -3277,7 +3295,24 @@ function afficherDepenses(depenses, participants) {
   participants.forEach(p => { byId[p.id] = p; });
 
   if (depenses.length === 0) {
-    container.innerHTML = `<div class="empty-tab"><div class="empty-tab-icon">${cgoIcon('wallet',40)}</div><p>Aucune dépense enregistrée</p></div>`;
+    container.innerHTML = `<div class="empty-tab" style="padding:52px 24px">
+  <div class="empty-state-visual">
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="8" y="22" width="60" height="40" rx="10" fill="#FFF7ED"/>
+      <rect x="8" y="32" width="60" height="12" fill="#FDBA74" opacity=".45"/>
+      <rect x="16" y="47" width="18" height="8" rx="4" fill="#F97316" opacity=".25"/>
+      <rect x="38" y="47" width="12" height="8" rx="4" fill="#F97316" opacity=".15"/>
+      <circle cx="58" cy="28" r="11" fill="#FFF7ED" stroke="#FDBA74" stroke-width="1.5"/>
+      <path d="M58 23.5v5h3.5" stroke="#F97316" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>
+  </div>
+  <p class="empty-state-title" style="font-size:.95rem;margin:0 0 6px">Aucune dépense</p>
+  <p class="empty-state-sub" style="margin:0 0 18px">Enregistrez les dépenses du groupe pour calculer automatiquement qui doit combien à qui.</p>
+  <button class="empty-state-cta" onclick="ouvrirModalDepense()">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+    Ajouter une dépense
+  </button>
+</div>`;
     return;
   }
 
@@ -4209,7 +4244,17 @@ async function supprimerAttribution(id) {
 // ─── MODALS & BOTTOM SHEET ───────────────────────────
 
 function fermerModal(id) {
-  document.getElementById(id).classList.add('hidden');
+  const overlay = document.getElementById(id);
+  if (!overlay || overlay.classList.contains('hidden')) return;
+  // Animation de fermeture — on retire hidden après que l'anim CSS soit terminée
+  overlay.classList.add('modal-closing');
+  const inner = overlay.querySelector('.modal');
+  const hide = () => {
+    overlay.classList.remove('modal-closing');
+    overlay.classList.add('hidden');
+  };
+  if (inner) inner.addEventListener('animationend', hide, { once: true });
+  else setTimeout(hide, 200); // fallback si .modal est absent
 }
 
 // Modale de confirmation custom (Promise<bool>). Remplace confirm() qui est
@@ -4228,7 +4273,15 @@ function _confirmModal({ title = 'Confirmer', message = '', confirmLabel = 'Conf
         </div>
       </div>`;
     document.body.appendChild(overlay);
-    const done = (val) => { document.removeEventListener('keydown', onKey); overlay.remove(); resolve(val); };
+    const done = (val) => {
+      document.removeEventListener('keydown', onKey);
+      // Animation de fermeture avant de retirer l'overlay du DOM
+      overlay.classList.add('modal-closing');
+      const inner = overlay.querySelector('.modal');
+      const remove = () => { overlay.remove(); resolve(val); };
+      if (inner) inner.addEventListener('animationend', remove, { once: true });
+      else setTimeout(remove, 200);
+    };
     const onKey = (e) => { if (e.key === 'Escape') done(false); };
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) return done(false);

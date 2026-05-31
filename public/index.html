@@ -516,9 +516,18 @@
 
           <!-- Grille -->
           <div id="adm-photos-grid" class="photos-grid"></div>
-          <div id="adm-photos-empty" class="empty-state" style="display:none;padding-top:32px">
-            <div style="font-size:2.2rem;margin-bottom:8px">📷</div>
-            <p style="color:var(--text-muted);font-size:.88rem">Soyez les premiers à partager une photo !</p>
+          <div id="adm-photos-empty" class="empty-tab" style="display:none;padding:40px 24px">
+            <div class="empty-state-visual">
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect x="8" y="20" width="64" height="46" rx="10" fill="#FFF7ED"/>
+                <circle cx="26" cy="34" r="6" fill="#FDBA74" opacity=".6"/>
+                <path d="M8 54l18-14 12 12 10-8 24 18" stroke="#FDBA74" stroke-width="2" stroke-linejoin="round" fill="none" opacity=".5"/>
+                <circle cx="56" cy="26" r="10" fill="#F97316" opacity=".1"/>
+                <path d="M56 21.5v5l3 2" stroke="#F97316" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </div>
+            <p class="empty-state-title" style="font-size:.95rem;margin:0 0 6px">Aucune photo</p>
+            <p class="empty-state-sub" style="margin:0">Soyez les premiers à immortaliser ce voyage !</p>
           </div>
 
         </div><!-- /crewipics-main -->

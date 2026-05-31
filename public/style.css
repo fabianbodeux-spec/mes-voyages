@@ -1,4 +1,33 @@
-@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800,900,400i,700i,800i&display=swap');
+/* ── Satoshi — police auto-hébergée (plus de dépendance CDN externe) ─────── */
+/* Fichiers WOFF2 servis depuis /fonts/ : pas de requête tierce au chargement  */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-700.woff2') format('woff2');
+  font-weight: 600 700;  /* couvre 600 et 700 */
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-900.woff2') format('woff2');
+  font-weight: 800 900;  /* couvre 800 et 900 */
+  font-style: normal;
+  font-display: swap;
+}
 
 /* ═══════════════════════════════════════════════════════════════
    CREWIGO — Minimal UI
@@ -1879,7 +1908,31 @@ body {
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut   { from { opacity: 1; } to { opacity: 0; } }
+
+/* ── Animations de fermeture des modales ─────────────────────── */
+.modal-overlay.modal-closing {
+  animation: fadeOut 0.16s ease forwards;
+  pointer-events: none;
+}
+.modal-overlay.modal-closing .modal {
+  animation: slideDown 0.16s cubic-bezier(0.4,0,1,1) forwards;
+}
+@keyframes slideDown {
+  from { transform: translateY(0);   opacity: 1; }
+  to   { transform: translateY(48px); opacity: 0; }
+}
+/* Tablette/desktop : les modales sont centrées → shrink plutôt que slide */
+@media (min-width: 640px) {
+  .modal-overlay.modal-closing .modal {
+    animation: scaleOut 0.16s cubic-bezier(0.4,0,1,1) forwards;
+  }
+  @keyframes scaleOut {
+    from { transform: scale(1);    opacity: 1; }
+    to   { transform: scale(0.94); opacity: 0; }
+  }
+}
 
 .modal {
   background: var(--card);
