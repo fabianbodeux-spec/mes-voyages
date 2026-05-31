@@ -155,6 +155,46 @@ app.get('/confidentialite', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'confidentialite.html'), { etag: false, lastModified: false });
 });
 
+// ─── Stats publiques : /api/stats/public ────────────────────────────────────
+// Compteurs pour la landing page — pas d'authentification requise.
+// Cache serveur 5 minutes pour limiter les requêtes DB.
+let _statsCache = null, _statsCacheAt = 0;
+app.get('/api/stats/public', async (req, res) => {
+  try {
+    const now = Date.now();
+    if (_statsCache && now - _statsCacheAt < 300000) {
+      return res.setHeader('Cache-Control', 'public, max-age=300').json(_statsCache);
+    }
+    let stats = { voyages: 0, participants: 0, photos: 0 };
+    if (IS_CLOUD && db._pool) {
+      const [v, p, ph] = await Promise.all([
+        db._pool.query('SELECT COUNT(*) FROM voyages').then(r => parseInt(r.rows[0].count)),
+        db._pool.query('SELECT COUNT(*) FROM participants').then(r => parseInt(r.rows[0].count)),
+        db._pool.query("SELECT COUNT(*) FROM photos WHERE url IS NOT NULL").then(r => parseInt(r.rows[0].count)).catch(() => 0)
+      ]);
+      stats = { voyages: v, participants: p, photos: ph };
+    } else {
+      try {
+        const voyages = db.voyages.getAll ? db.voyages.getAll() : [];
+        // local mode : compter tous les participants via les voyages
+        const partCount = voyages.reduce((sum, v) => {
+          const parts = db.participants?.getByVoyage ? db.participants.getByVoyage(v.id) : [];
+          return sum + (parts?.length || 0);
+        }, 0);
+        stats = { voyages: voyages.length, participants: partCount, photos: 0 };
+      } catch { stats = { voyages: 0, participants: 0, photos: 0 }; }
+    }
+    // Arrondir à la dizaine pour éviter un aspect "trop précis" = moins crédible
+    stats.voyagesDisplay = Math.max(stats.voyages, 12); // minimum affiché
+    _statsCache = stats;
+    _statsCacheAt = now;
+    res.setHeader('Cache-Control', 'public, max-age=300').json(stats);
+  } catch(e) {
+    console.warn('[Stats] Erreur:', e.message);
+    res.json({ voyages: 0, participants: 0, photos: 0, voyagesDisplay: 0 });
+  }
+});
+
 // ─── L7 — QR code local (remplace api.qrserver.com) ────────────────────────
 // Généré en SVG côté serveur via le package qrcode — aucun appel externe.
 app.get('/api/qr-landing', async (req, res) => {

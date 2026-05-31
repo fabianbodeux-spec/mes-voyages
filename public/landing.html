@@ -1082,6 +1082,23 @@
     .footer-links a:hover { color: var(--accent); }
 
   /* ─── SOCIAL PROOF ─── */
+  .stats-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    background: rgba(249,115,22,0.08);
+    border: 1px solid rgba(249,115,22,0.2);
+    border-radius: 16px;
+    padding: 16px 24px;
+    margin: 28px auto 0;
+    max-width: 480px;
+  }
+  .stats-bar-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .stats-bar-val { font-size: 1.6rem; font-weight: 900; color: #F97316; letter-spacing: -.03em; line-height: 1; }
+  .stats-bar-lbl { font-size: .72rem; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .05em; }
+  .stats-bar-sep { width: 1px; height: 32px; background: rgba(255,255,255,.12); margin: 0 16px; flex-shrink: 0; }
+
   .testimonials-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -1596,6 +1613,24 @@
       <h2 class="section-title reveal">Des crews qui ont<br /><span style="color:var(--accent)">sauté le pas.</span></h2>
       <p class="section-sub reveal">Testeurs bêta — retours authentiques sur leurs premiers voyages avec CrewiGO.</p>
 
+      <!-- Stats dynamiques -->
+      <div id="stats-bar" class="stats-bar reveal" style="display:none">
+        <div class="stats-bar-item">
+          <span class="stats-bar-val" id="stat-voyages">—</span>
+          <span class="stats-bar-lbl">voyages créés</span>
+        </div>
+        <div class="stats-bar-sep"></div>
+        <div class="stats-bar-item">
+          <span class="stats-bar-val" id="stat-participants">—</span>
+          <span class="stats-bar-lbl">voyageurs</span>
+        </div>
+        <div class="stats-bar-sep"></div>
+        <div class="stats-bar-item">
+          <span class="stats-bar-val">100%</span>
+          <span class="stats-bar-lbl">gratuit</span>
+        </div>
+      </div>
+
       <div class="testimonials-grid">
 
         <div class="testimonial-card reveal">
@@ -1997,6 +2032,36 @@
         }, 600);
       }
     }
+  </script>
+
+  <script>
+    // ── Stats dynamiques landing (L5) ──────────────────────────────────────────
+    (function() {
+      function animateCount(el, target, duration) {
+        if (!el || target <= 0) return;
+        const start = Date.now();
+        const step = () => {
+          const p = Math.min((Date.now() - start) / duration, 1);
+          const ease = 1 - Math.pow(1 - p, 3);
+          el.textContent = Math.round(ease * target).toLocaleString('fr-BE');
+          if (p < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+      fetch('/api/stats/public')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data || (!data.voyages && !data.participants)) return;
+          const bar = document.getElementById('stats-bar');
+          const vEl = document.getElementById('stat-voyages');
+          const pEl = document.getElementById('stat-participants');
+          const v = Math.max(data.voyages || 0, data.voyagesDisplay || 0);
+          const p = data.participants || 0;
+          if (v > 0) { bar.style.display = 'flex'; animateCount(vEl, v, 1200); }
+          if (p > 0) animateCount(pEl, p, 1400);
+        })
+        .catch(() => {});
+    })();
   </script>
 
 </body>
