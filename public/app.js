@@ -137,6 +137,37 @@ async function initAuth() {
 
   // Aucun token → écran de connexion
   if (!_authToken) {
+    // ── AP-2 : Redirect standalone participant PWA ──────────────────────────
+    // Un participant (sans compte organisateur) qui a installé la PWA depuis /
+    // ou depuis /app se retrouve sur l'écran de login alors qu'il a déjà rejoint
+    // un voyage via un lien de partage. Si son identité de participant est
+    // stockée (partage_id_TOKEN) et que l'app est en mode standalone, on le
+    // redirige directement vers sa page participant plutôt que d'afficher le login.
+    const _isStandalonePWA = window.matchMedia('(display-mode: standalone)').matches
+                          || window.navigator.standalone === true;
+    if (_isStandalonePWA) {
+      try {
+        // Prendre le token le plus récent (dernier accès)
+        // partage_id_TOKEN → storé dans partage.html quand le participant rejoint
+        let _bestToken = null;
+        let _bestTs    = 0;
+        for (let _i = 0; _i < localStorage.length; _i++) {
+          const _k = localStorage.key(_i);
+          if (_k && _k.startsWith('partage_id_')) {
+            const _token = _k.slice('partage_id_'.length);
+            if (!_token) continue;
+            // Préférer le token avec le ts le plus élevé (accès_*) si disponible,
+            // sinon prendre le premier trouvé
+            const _ts = parseInt(localStorage.getItem('partage_ts_' + _token) || '0', 10);
+            if (!_bestToken || _ts > _bestTs) { _bestToken = _token; _bestTs = _ts; }
+          }
+        }
+        if (_bestToken) {
+          window.location.replace('/share/' + _bestToken);
+          return;
+        }
+      } catch {}
+    }
     _showAuthScreen();
     if (authParam === 'register' || authParam === 'login') switchAuthForm(authParam);
     // Pré-remplir l'email si redirigé depuis une page de partage (magic link)
@@ -5007,6 +5038,8 @@ async function _rejoindreVoyageConfirme() {
       sessionToken:   data.sessionToken,
       role:           'owner',
     }));
+    // AP-2 : horodatage pour sélectionner le token le plus récent en mode standalone
+    try { localStorage.setItem('partage_ts_' + _shareTokenCourant, String(Date.now())); } catch {}
 
     // Mettre à jour la barre de mode participant (au cas où l'user resterait sur /app)
     _updateParticipantModeBar();

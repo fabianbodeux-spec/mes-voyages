@@ -1162,6 +1162,8 @@ function _safeStoreIdentite(identite) {
   const val = JSON.stringify(identite);
   try {
     localStorage.setItem(_IDENT_KEY(), val);
+    // AP-2 : horodatage pour que l'app principale sache quel token est le plus récent
+    localStorage.setItem('partage_ts_' + _partageToken, String(Date.now()));
   } catch(e) {
     // Safari navigation privée : quota 0 — fallback sessionStorage (survive au rechargement)
     try { sessionStorage.setItem(_IDENT_KEY(), val); } catch(e2) {}
@@ -1187,6 +1189,7 @@ function _safeGetIdentite() {
 
 function _safeRemoveIdentite() {
   try { localStorage.removeItem(_IDENT_KEY()); } catch(e) {}
+  try { localStorage.removeItem('partage_ts_' + _partageToken); } catch(e) {}
   try { sessionStorage.removeItem(_IDENT_KEY()); } catch(e) {}
 }
 
@@ -1356,7 +1359,11 @@ async function _initPartage() {
     const resp = await fetch('/api/partage/' + _partageToken);
 
     if (!resp.ok) {
-      // Lien invalide : cacher le splash immédiatement et afficher l'erreur
+      // Lien invalide ou révoqué : nettoyer localStorage pour éviter une boucle AP-2
+      // (l'app principale redirige standalone participants vers ce token ; si révoqué,
+      //  la page détecte le 404, efface l'identité et le prochain lancement ne redirigera plus)
+      _safeRemoveIdentite();
+      // Cacher le splash et afficher l'erreur
       _cacherWelcomeSplash(() => {
         document.getElementById('id-overlay').innerHTML =
           '<div class="id-card"><div class="id-hero">🔒</div>' +
