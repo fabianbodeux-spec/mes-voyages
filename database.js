@@ -88,6 +88,7 @@ const localDB = {
     }
   },
   voyages: {
+    getAllForReminders: () => charger('voyages').filter(v => v.date_debut && v.statut !== 'terminé'),
     getAll: () => charger('voyages').sort((a,b) => (a.date_debut||'').localeCompare(b.date_debut||'')),
     getAllWithSummary: () => {
       const voyages = charger('voyages').sort((a,b) => (a.date_debut||'').localeCompare(b.date_debut||''));
@@ -656,6 +657,7 @@ const pgDB = pgPool ? {
     }
   },
   voyages: {
+    getAllForReminders: async () => (await pgPool.query("SELECT id, nom, destination, date_debut, statut FROM voyages WHERE date_debut IS NOT NULL AND statut <> 'terminé' ORDER BY date_debut ASC")).rows,
     getAll: async (ownerId) => (await pgPool.query('SELECT * FROM voyages WHERE owner_id=$1 ORDER BY date_debut ASC NULLS LAST', [ownerId])).rows,
     getAllWithSummary: async (ownerId) => {
       const { rows } = await pgPool.query(`

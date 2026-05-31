@@ -1290,6 +1290,50 @@ async function pushToAll(voyageId, payload) {
   }
 }
 
+// ─── Rappel de départ : notification J-1 ────────────────────────────────────
+// Tourne toutes les heures. Envoie un push aux abonnés des voyages qui
+// commencent demain, sauf si le rappel a déjà été envoyé ce jour-là.
+// On stocke l'état dans un Set en mémoire (redémarrage = reset, acceptable).
+const _departureReminderSent = new Set(); // "voyageId_YYYY-MM-DD"
+
+async function _checkDepartureReminders() {
+  if (!process.env.VAPID_PUBLIC_KEY) return; // push désactivé
+  try {
+    const voyages = await run(() => db.voyages.getAllForReminders()).catch(() => []);
+    if (!voyages || !voyages.length) return;
+
+    const now      = new Date();
+    const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const todayStr    = now.toISOString().split('T')[0];
+
+    for (const v of voyages) {
+      if (!v.date_debut || v.statut === 'terminé') continue;
+      const debutStr = String(v.date_debut).split('T')[0];
+      if (debutStr !== tomorrowStr) continue;
+
+      const key = `${v.id}_${todayStr}`;
+      if (_departureReminderSent.has(key)) continue;
+      _departureReminderSent.add(key);
+
+      const dest = v.destination ? ` · ${v.destination}` : '';
+      await pushToAll(v.id, {
+        title: `✈️ Départ demain ! — ${v.nom}`,
+        body: `Votre voyage commence demain${dest}. Bon voyage ! 🌍`,
+        tag: `departure-${v.id}-${todayStr}`,
+        url: '/'
+      });
+      console.log(`[Push] Rappel départ envoyé — voyage ${v.id} (${v.nom})`);
+    }
+  } catch(e) {
+    console.warn('[Push] Erreur rappel départ:', e.message);
+  }
+}
+
+// Lancer le check au démarrage (après 30s) puis toutes les heures
+setTimeout(() => _checkDepartureReminders(), 30000);
+setInterval(() => _checkDepartureReminders(), 3600000);
+
 app.get('/api/push/vapid-key', (req, res) => {
   res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || 'BCV64icXiouIl1g8KVeaEyGMLbhD0M5RFx_qDc5LGiAbIS49-QGP1XOeQWnLEGUnOfmMBH6dQbn20J1sekxQWF0' });
 });

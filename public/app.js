@@ -666,11 +666,25 @@ async function _initPushAdmin(voyageId) {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
+      // Demander l'autorisation via une modale explicative si c'est la première fois
+      if (Notification.permission === 'default') {
+        const notifKey = `push_prompted_${voyageId}`;
+        if (!localStorage.getItem(notifKey)) {
+          localStorage.setItem(notifKey, '1');
+          const ok = await _confirmModal({
+            title: '🔔 Activer les rappels ?',
+            message: 'Reçois une notification la veille du départ et dès qu\'un nouveau participant rejoint ton voyage.',
+            confirmLabel: 'Activer',
+            danger: false
+          });
+          if (!ok) return;
+        }
+      }
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') return;
       const { publicKey } = await fetch(`${API}/api/push/vapid-key`).then(r => r.json());
       sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
-      toast('🔔 Notifications activées');
+      toast('🔔 Rappels activés');
     }
     await fetch(`${API}/api/push/subscribe/${voyageId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub)
