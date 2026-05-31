@@ -1520,5 +1520,63 @@
     </div>
   </div>
 </div>
+
+<!-- ═══ ONBOARDING OVERLAY (premier lancement) ═══ -->
+<div id="onboarding-overlay" class="onboarding-overlay hidden" role="dialog" aria-modal="true" aria-label="Bienvenue sur CrewiGO">
+  <div class="onboarding-inner">
+
+    <!-- Skip button -->
+    <button class="onboarding-skip" id="onboarding-skip" aria-label="Passer l'introduction">Passer</button>
+
+    <!-- Slides -->
+    <div class="onboarding-slides" id="onboarding-slides">
+
+      <!-- Slide 1 -->
+      <div class="onboarding-slide" data-slide="0">
+        <div class="onboarding-visual">
+          <div class="onboarding-blob" style="--blob-color:#F97316"></div>
+          <div class="onboarding-emoji">✈️</div>
+        </div>
+        <h2 class="onboarding-title">Lance ton trip<br>en 30 secondes</h2>
+        <p class="onboarding-body">Dates, destination, compagnons de route — crée ton voyage en quelques taps et partage-le instantanément avec tout le groupe.</p>
+      </div>
+
+      <!-- Slide 2 -->
+      <div class="onboarding-slide" data-slide="1">
+        <div class="onboarding-visual">
+          <div class="onboarding-blob" style="--blob-color:#8B5CF6"></div>
+          <div class="onboarding-emoji">👥</div>
+        </div>
+        <h2 class="onboarding-title">Invite ton crew<br>d'un lien</h2>
+        <p class="onboarding-body">Partage un lien magique — chaque membre accède au programme, aux réservations, au budget et aux photos. Sans inscription requise.</p>
+      </div>
+
+      <!-- Slide 3 -->
+      <div class="onboarding-slide" data-slide="2">
+        <div class="onboarding-visual">
+          <div class="onboarding-blob" style="--blob-color:#10B981"></div>
+          <div class="onboarding-emoji">📱</div>
+        </div>
+        <h2 class="onboarding-title">Tout en un endroit,<br>même hors ligne</h2>
+        <p class="onboarding-body">Road Map, dépenses partagées, chat, photos — une seule app pour tout gérer, accessible sans réseau une fois installée.</p>
+      </div>
+
+    </div><!-- /.onboarding-slides -->
+
+    <!-- Dots indicator -->
+    <div class="onboarding-dots" id="onboarding-dots">
+      <span class="onboarding-dot active" data-dot="0"></span>
+      <span class="onboarding-dot" data-dot="1"></span>
+      <span class="onboarding-dot" data-dot="2"></span>
+    </div>
+
+    <!-- CTA -->
+    <button class="btn-primary onboarding-cta" id="onboarding-cta" style="width:100%">
+      Suivant →
+    </button>
+
+  </div><!-- /.onboarding-inner -->
+</div><!-- /#onboarding-overlay -->
+
 </body>
 </html>

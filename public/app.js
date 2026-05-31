@@ -848,6 +848,101 @@ function _appliquerPhoto(voyageId, photoUrl) {
   tmp.src = photoUrl;
 }
 
+// ─── ONBOARDING ──────────────────────────────────────────────────────────────
+const _OB_KEY = 'crewigo_onboarding_done';
+
+/** Affiche l'onboarding si l'utilisateur ne l'a pas encore vu. */
+function _maybeShowOnboarding() {
+  try { if (localStorage.getItem(_OB_KEY)) return; } catch {}
+  const overlay = document.getElementById('onboarding-overlay');
+  if (!overlay) return;
+
+  let _obSlide = 0;
+  const TOTAL  = 3;
+  const slides = overlay.querySelectorAll('.onboarding-slide');
+  const dots   = overlay.querySelectorAll('.onboarding-dot');
+  const cta    = document.getElementById('onboarding-cta');
+  const skip   = document.getElementById('onboarding-skip');
+
+  // Activer le premier slide
+  slides[0]?.classList.add('active');
+
+  function _goTo(n, dir = 1) {
+    // Sortie du slide courant
+    slides[_obSlide]?.classList.remove('active');
+    slides[_obSlide]?.classList.add(dir >= 0 ? 'exit-left' : '');
+    dots[_obSlide]?.classList.remove('active');
+
+    _obSlide = n;
+
+    // Entrée du nouveau slide (reset state d'abord)
+    const next = slides[_obSlide];
+    if (next) {
+      next.style.transform   = dir >= 0 ? 'translateX(40px)' : 'translateX(-40px)';
+      next.style.opacity     = '0';
+      next.classList.remove('exit-left');
+      next.classList.add('active');
+      // Forcer reflow, puis laisser la transition CSS s'exécuter
+      void next.offsetWidth;
+      next.style.transform = '';
+      next.style.opacity   = '';
+    }
+    dots[_obSlide]?.classList.add('active');
+
+    // Libérer les exits
+    slides.forEach(s => { if (!s.classList.contains('active')) s.classList.remove('exit-left'); });
+
+    // Mettre à jour le bouton CTA
+    if (cta) cta.textContent = _obSlide === TOTAL - 1 ? 'Lancer mon premier trip 🚀' : 'Suivant →';
+  }
+
+  function _close() {
+    try { localStorage.setItem(_OB_KEY, '1'); } catch {}
+    overlay.classList.add('fading');
+    setTimeout(() => { overlay.classList.add('hidden'); overlay.classList.remove('fading'); }, 350);
+    // Focus sur le bouton "Créer" de l'empty state
+    setTimeout(() => { document.getElementById('empty-create-btn')?.focus(); }, 400);
+  }
+
+  // CTA
+  cta?.addEventListener('click', () => {
+    if (_obSlide < TOTAL - 1) _goTo(_obSlide + 1);
+    else _close();
+  });
+
+  // Skip
+  skip?.addEventListener('click', _close);
+
+  // Dots navigation
+  dots.forEach((dot, i) => {
+    dot.addEventListener('click', () => { if (i !== _obSlide) _goTo(i, i > _obSlide ? 1 : -1); });
+  });
+
+  // Swipe support (touch + pointeur)
+  let _swipeStartX = null;
+  overlay.addEventListener('pointerdown', e => { _swipeStartX = e.clientX; }, { passive: true });
+  overlay.addEventListener('pointerup', e => {
+    if (_swipeStartX === null) return;
+    const dx = e.clientX - _swipeStartX;
+    _swipeStartX = null;
+    if (Math.abs(dx) < 50) return;
+    if (dx < 0 && _obSlide < TOTAL - 1) _goTo(_obSlide + 1, 1);
+    else if (dx > 0 && _obSlide > 0)    _goTo(_obSlide - 1, -1);
+  }, { passive: true });
+
+  // Keyboard navigation
+  overlay.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') { if (_obSlide < TOTAL - 1) _goTo(_obSlide + 1); }
+    if (e.key === 'ArrowLeft')  { if (_obSlide > 0)         _goTo(_obSlide - 1, -1); }
+    if (e.key === 'Escape')     _close();
+  });
+
+  // Afficher l'overlay
+  overlay.classList.remove('hidden');
+  overlay.setAttribute('tabindex', '-1');
+  overlay.focus();
+}
+
 // Participations liées au compte admin (chargées en parallèle avec les voyages admin)
 let _myParticipations = [];
 // Vrai quand le dashboard mélange voyages organisés + participations → on affiche
@@ -890,6 +985,8 @@ async function chargerVoyages() {
     container.innerHTML = '';
     empty.classList.remove('hidden');
     if (joinBar) joinBar.classList.add('hidden');
+    // Premier lancement : afficher l'onboarding si pas encore vu
+    _maybeShowOnboarding();
     return;
   }
   empty.classList.add('hidden');
@@ -1142,6 +1239,13 @@ let _createTripType = null;
 let _splashT1 = null, _splashT2 = null, _splashT3 = null;
 
 function ouvrirCreateTrip() {
+  // Marquer l'onboarding comme terminé si on crée un voyage depuis l'empty state
+  try { localStorage.setItem(_OB_KEY, '1'); } catch {}
+  const _ob = document.getElementById('onboarding-overlay');
+  if (_ob && !_ob.classList.contains('hidden')) {
+    _ob.classList.add('fading');
+    setTimeout(() => { _ob.classList.add('hidden'); _ob.classList.remove('fading'); }, 300);
+  }
   // ── Annuler toute séquence splash en cours ──────────────
   clearTimeout(_splashT1);
   clearTimeout(_splashT2);
