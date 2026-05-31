@@ -70,9 +70,11 @@ app.use(helmet({
           return `'nonce-${res.locals.cspNonce}'`;
         },
       ],
-      // Tous les onclick=/onchange= inline ont été supprimés du HTML (voir app.js).
-      // scriptSrcAttr peut être 'none' — Helmet 7 default, renforce la CSP.
-      scriptSrcAttr: ["'none'"],
+      // Le HTML statique est propre (0 onclick= dans index.html), mais app.js
+      // génère encore des onclick= dans des innerHTML (cards, buttons dynamiques).
+      // 'unsafe-inline' requis pour ces attributs inline générés par JS.
+      // TODO : migrer les 53 onclick= restants en app.js vers event delegation.
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc:      ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
       // Police Satoshi auto-hébergée dans /fonts/ — plus de fontshare.com en fontSrc
       fontSrc:       ["'self'"],

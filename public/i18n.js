@@ -341,6 +341,9 @@
     _applyAll();
     // Notify any listeners
     window.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
+    // Feedback toast (via global toast() if available)
+    const label = lang === 'en' ? '🌐 Language: English' : '🌐 Langue : Français';
+    if (typeof window.toast === 'function') window.toast(label);
   }
 
   /** Toggle between fr and en. */
