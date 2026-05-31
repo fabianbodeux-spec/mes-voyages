@@ -4496,3 +4496,17 @@ textarea { resize: vertical; line-height: 1.6; }
 
 /* CTA */
 .onboarding-cta { font-size: 1rem; padding: 16px; border-radius: 14px; font-weight: 700; }
+
+/* ── Language toggle button ─────────────────────────────────────────────────── */
+.lang-toggle-btn {
+  background: none; border: 1px solid var(--border-solid);
+  border-radius: 20px; padding: 4px 10px;
+  font-size: .75rem; font-weight: 600; cursor: pointer;
+  color: var(--text-muted); font-family: var(--font-body);
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap; line-height: 1.5;
+}
+.lang-toggle-btn:hover {
+  background: var(--border); color: var(--text);
+  border-color: var(--accent);
+}

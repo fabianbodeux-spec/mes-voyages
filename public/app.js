@@ -892,8 +892,9 @@ function _maybeShowOnboarding() {
     // Libérer les exits
     slides.forEach(s => { if (!s.classList.contains('active')) s.classList.remove('exit-left'); });
 
-    // Mettre à jour le bouton CTA
-    if (cta) cta.textContent = _obSlide === TOTAL - 1 ? 'Lancer mon premier trip 🚀' : 'Suivant →';
+    // Mettre à jour le bouton CTA (i18n si disponible)
+    const _tFn = window.t || (k => k);
+    if (cta) cta.textContent = _obSlide === TOTAL - 1 ? _tFn('ob.start') : _tFn('ob.next');
   }
 
   function _close() {
@@ -936,6 +937,13 @@ function _maybeShowOnboarding() {
     if (e.key === 'ArrowLeft')  { if (_obSlide > 0)         _goTo(_obSlide - 1, -1); }
     if (e.key === 'Escape')     _close();
   });
+
+  // Re-apply translations when language changes
+  window.addEventListener('langchange', () => {
+    if (window.i18n) window.i18n.apply(overlay);
+    const _tFn = window.t || (k => k);
+    if (cta) cta.textContent = _obSlide === TOTAL - 1 ? _tFn('ob.start') : _tFn('ob.next');
+  }, { once: false });
 
   // Afficher l'overlay
   overlay.classList.remove('hidden');
