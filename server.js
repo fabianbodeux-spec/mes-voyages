@@ -16,7 +16,7 @@ const IS_CLOUD = db.usePostgres;
 
 // Version de l'app — doit correspondre à CACHE_VERSION dans sw.js
 // Changer ici ET dans sw.js à chaque déploiement pour forcer le rechargement
-const APP_VERSION = 'v41';
+const APP_VERSION = 'v42';
 const fs = require('fs');
 if (!process.env.JWT_SECRET && IS_CLOUD) {
   console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
@@ -89,6 +89,16 @@ app.use(helmet({
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 app.use(express.json({ limit: '20mb' }));
+
+// ─── FILET DE SÉCURITÉ : rate limit global sur /api/* (120 req/min/IP) ───────
+// Appliqué après la déclaration des helpers rate-limit (plus bas dans le fichier),
+// mais le middleware est enregistré ici pour couvrir toutes les routes API.
+app.use('/api/', (req, res, next) => {
+  if (!checkApiRate(req.ip)) {
+    return res.status(429).json({ error: 'Trop de requêtes, réessaie dans une minute' });
+  }
+  next();
+});
 
 // ─── ROUTES PRINCIPALES (avant express.static pour éviter que index.html soit servi sur /) ──
 // no-store : le navigateur ne cache jamais ces pages HTML
@@ -222,11 +232,36 @@ function checkMagicLinkRate(ip) {
   return rec.count <= 5;
 }
 
+// Rate-limiter pour les commentaires publics (CrewiChat participants) : 20 / 5 min / IP+token
+const _chatAttempts = new Map();
+function checkChatRate(ip, token) {
+  const key = `${ip}:${token}`;
+  const now = Date.now();
+  let rec = _chatAttempts.get(key);
+  if (!rec || now > rec.resetAt) rec = { count: 0, resetAt: now + 5 * 60_000 };
+  rec.count++;
+  _chatAttempts.set(key, rec);
+  return rec.count <= 20;
+}
+
+// Rate-limiter général API : 120 req / min / IP (filet de sécurité global)
+const _apiRate = new Map();
+function checkApiRate(ip) {
+  const now = Date.now();
+  let rec = _apiRate.get(ip);
+  if (!rec || now > rec.resetAt) rec = { count: 0, resetAt: now + 60_000 };
+  rec.count++;
+  _apiRate.set(ip, rec);
+  return rec.count <= 120;
+}
+
 // S4 — Nettoyage périodique des Maps de rate-limiting (évite les fuites mémoire)
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of _authAttempts)      { if (now > v.resetAt) _authAttempts.delete(k); }
   for (const [k, v] of _magicLinkAttempts) { if (now > v.resetAt) _magicLinkAttempts.delete(k); }
+  for (const [k, v] of _chatAttempts)      { if (now > v.resetAt) _chatAttempts.delete(k); }
+  for (const [k, v] of _apiRate)           { if (now > v.resetAt) _apiRate.delete(k); }
 }, 3_600_000); // toutes les heures
 
 // Middleware JWT — skip en mode local (JSON files)
@@ -704,8 +739,22 @@ app.post('/api/voyages/:id/participants', authMiddleware, requireVoyageOwner(), 
   try {
     const { nom, couleur, pin } = req.body;
     if (!nom?.trim()) return res.status(400).json({ error: 'Nom requis' });
+    const nomNorm = _toTitleCase(nom.trim()).slice(0, 50);
+
+    // Déduplication : avertir si un participant du même prénom (casse normalisée) existe déjà
+    const existing = await run(() => db.participants.getByVoyage(req.params.id));
+    const duplicate = existing.find(p =>
+      p.nom.toLowerCase().trim() === nomNorm.toLowerCase()
+    );
+    if (duplicate) {
+      return res.status(409).json({
+        error: `Un participant nommé "${duplicate.nom}" existe déjà dans ce voyage`,
+        duplicateId: duplicate.id
+      });
+    }
+
     const payload = {
-      nom: _toTitleCase(nom).slice(0, 50),  // P4 : normalise casse titre
+      nom: nomNorm,
       couleur: couleur || '#6366F1',
       pin: await hashPin(pin),
       // 'role' volontairement exclu — toujours 'participant' par défaut
@@ -1398,6 +1447,10 @@ app.get('/api/partage/:token/commentaires', async (req, res) => {
 });
 
 app.post('/api/partage/:token/commentaires', async (req, res) => {
+  // S4-ext — Rate limit : 20 messages / 5 min / IP+token (anti-spam public)
+  if (!checkChatRate(req.ip, req.params.token)) {
+    return res.status(429).json({ error: 'Trop de messages, attends quelques minutes' });
+  }
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });

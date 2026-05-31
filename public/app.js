@@ -3328,7 +3328,7 @@ function afficherParticipants(participants) {
     return;
   }
   container.innerHTML = `<div class="avatars-row">${participants.map(p => `
-    <div class="avatar-chip">
+    <div class="avatar-chip" data-participant-id="${p.id}">
       <div class="avatar" style="background:${p.couleur}">${h(p.nom[0].toUpperCase())}</div>
       <span class="avatar-nom">${h(p.nom)}</span>
       <button class="avatar-pin ${p.pin ? 'has-pin' : ''}" title="${p.pin ? 'Modifier le PIN' : 'Ajouter un PIN'}"
@@ -3552,7 +3552,25 @@ async function sauvegarderParticipant() {
       body: JSON.stringify({ nom, couleur: document.getElementById('p-couleur').value, pin })
     });
     if (!r.ok) {
-      const msg = await r.text().catch(() => '');
+      if (r.status === 409) {
+        const data = await r.json().catch(() => ({}));
+        toast(`⚠️ "${nom}" est déjà dans le crew`);
+        // Highlight the existing participant if duplicateId provided
+        if (data.duplicateId) {
+          fermerModal('modal-participant');
+          setTimeout(() => {
+            const el = document.querySelector(`[data-participant-id="${data.duplicateId}"]`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.classList.add('highlight-pulse');
+              setTimeout(() => el.classList.remove('highlight-pulse'), 1600);
+            }
+          }, 300);
+        }
+        return;
+      }
+      const data = await r.json().catch(() => null);
+      const msg = data?.error || '';
       toast(`❌ Erreur lors de l'ajout${msg ? ' : ' + msg : ''}`);
       return;
     }
