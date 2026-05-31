@@ -5710,6 +5710,36 @@ function _bindStaticHandlers() {
     if (target === 'bottom-sheet') fermerBottomSheet();
     else fermerModal(target);
   });
+
+  // ── Inline onclick refactor (CSP scriptSrcAttr hardening) ────────────────
+  // Tous les onclick= ont été supprimés du HTML et migrés ici.
+  _on('lang-toggle-btn',         'click', () => window.i18n?.toggleLang());
+  _on('btn-rejoindre-shortcut',  'click', rejoindreVoyage);
+  _on('btn-open-prepa',          'click', ouvrirPrepa);
+  _on('btn-import-email',        'click', ouvrirImportEmail);
+  _on('btn-crewipics-join',      'click', rejoindreVoyage);
+
+  // Zone upload photos (trigger file input)
+  _on('adm-photo-upload-zone',   'click', () => document.getElementById('adm-photo-file-input')?.click());
+  _on('adm-photo-file-input',    'change', function() { previewPhotoUploadAdmin(this); });
+  _on('adm-photo-cancel-btn',    'click', annulerUploadPhotoAdmin);
+  _on('adm-sort-chip-recent',    'click', () => _setPhotoSortAdmin('recent'));
+  _on('adm-sort-chip-likes',     'click', () => _setPhotoSortAdmin('likes'));
+
+  // Lightbox : overlay ferme, contenu bloque propagation
+  _on('adm-photo-lightbox',      'click', fermerLightboxAdmin);
+  _on('adm-lightbox-img',        'click', e => e.stopPropagation());
+  _on('adm-lightbox-info',       'click', e => e.stopPropagation());
+  _on('adm-lightbox-actions',    'click', e => e.stopPropagation());
+  _on('adm-lightbox-del',        'click', supprimerPhotoAdminLightbox);
+
+  // Wizard de création — bloc partage
+  _on('btn-confirm-share-copy',   'click', _confirmShareCopy);
+  _on('btn-confirm-share-native', 'click', _confirmShareNative);
+  _on('btn-confirm-go',           'click', _confirmGo);
+
+  // Modal rôle — empêcher fermeture par clic sur contenu
+  _on('modal-confirm-role-content', 'click', e => e.stopPropagation());
 }
 
 document.addEventListener('DOMContentLoaded', _bindStaticHandlers);

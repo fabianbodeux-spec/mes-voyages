@@ -70,10 +70,9 @@ app.use(helmet({
           return `'nonce-${res.locals.cspNonce}'`;
         },
       ],
-      // Helmet 7 ajoute script-src-attr 'none' par défaut, ce qui bloque tous
-      // les handlers onclick/oninput/... dans le HTML. On l'autorise explicitement
-      // car l'app utilise des attributs inline partout (refacto court terme).
-      scriptSrcAttr: ["'unsafe-inline'"],
+      // Tous les onclick=/onchange= inline ont été supprimés du HTML (voir app.js).
+      // scriptSrcAttr peut être 'none' — Helmet 7 default, renforce la CSP.
+      scriptSrcAttr: ["'none'"],
       styleSrc:      ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net"],
       // Police Satoshi auto-hébergée dans /fonts/ — plus de fontshare.com en fontSrc
       fontSrc:       ["'self'"],

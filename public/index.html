@@ -231,7 +231,7 @@
       </div>
       <div class="header-user">
         <span id="header-user-nom" class="header-user-nom"></span>
-        <button class="lang-toggle-btn" id="lang-toggle-btn" onclick="i18n.toggleLang()" title="Change language / Changer de langue" aria-label="Change language">
+        <button class="lang-toggle-btn" id="lang-toggle-btn" title="Change language / Changer de langue" aria-label="Change language">
           <span id="lang-toggle-label" data-i18n="btn.lang">🇬🇧 EN</span>
         </button>
         <button class="header-logout-btn" id="logout-btn" data-i18n-title="btn.logout" title="Se déconnecter" aria-label="Se déconnecter">
@@ -400,7 +400,7 @@
         <div class="budget-section-header">
           <span class="budget-section-title">Participants</span>
           <div style="display:flex;gap:6px;align-items:center">
-            <button class="btn-mini btn-mini-view" id="btn-rejoindre-shortcut" onclick="rejoindreVoyage()" title="Basculer en vue participant">
+            <button class="btn-mini btn-mini-view" id="btn-rejoindre-shortcut" title="Basculer en vue participant">
               <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
               Vue participant
             </button>
@@ -415,13 +415,13 @@
     <!-- ONGLET PROGRAMME (ancien Agenda) -->
     <div id="tab-programme" class="tab-panel">
       <div id="prepa-shortcut-strip" style="padding:10px 16px 0;display:flex;gap:8px;align-items:center">
-        <button id="btn-open-prepa" onclick="ouvrirPrepa()" style="display:inline-flex;align-items:center;gap:6px;background:rgba(249,115,22,.12);border:1.5px solid rgba(249,115,22,.35);color:var(--accent);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body)">
+        <button id="btn-open-prepa" style="display:inline-flex;align-items:center;gap:6px;background:rgba(249,115,22,.12);border:1.5px solid rgba(249,115,22,.35);color:var(--accent);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body)">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           Prépa
         </button>
       </div>
       <div class="panel-actions" style="gap:8px">
-        <button class="btn-secondary btn-icon-label" id="btn-import-email" onclick="ouvrirImportEmail()" title="Importer depuis un email de confirmation">
+        <button class="btn-secondary btn-icon-label" id="btn-import-email" title="Importer depuis un email de confirmation">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
           Importer email
         </button>
@@ -482,23 +482,21 @@
           <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:16px">
             Rejoins le crew pour poster des photos dans l'album partagé.
           </p>
-          <button class="btn-primary" onclick="rejoindreVoyage()">Rejoindre comme participant</button>
+          <button class="btn-primary" id="btn-crewipics-join">Rejoindre comme participant</button>
         </div>
 
         <!-- Session active → interface complète -->
         <div id="crewipics-main" style="display:none">
 
           <!-- Zone upload -->
-          <div id="adm-photo-upload-zone" class="photo-upload-zone"
-               onclick="document.getElementById('adm-photo-file-input').click()" style="margin-bottom:12px">
+          <div id="adm-photo-upload-zone" class="photo-upload-zone" style="margin-bottom:12px">
             <span class="upload-pill">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
               Ajouter une photo
             </span>
             <span class="upload-hint">JPEG · PNG · HEIC — max 10 Mo</span>
           </div>
-          <input type="file" id="adm-photo-file-input" accept="image/*" style="display:none"
-                 onchange="previewPhotoUploadAdmin(this)">
+          <input type="file" id="adm-photo-file-input" accept="image/*" style="display:none">
 
           <!-- Preview avant envoi -->
           <div id="adm-photo-upload-preview" style="display:none;margin-bottom:12px;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow)">
@@ -510,10 +508,10 @@
                        background:var(--bg);color:var(--text);font-size:.9rem;box-sizing:border-box">
             </div>
             <div style="display:flex;gap:8px;margin-top:10px">
-              <button type="button" onclick="annulerUploadPhotoAdmin()"
+              <button type="button" id="adm-photo-cancel-btn"
                 style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-solid);
                        background:transparent;color:var(--text);font-size:.88rem;cursor:pointer">Annuler</button>
-              <button type="button" onclick="envoyerPhotoAdmin()" id="adm-photo-send-btn"
+              <button type="button" id="adm-photo-send-btn"
                 style="flex:2;padding:10px;border-radius:10px;border:none;background:var(--accent);
                        color:#fff;font-size:.88rem;font-weight:700;cursor:pointer">📤 Partager</button>
             </div>
@@ -521,8 +519,8 @@
 
           <!-- Tri -->
           <div id="adm-photos-sort-bar" class="photos-sort-chips" style="display:none;margin-bottom:10px">
-            <button class="sort-chip active" id="adm-sort-chip-recent" onclick="_setPhotoSortAdmin('recent')">Plus récentes</button>
-            <button class="sort-chip" id="adm-sort-chip-likes" onclick="_setPhotoSortAdmin('likes')">♥ Plus likées</button>
+            <button class="sort-chip active" id="adm-sort-chip-recent">Plus récentes</button>
+            <button class="sort-chip" id="adm-sort-chip-likes">♥ Plus likées</button>
           </div>
 
           <!-- Grille -->
@@ -549,11 +547,11 @@
 </div>
 
 <!-- ═══ LIGHTBOX ADMIN CREWIPICS ═══ -->
-<div id="adm-photo-lightbox" onclick="fermerLightboxAdmin()">
-  <img id="adm-lightbox-img" src="" alt="" onclick="event.stopPropagation()">
-  <div id="adm-lightbox-info" onclick="event.stopPropagation()"></div>
-  <div style="display:flex;align-items:center;gap:14px;margin-top:14px" onclick="event.stopPropagation()">
-    <button id="adm-lightbox-del" onclick="supprimerPhotoAdminLightbox()">🗑️ Supprimer</button>
+<div id="adm-photo-lightbox">
+  <img id="adm-lightbox-img" src="" alt="">
+  <div id="adm-lightbox-info"></div>
+  <div id="adm-lightbox-actions" style="display:flex;align-items:center;gap:14px;margin-top:14px">
+    <button id="adm-lightbox-del">🗑️ Supprimer</button>
   </div>
 </div>
 
@@ -715,16 +713,16 @@
       <p class="confirm-share-label">Invite ton crew 👥</p>
       <div class="confirm-share-url-row">
         <span id="create-confirm-share-url" class="confirm-share-url"></span>
-        <button class="confirm-share-copy-btn" onclick="_confirmShareCopy()" title="Copier le lien">
+        <button class="confirm-share-copy-btn" id="btn-confirm-share-copy" title="Copier le lien">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </button>
       </div>
       <div class="confirm-share-actions">
-        <button class="btn-confirm-share" onclick="_confirmShareNative()">
+        <button class="btn-confirm-share" id="btn-confirm-share-native">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
           Partager maintenant
         </button>
-        <button class="btn-confirm-go" onclick="_confirmGo()">
+        <button class="btn-confirm-go" id="btn-confirm-go">
           Voir mon trip →
         </button>
       </div>
@@ -1278,7 +1276,7 @@
     </button>
   </div>
   <div class="sheet-actions" style="margin-top:4px">
-    <button class="sheet-action-btn" id="btn-exporter-pdf" onclick="exporterVoyagePDF()">
+    <button class="sheet-action-btn" id="btn-exporter-pdf">
       <span class="sheet-action-icon" style="background:linear-gradient(145deg,#6366F1 0%,#4338CA 100%);box-shadow:0 3px 10px rgba(99,102,241,.28)">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7H20.5v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>
       </span>
@@ -1390,7 +1388,7 @@
 
 <!-- ═══ P6 — MODAL CONFIRMATION BASCULE RÔLE ═══ -->
 <div id="modal-confirm-role-switch" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-role-title">
-  <div class="modal" style="max-width:380px;text-align:center;padding:32px 24px;border-radius:16px 16px 0 0" onclick="event.stopPropagation()">
+  <div class="modal" id="modal-confirm-role-content" style="max-width:380px;text-align:center;padding:32px 24px;border-radius:16px 16px 0 0">
     <div style="font-size:2.5rem;margin-bottom:12px">🎭</div>
     <h3 id="confirm-role-title" style="margin:0 0 10px;font-size:1.1rem">Basculer en mode participant ?</h3>
     <p style="color:var(--text-muted);font-size:14px;margin:0 0 24px;line-height:1.6">
