@@ -804,6 +804,18 @@ body {
   transition: background 0.15s;
 }
 .btn-secondary:hover { background: var(--bg-alt); }
+.btn-danger-ghost {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid rgba(220, 38, 38, .3);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: .82rem; font-weight: 600;
+  cursor: pointer; transition: background .15s;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'Satoshi', var(--font-body);
+}
+.btn-danger-ghost:hover { background: rgba(220, 38, 38, .06); }
 
 /* ─── MAIN CONTENT ───────────────────────────────────────────── */
 .main-content { flex: 1; padding: 16px; overflow-y: auto; padding-bottom: 90px; }

@@ -1076,6 +1076,19 @@ app.post('/api/voyages/:id/partager', authMiddleware, requireVoyageOwner(), asyn
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+// ─── S6 — Rotation du lien de partage ───────────────────────────────────────
+// Génère un nouveau token et invalide l'ancien. Les participants ayant
+// l'ancien lien devront obtenir le nouveau auprès de l'organisateur.
+app.post('/api/voyages/:id/rotate-token', authMiddleware, requireVoyageOwner(), async (req, res) => {
+  try {
+    const newToken = genererToken();
+    await run(() => db.voyages.setToken(req.params.id, newToken));
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    console.log(`[S6] Token rotaté — voyage ${req.params.id}`);
+    res.json({ token: newToken, url: `${baseUrl}/share/${newToken}` });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
 // ── Notification admin : un participant vient de rejoindre ────────────────────
 app.post('/api/partage/:token/first-access', async (req, res) => {
   try {

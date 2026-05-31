@@ -4894,6 +4894,39 @@ async function partagerVoyage() {
   }
 }
 
+// ─── S6 — Rotation du lien de partage ────────────────────────────────────────
+async function revoquerLienPartage() {
+  const ok = await _confirmModal({
+    title: '🔄 Nouveau lien de partage ?',
+    message: 'L\'ancien lien sera <b>définitivement invalide</b>. Les participants qui l\'ont ne pourront plus l\'utiliser. Tu devras leur envoyer le nouveau lien.',
+    confirmLabel: 'Générer un nouveau lien',
+    danger: true
+  });
+  if (!ok) return;
+  try {
+    const r = await fetch(`${API}/api/voyages/${voyageActuel}/rotate-token`, { method: 'POST' });
+    if (!r.ok) { toast('❌ Erreur lors de la rotation'); return; }
+    const data = await r.json();
+    const shareUrl = data.url || '';
+    document.getElementById('partage-url').textContent = shareUrl;
+    // Mettre à jour le QR
+    const qrWrap = document.getElementById('partage-qr');
+    if (qrWrap && shareUrl) {
+      const img = new Image();
+      img.alt = 'QR code du nouveau lien de partage';
+      img.style.cssText = 'width:140px;height:140px;object-fit:contain';
+      img.onload = () => { qrWrap.innerHTML = ''; qrWrap.appendChild(img); };
+      img.src = `${API}/api/qr?url=${encodeURIComponent(shareUrl)}`;
+      document.getElementById('partage-qr-wrap').style.display = 'flex';
+    }
+    _shareTokenCourant = data.token;
+    toast('🔗 Nouveau lien généré');
+  } catch(e) {
+    console.error('[revoquerLien]', e);
+    toast('❌ Erreur réseau');
+  }
+}
+
 async function rejoindreVoyage() {
   if (!voyageActuel) return;
   fermerBottomSheet();
@@ -5403,6 +5436,7 @@ function _bindStaticHandlers() {
   _on('btn-import-email-analyse',   'click', analyserEmailImport);
   _on('btn-import-email-importer',  'click', confirmerImportEmail);
   _on('btn-exporter-pdf',           'click', exporterVoyagePDF);
+  _on('btn-revoquer-lien',          'click', revoquerLienPartage);
   _on('btn-generer-suggestions',    'click', genererSuggestions);
   _on('btn-ajouter-article-bagages','click', ouvrirModalAjoutArticle);
   _on('btn-ajouter-depense',        'click', () => ouvrirModalDepense());
