@@ -161,40 +161,40 @@
 
     <!-- Connexion -->
     <div id="auth-login" class="auth-form active">
-      <div class="auth-eyebrow"><span class="auth-eyebrow-dot"></span>Connexion</div>
+      <div class="auth-eyebrow"><span class="auth-eyebrow-dot"></span><span data-i18n="auth.login.title">Connexion</span></div>
       <h2 class="auth-title">Bon retour 👋</h2>
       <p id="login-error" class="auth-error" role="alert"></p>
       <div class="auth-field">
-        <label for="login-email">Email</label>
+        <label for="login-email" data-i18n="auth.email">Email</label>
         <input type="email" id="login-email" placeholder="ton@email.com" autocomplete="email" inputmode="email">
       </div>
       <div class="auth-field">
-        <label for="login-password">Mot de passe</label>
+        <label for="login-password" data-i18n="auth.password">Mot de passe</label>
         <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
       </div>
-      <button class="auth-btn" id="login-btn">Se connecter</button>
-      <p class="auth-switch">Pas encore de compte ? <a href="#" id="switch-to-register">Créer un compte</a></p>
+      <button class="auth-btn" id="login-btn" data-i18n="auth.btn.login">Se connecter</button>
+      <p class="auth-switch">Pas encore de compte ? <a href="#" id="switch-to-register" data-i18n="auth.switch.to_register_link">Créer un compte</a></p>
     </div>
 
     <!-- Inscription -->
     <div id="auth-register" class="auth-form">
-      <div class="auth-eyebrow"><span class="auth-eyebrow-dot"></span>Inscription</div>
-      <h2 class="auth-title">Crée ton compte</h2>
+      <div class="auth-eyebrow"><span class="auth-eyebrow-dot"></span><span data-i18n="auth.register.title">Inscription</span></div>
+      <h2 class="auth-title" data-i18n="auth.register.h2">Crée ton compte</h2>
       <p id="register-error" class="auth-error" role="alert"></p>
       <div class="auth-field">
-        <label for="register-nom">Prénom</label>
+        <label for="register-nom" data-i18n="auth.name">Prénom</label>
         <input type="text" id="register-nom" placeholder="Fabian" autocomplete="given-name">
       </div>
       <div class="auth-field">
-        <label for="register-email">Email</label>
+        <label for="register-email" data-i18n="auth.email">Email</label>
         <input type="email" id="register-email" placeholder="ton@email.com" autocomplete="email" inputmode="email">
       </div>
       <div class="auth-field">
-        <label for="register-password">Mot de passe</label>
+        <label for="register-password" data-i18n="auth.password">Mot de passe</label>
         <input type="password" id="register-password" placeholder="6 caractères minimum" autocomplete="new-password">
       </div>
-      <button class="auth-btn" id="register-btn">Créer mon compte</button>
-      <p class="auth-switch">Déjà un compte ? <a href="#" id="switch-to-login">Se connecter</a></p>
+      <button class="auth-btn" id="register-btn" data-i18n="auth.btn.register">Créer mon compte</button>
+      <p class="auth-switch">Déjà un compte ? <a href="#" id="switch-to-login" data-i18n="auth.switch.to_login_link">Se connecter</a></p>
     </div>
 
   </div>
