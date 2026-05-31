@@ -3463,29 +3463,67 @@ function afficherBilan(depenses, participants) {
     if (Math.abs(net[c.id]) < 0.01) j++;
   }
 
+  // ── Solde par personne — graphique à barres centré ──────────────────────────
+  const maxAbs = Math.max(...participants.map(p => Math.abs(net[p.id])), 0.01);
+  const balanceSection = `
+    <div style="padding:14px 16px 6px">
+      <span style="font-size:.7rem;font-weight:700;color:var(--text-muted);letter-spacing:.07em;text-transform:uppercase">Solde par personne</span>
+    </div>
+    <div class="balance-grid">
+      ${participants.map(p => {
+        const amount   = Math.round(net[p.id] * 100) / 100;
+        const isCredit = amount > 0.01;
+        const isDebt   = amount < -0.01;
+        const pct      = Math.min(Math.abs(amount) / maxAbs * 50, 50);
+        const amtStr   = isCredit ? `+${amount.toFixed(2)} €`
+                       : isDebt   ? `${amount.toFixed(2)} €`
+                       :            `0 €`;
+        const amtCls   = isCredit ? 'balance-amount--credit'
+                       : isDebt   ? 'balance-amount--debt'
+                       :            'balance-amount--zero';
+        return `
+          <div class="balance-row">
+            <div class="balance-row-name">
+              <div class="avatar" style="background:${h(p.couleur)};width:22px;height:22px;font-size:.6rem;flex-shrink:0">${h(p.nom[0].toUpperCase())}</div>
+              <span>${h(p.nom)}</span>
+            </div>
+            <div class="balance-bar-track">
+              ${isCredit ? `<div class="balance-bar-fill balance-bar-fill--credit" style="width:${pct}%"></div>` : ''}
+              ${isDebt   ? `<div class="balance-bar-fill balance-bar-fill--debt"   style="width:${pct}%"></div>` : ''}
+            </div>
+            <span class="balance-amount ${amtCls}">${amtStr}</span>
+          </div>`;
+      }).join('')}
+    </div>`;
+
   if (transactions.length === 0) {
-    container.innerHTML = `<div class="bilan-ok"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Tout est équilibré !</div>`;
+    container.innerHTML = balanceSection +
+      `<div class="bilan-ok"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Tout est équilibré !</div>`;
     return;
   }
 
-  container.innerHTML = `<div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
-    ${transactions.map(t => `
-      <div class="bilan-transaction">
-        <div class="bilan-from">
-          <div class="avatar" style="background:${h(t.from.couleur)}">${h(t.from.nom[0])}</div>
-          <span>${h(t.from.nom)}</span>
+  container.innerHTML = balanceSection +
+    `<div style="padding:6px 16px 4px">
+      <span style="font-size:.7rem;font-weight:700;color:var(--text-muted);letter-spacing:.07em;text-transform:uppercase">Remboursements</span>
+    </div>
+    <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
+      ${transactions.map(t => `
+        <div class="bilan-transaction">
+          <div class="bilan-from">
+            <div class="avatar" style="background:${h(t.from.couleur)}">${h(t.from.nom[0])}</div>
+            <span>${h(t.from.nom)}</span>
+          </div>
+          <div class="bilan-arrow">
+            <span class="bilan-amount">${t.amount.toFixed(2)} €</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+          </div>
+          <div class="bilan-to">
+            <div class="avatar" style="background:${h(t.to.couleur)}">${h(t.to.nom[0])}</div>
+            <span>${h(t.to.nom)}</span>
+          </div>
         </div>
-        <div class="bilan-arrow">
-          <span class="bilan-amount">${t.amount.toFixed(2)} €</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-        </div>
-        <div class="bilan-to">
-          <div class="avatar" style="background:${h(t.to.couleur)}">${h(t.to.nom[0])}</div>
-          <span>${h(t.to.nom)}</span>
-        </div>
-      </div>
-    `).join('')}
-  </div>`;
+      `).join('')}
+    </div>`;
 }
 
 function ouvrirModalParticipant() {

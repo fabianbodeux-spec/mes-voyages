@@ -2503,6 +2503,41 @@ textarea { resize: vertical; line-height: 1.6; }
   margin-bottom: 2px;
 }
 
+/* ── Balance par personne (CrewiCash) ────────────────────────── */
+.balance-grid { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 16px; }
+.balance-row { display: flex; align-items: center; gap: 10px; }
+.balance-row-name {
+  display: flex; align-items: center; gap: 6px;
+  min-width: 88px; flex-shrink: 0;
+  overflow: hidden;
+}
+.balance-row-name span {
+  font-size: .8rem; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.balance-bar-track {
+  flex: 1; position: relative; height: 8px;
+  background: var(--bg-alt); border-radius: 4px; overflow: hidden;
+}
+.balance-bar-track::after { /* ligne centrale */
+  content: ''; position: absolute; top: 0; bottom: 0;
+  left: 50%; width: 1px; background: var(--border-solid);
+}
+.balance-bar-fill {
+  position: absolute; top: 0; height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+.balance-bar-fill--credit { right: 50%; background: var(--success); }
+.balance-bar-fill--debt   { left: 50%;  background: var(--danger); }
+.balance-amount {
+  font-size: 0.78rem; font-weight: 700;
+  min-width: 56px; text-align: right; white-space: nowrap;
+}
+.balance-amount--credit { color: var(--success); }
+.balance-amount--debt   { color: var(--danger); }
+.balance-amount--zero   { color: var(--text-muted); }
+
 /* ─── DOCUMENT VIEWER ────────────────────────────────────────── */
 .doc-viewer-overlay {
   position: fixed; inset: 0; z-index: 2000;
