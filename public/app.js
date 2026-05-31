@@ -617,6 +617,8 @@ function afficherVoyage(id) {
     .then(r => r.json())
     .then(voyage => {
       _shareTokenCourant = voyage.share_token || null;
+      // Mettre en cache les métadonnées pour la page offline
+      try { localStorage.setItem(`voyage_cache_${id}`, JSON.stringify({ id: voyage.id, nom: voyage.nom, destination: voyage.destination || '' })); } catch {}
       document.getElementById('screen-home').classList.remove('active');
       document.getElementById('screen-voyage').classList.add('active');
       document.getElementById('voyage-nom').textContent = voyage.nom;
@@ -815,6 +817,18 @@ async function chargerVoyages() {
   ]);
   const voyages = Array.isArray(data) ? data : [];
   _myParticipations = Array.isArray(participations) ? participations : [];
+
+  // Mettre à jour le cache offline : supprimer les voyages qui n'existent plus
+  try {
+    const currentIds = new Set(voyages.map(v => String(v.id)));
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('voyage_cache_')) {
+        const id = key.replace('voyage_cache_', '');
+        if (!currentIds.has(id)) localStorage.removeItem(key);
+      }
+    }
+  } catch {}
 
   const container = document.getElementById('voyages-container');
   const empty = document.getElementById('empty-state');

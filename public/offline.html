@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CrewiGo — Hors ligne</title>
+  <title>CrewiGO — Hors ligne</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root { --accent: #F97316; --accent-dark: #EA6A10; }
@@ -17,7 +17,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 32px;
+      gap: 24px;
       padding: 24px;
       text-align: center;
     }
@@ -80,14 +80,22 @@
     }
 
     p {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: rgba(255,255,255,0.55);
       max-width: 280px;
       line-height: 1.55;
     }
 
-    button {
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 260px;
       margin-top: 8px;
+    }
+
+    button {
       padding: 13px 32px;
       border-radius: 14px;
       border: none;
@@ -97,8 +105,66 @@
       font-weight: 700;
       cursor: pointer;
       transition: opacity 0.15s;
+      width: 100%;
     }
     button:active { opacity: 0.75; }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.7);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #DC2626;
+      margin-right: 6px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .35; }
+    }
+    .status-row {
+      font-size: .78rem;
+      color: rgba(255,255,255,.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #cached-trips {
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px;
+      padding: 12px 16px;
+      width: 100%;
+      max-width: 300px;
+      text-align: left;
+    }
+    #cached-trips h3 {
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 8px;
+    }
+    .cached-trip-item {
+      font-size: .85rem;
+      color: rgba(255,255,255,.75);
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cached-trip-item:last-child { border-bottom: none; }
+    .cached-trip-item:hover { color: #fff; }
+    .cached-trip-item svg { flex-shrink: 0; opacity: .5; }
   </style>
 </head>
 <body>
@@ -106,7 +172,7 @@
   <div class="logo-wrap">
     <div class="logo-halo"></div>
     <div class="logo-square">
-      <img src="/logo-icon.png" alt="CrewiGo">
+      <img src="/logo-icon.png" alt="CrewiGO">
     </div>
   </div>
 
@@ -127,10 +193,67 @@
 
   <div>
     <h1>Vous êtes hors ligne</h1>
-    <p style="margin-top:8px">Vérifiez votre connexion et réessayez pour accéder à vos voyages.</p>
+    <p style="margin-top:8px">Vérifiez votre connexion réseau pour synchroniser vos données.</p>
   </div>
 
-  <button onclick="location.reload()">Réessayer</button>
+  <div class="status-row">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Connexion indisponible</span>
+  </div>
+
+  <div id="cached-trips" style="display:none">
+    <h3>📦 Données en cache</h3>
+    <div id="cached-trips-list"></div>
+  </div>
+
+  <div class="btn-group">
+    <button onclick="location.reload()">🔄 Réessayer</button>
+    <button class="btn-secondary" onclick="window.location.href='/app'">📱 Ouvrir l'app en cache</button>
+  </div>
+
+  <script>
+    // Afficher les voyages depuis localStorage
+    (function() {
+      try {
+        const list = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('voyage_cache_')) {
+            try {
+              const v = JSON.parse(localStorage.getItem(key));
+              if (v && v.nom) list.push(v);
+            } catch {}
+          }
+        }
+        if (list.length > 0) {
+          const wrap = document.getElementById('cached-trips');
+          const ul = document.getElementById('cached-trips-list');
+          ul.innerHTML = list.map(v => `
+            <div class="cached-trip-item" onclick="window.location.href='/app'">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+              <span>${v.nom}</span>
+              ${v.destination ? `<span style="font-size:.75rem;opacity:.5">· ${v.destination}</span>` : ''}
+            </div>`).join('');
+          wrap.style.display = 'block';
+        }
+      } catch {}
+    })();
+
+    // Surveiller le retour de la connexion
+    function checkOnline() {
+      const dot = document.getElementById('status-dot');
+      const txt = document.getElementById('status-text');
+      if (navigator.onLine) {
+        dot.style.background = '#16A34A';
+        dot.style.animation = 'none';
+        txt.textContent = 'Connexion rétablie — rechargement…';
+        setTimeout(() => location.reload(), 1200);
+      }
+    }
+    window.addEventListener('online', checkOnline);
+    // Poll toutes les 5s comme fallback
+    setInterval(() => { if (navigator.onLine) checkOnline(); }, 5000);
+  </script>
 
 </body>
 </html>

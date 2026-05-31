@@ -1,5 +1,5 @@
 // ─── Cache config ────────────────────────────────────────────────────────────
-const CACHE_VERSION = 'cgo-v44';
+const CACHE_VERSION = 'cgo-v45';
 // NE PAS inclure app.js et style.css non versionnés ici :
 // le serveur les sert via /app?vXX et /style.css?vXX → deux entrées distinctes
 // dans le cache coexisteraient et créeraient un conflit (stale + fresh en même temps)
@@ -10,7 +10,12 @@ const STATIC_ASSETS = [
   '/logo-icon.png',
   '/logo-192.png',
   '/logo-512.png',
-  '/manifest.json'
+  '/manifest.json',
+  // Polices auto-hébergées — changent rarement, mise en cache agressive
+  '/fonts/Satoshi-400.woff2',
+  '/fonts/Satoshi-500.woff2',
+  '/fonts/Satoshi-700.woff2',
+  '/fonts/Satoshi-900.woff2'
 ];
 
 // Helper — fetch en court-circuitant le cache HTTP du navigateur
