@@ -21,8 +21,8 @@ async function generateAndSend({ email, voyageId, participantNom, shareToken, vo
     expires_at:      expiresAt
   }));
 
-  await _sendEmail({ email, token, shareToken, participantNom, voyageNom });
-  return token;
+  const sendResult = await _sendEmail({ email, token, shareToken, participantNom, voyageNom });
+  return { token, ...sendResult };
 }
 
 // ── Construire le HTML de l'email ──────────────────────────────────────────────
@@ -73,6 +73,7 @@ async function _sendEmail({ email, token, shareToken, participantNom, voyageNom 
       body:    JSON.stringify({ from: FROM, to: email, subject, html })
     });
     if (!res.ok) throw new Error(`Resend: ${res.status} ${await res.text()}`);
+    return { emailSent: true, magicUrl: null };
 
   } else if (process.env.SMTP_HOST) {
     const nodemailer  = require('nodemailer');
@@ -81,12 +82,16 @@ async function _sendEmail({ email, token, shareToken, participantNom, voyageNom 
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
     });
     await transporter.sendMail({ from: FROM, to: email, subject, html });
+    return { emailSent: true, magicUrl: null };
 
   } else {
-    // Développement local — afficher le lien dans la console
-    console.log(`[MagicLink] Email simulé → ${email}`);
-    console.log(`[MagicLink] Sujet : ${subject}`);
-    console.log(`[MagicLink] Lien  : ${magicUrl}`);
+    // Développement local — pas de config email, retourner le lien directement
+    // Remplacer l'APP_URL prod par localhost si pas de var d'env APP_URL configurée
+    const devBaseUrl = process.env.APP_URL || 'http://localhost:3000';
+    const devMagicUrl = magicUrl.replace(APP_URL, devBaseUrl);
+    console.log(`[MagicLink DEV] Email simulé → ${email}`);
+    console.log(`[MagicLink DEV] Lien  : ${devMagicUrl}`);
+    return { emailSent: false, magicUrl: devMagicUrl };
   }
 }
 

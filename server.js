@@ -16,7 +16,7 @@ const IS_CLOUD = db.usePostgres;
 
 // Version de l'app — doit correspondre à CACHE_VERSION dans sw.js
 // Changer ici ET dans sw.js à chaque déploiement pour forcer le rechargement
-const APP_VERSION = 'v45';
+const APP_VERSION = 'v48';
 const fs = require('fs');
 if (!process.env.JWT_SECRET && IS_CLOUD) {
   console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
@@ -1172,18 +1172,25 @@ app.post('/api/partage/:token/save-email', async (req, res) => {
     // Envoi du magic link (silencieux si pas de config email)
     try {
       const { generateAndSend } = require('./services/magicLink');
-      await generateAndSend({
+      const result = await generateAndSend({
         email,
         voyageId:       voyage.id,
         participantNom: participant_nom,
         shareToken:     req.params.token,
         voyageNom:      voyage.nom
       });
-      console.log(`[MagicLink] Envoyé → ${email} pour voyage ${voyage.id}${has_account ? ' (compte existant détecté)' : ''}`);
-      res.json({ ok: true, magic_sent: true, has_account });
+      const sent = result?.emailSent !== false || !result?.magicUrl; // true si email réellement envoyé
+      console.log(`[MagicLink] ${sent ? 'Envoyé' : 'Dev — lien console'} → ${email} pour voyage ${voyage.id}${has_account ? ' (compte existant détecté)' : ''}`);
+      res.json({
+        ok:          true,
+        magic_sent:  sent,
+        has_account,
+        // En mode dev (pas de config email), on renvoie l'URL directement côté client
+        magic_url:   result?.magicUrl || null,
+      });
     } catch (emailErr) {
       console.error('[MagicLink] Envoi échoué (email sauvegardé quand même):', emailErr.message);
-      res.json({ ok: true, magic_sent: false, has_account });
+      res.json({ ok: true, magic_sent: false, has_account, magic_url: null });
     }
   } catch (e) {
     console.error('[save-email]', e.message);
@@ -1488,7 +1495,15 @@ app.delete('/api/demandes/:id', authMiddleware, async (req, res) => {
 // ─── ATTRIBUTIONS PRIVÉES ────────────────────────────────────────────────────
 
 app.get('/api/voyages/:id/attributions', authMiddleware, requireVoyageOwner(), async (req, res) => {
-  try { res.json(await run(() => db.attributions.getByVoyage(req.params.id))); }
+  try {
+    const attrs = await run(() => db.attributions.getByVoyage(req.params.id));
+    // Inclure les liens pour chaque attribution
+    const enriched = await Promise.all(attrs.map(async (a) => ({
+      ...a,
+      links: await run(() => db.attribution_links.getByAttribution(a.id))
+    })));
+    res.json(enriched);
+  }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
@@ -1503,7 +1518,86 @@ app.delete('/api/attributions/:id', authMiddleware, async (req, res) => {
     if (!item) return res.status(404).json({ error: 'Introuvable' });
     if (!(await checkVoyageOwnership(item.voyage_id, req.user.id)))
       return res.status(403).json({ error: 'Accès refusé' });
+    // Supprimer aussi tous les liens associés
+    await run(() => db.attribution_links.deleteByAttribution(req.params.id));
     await run(() => db.attributions.delete(req.params.id));
+    res.json({ ok: true });
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// ─── LIENS D'ATTRIBUTION ──────────────────────────────────────────────────────
+// Validation URL basique (https/http uniquement — pas de javascript:, data:, etc.)
+function _validateLinkUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const u = new URL(url.trim());
+    return ['https:', 'http:'].includes(u.protocol);
+  } catch { return false; }
+}
+
+// Helper : vérifier que l'attribution appartient à l'organisateur connecté
+async function _checkLinkOwner(linkId, userId) {
+  const link = await run(() => db.attribution_links.getById(linkId));
+  if (!link) return null;
+  const attr = await run(() => db.attributions.getById(link.attribution_id));
+  if (!attr) return null;
+  const ok = await checkVoyageOwnership(attr.voyage_id, userId);
+  return ok ? link : null;
+}
+
+app.get('/api/attributions/:id/links', authMiddleware, async (req, res) => {
+  try {
+    const attr = await run(() => db.attributions.getById(req.params.id));
+    if (!attr) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(attr.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    res.json(await run(() => db.attribution_links.getByAttribution(req.params.id)));
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.post('/api/attributions/:id/links', authMiddleware, async (req, res) => {
+  try {
+    const attr = await run(() => db.attributions.getById(req.params.id));
+    if (!attr) return res.status(404).json({ error: 'Introuvable' });
+    if (!(await checkVoyageOwnership(attr.voyage_id, req.user.id)))
+      return res.status(403).json({ error: 'Accès refusé' });
+    const { titre, url, description, type } = req.body;
+    if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
+    if (!_validateLinkUrl(url)) return res.status(400).json({ error: 'URL invalide (https:// ou http:// requis)' });
+    const VALID_TYPES = ['billet', 'qrcode', 'document', 'voucher', 'information', 'autre'];
+    const linkType = VALID_TYPES.includes(type) ? type : 'autre';
+    const link = await run(() => db.attribution_links.create(req.params.id, {
+      titre: titre.trim(), url: url.trim(),
+      description: description?.trim() || null,
+      type: linkType
+    }));
+    res.json(link);
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.put('/api/attribution-links/:id', authMiddleware, async (req, res) => {
+  try {
+    const link = await _checkLinkOwner(req.params.id, req.user.id);
+    if (!link) return res.status(404).json({ error: 'Introuvable ou accès refusé' });
+    const { titre, url, description, type, position } = req.body;
+    if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
+    if (!_validateLinkUrl(url)) return res.status(400).json({ error: 'URL invalide' });
+    const VALID_TYPES = ['billet', 'qrcode', 'document', 'voucher', 'information', 'autre'];
+    const updated = await run(() => db.attribution_links.update(req.params.id, {
+      titre: titre.trim(), url: url.trim(),
+      description: description?.trim() || null,
+      type: VALID_TYPES.includes(type) ? type : 'autre',
+      position: +position || link.position
+    }));
+    res.json(updated);
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.delete('/api/attribution-links/:id', authMiddleware, async (req, res) => {
+  try {
+    const link = await _checkLinkOwner(req.params.id, req.user.id);
+    if (!link) return res.status(404).json({ error: 'Introuvable ou accès refusé' });
+    await run(() => db.attribution_links.delete(req.params.id));
     res.json({ ok: true });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
@@ -1513,11 +1607,17 @@ app.get('/api/partage/:token/mes-infos/:participantId', async (req, res) => {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
     const items = await run(() => db.attributions.getByParticipant(voyage.id, req.params.participantId));
-    // Pour chaque attribution avec un document_id, inclure les métadonnées du doc
+    // Enrichir : document + liens pour chaque attribution
     const enriched = await Promise.all(items.map(async (a) => {
-      if (!a.document_id) return a;
-      const doc = await run(() => db.documents.getById(a.document_id));
-      return { ...a, document: doc ? { id: doc.id, nom: doc.nom, type_fichier: doc.type_fichier } : null };
+      const [doc, links] = await Promise.all([
+        a.document_id ? run(() => db.documents.getById(a.document_id)) : Promise.resolve(null),
+        run(() => db.attribution_links.getByAttribution(a.id))
+      ]);
+      return {
+        ...a,
+        document: doc ? { id: doc.id, nom: doc.nom, type_fichier: doc.type_fichier } : null,
+        links: links || []
+      };
     }));
     res.json(enriched);
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }

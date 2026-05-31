@@ -3037,6 +3037,197 @@ textarea { resize: vertical; line-height: 1.6; }
   font-size: .82rem; color: var(--text-muted);
 }
 
+/* ─── LIENS D'ATTRIBUTION ────────────────────────────────────── */
+.attr-links-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-solid);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.attr-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-solid);
+}
+.attr-link-type-badge {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9rem;
+}
+.attr-link-info { flex: 1; min-width: 0; }
+.attr-link-title {
+  font-size: .82rem; font-weight: 700;
+  color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.attr-link-url {
+  font-size: .72rem; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.attr-link-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.attr-link-btn {
+  background: none; border: 1px solid var(--border-solid);
+  border-radius: 6px; cursor: pointer;
+  padding: 3px 6px; font-size: .7rem;
+  color: var(--text-muted); transition: all .15s;
+}
+.attr-link-btn:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+.attr-link-btn--del:hover { background: #FEF2F2; border-color: #FEE2E2; color: var(--danger); }
+.attr-add-link-btn {
+  width: 100%;
+  background: none;
+  border: 1.5px dashed var(--border-solid);
+  border-radius: 10px;
+  padding: 8px;
+  font-size: .78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+}
+.attr-add-link-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+/* Modal édition lien */
+.attr-link-modal {
+  position: fixed; inset: 0; z-index: 1100;
+  background: rgba(0,0,0,.6);
+  display: flex; align-items: flex-end; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.attr-link-modal.hidden { display: none; }
+.attr-link-modal-inner {
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 540px;
+  padding: 20px 20px 32px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.attr-link-modal-title {
+  font-size: 1rem; font-weight: 800; color: var(--text);
+}
+.attr-link-form-row { display: flex; flex-direction: column; gap: 5px; }
+.attr-link-form-label { font-size: .78rem; color: var(--text-muted); font-weight: 600; }
+.attr-link-type-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+}
+.attr-link-type-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  border: 1.5px solid var(--border-solid); border-radius: 10px;
+  padding: 8px 4px; cursor: pointer; transition: all .15s;
+  font-size: .72rem; color: var(--text-muted);
+}
+.attr-link-type-opt input { display: none; }
+.attr-link-type-opt:has(input:checked),
+.attr-link-type-opt.selected {
+  border-color: var(--accent); background: var(--accent-light); color: var(--accent);
+}
+
+/* ─── CARTES LIENS PARTICIPANT (vue partage) ─────────────────── */
+.alink-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg);
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-solid);
+  text-decoration: none;
+  transition: border-color .15s, box-shadow .15s;
+  cursor: pointer;
+}
+.alink-card:hover { border-color: #F97316; box-shadow: 0 2px 12px rgba(249,115,22,.12); }
+.alink-icon {
+  flex-shrink: 0;
+  width: 42px; height: 42px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+}
+.alink-icon--billet    { background: #FFF7ED; }
+.alink-icon--qrcode    { background: #F0FDF4; }
+.alink-icon--document  { background: #EFF6FF; }
+.alink-icon--voucher   { background: #FDF4FF; }
+.alink-icon--information { background: #F0F9FF; }
+.alink-icon--autre     { background: #F9FAFB; }
+.alink-body { flex: 1; min-width: 0; }
+.alink-title { font-size: .93rem; font-weight: 800; color: var(--text); line-height: 1.2; }
+.alink-desc  { font-size: .8rem; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+.alink-arrow { flex-shrink: 0; color: var(--text-muted); font-size: 1rem; }
+.alink-qr-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #fff; border: none; border-radius: 12px;
+  padding: 12px 16px; font-size: .87rem; font-weight: 700;
+  cursor: pointer; width: 100%; margin-top: 8px;
+  transition: opacity .15s;
+}
+.alink-qr-btn:hover { opacity: .88; }
+
+/* ─── VISIONNEUSE QR PLEIN ÉCRAN ─────────────────────────────── */
+#qr-viewer-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #fff;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0;
+}
+#qr-viewer-overlay.hidden { display: none; }
+.qr-viewer-topbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  background: #fff;
+}
+.qr-viewer-title {
+  font-size: .9rem; font-weight: 800; color: #1e293b;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+}
+.qr-viewer-close {
+  background: #f1f5f9; border: none; border-radius: 50%;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 1.1rem; color: #64748b;
+  flex-shrink: 0;
+}
+.qr-viewer-close:hover { background: #e2e8f0; }
+.qr-viewer-content {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 80px 20px 40px;
+  width: 100%;
+}
+.qr-viewer-content iframe,
+.qr-viewer-content img {
+  max-width: 100%; max-height: 100%;
+  border-radius: 12px;
+  box-shadow: 0 4px 32px rgba(0,0,0,.12);
+}
+.qr-viewer-open-btn {
+  position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+  background: #F97316; color: #fff; border: none; border-radius: 40px;
+  padding: 14px 32px; font-size: .93rem; font-weight: 700; cursor: pointer;
+  white-space: nowrap;
+}
+/* ─── Adaptation dark mode cartes liens participant ─── */
+@media (prefers-color-scheme: dark) {
+  .alink-icon--billet    { background: rgba(249,115,22,.12); }
+  .alink-icon--qrcode    { background: rgba(16,185,129,.12); }
+  .alink-icon--document  { background: rgba(59,130,246,.12); }
+  .alink-icon--voucher   { background: rgba(168,85,247,.12); }
+  .alink-icon--information { background: rgba(14,165,233,.12); }
+  .alink-icon--autre     { background: rgba(100,116,139,.12); }
+  #qr-viewer-overlay { background: #0f172a; }
+  .qr-viewer-topbar { background: #0f172a; }
+  .qr-viewer-title  { color: #f1f5f9; }
+  .qr-viewer-close  { background: #1e293b; color: #94a3b8; }
+  .qr-viewer-close:hover { background: #334155; }
+  .attr-link-btn--del:hover { background: #3A0A0A; border-color: #4A1010; color: #FCA5A5; }
+}
+
 /* ─── FIL DE COMMENTAIRES ────────────────────────────────────── */
 .chat-messages {
   display: flex;

@@ -1,5 +1,5 @@
 // ─── Cache config ────────────────────────────────────────────────────────────
-const CACHE_VERSION = 'cgo-v47';
+const CACHE_VERSION = 'cgo-v50';
 // NE PAS inclure app.js et style.css non versionnés ici :
 // le serveur les sert via /app?vXX et /style.css?vXX → deux entrées distinctes
 // dans le cache coexisteraient et créeraient un conflit (stale + fresh en même temps)
@@ -70,11 +70,20 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       freshFetch(request)
         .then(response => {
-          const clone = response.clone();
-          caches.open(CACHE_VERSION).then(c => c.put(request, clone)).catch(() => {});
+          // Ne mettre en cache que les réponses OK — jamais une page d'erreur ou offline
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_VERSION).then(c => c.put(request, clone)).catch(() => {});
+          }
           return response;
         })
-        .catch(() => caches.match('/offline.html').then(r => r || Response.error()))
+        .catch(() => caches.match(request)
+          .then(cached => {
+            // Servir le cache seulement si c'est une vraie page (pas offline.html en fallback)
+            if (cached) return cached;
+            return caches.match('/offline.html').then(r => r || Response.error());
+          })
+        )
     );
     return;
   }

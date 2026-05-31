@@ -36,6 +36,7 @@ const FICHIERS = {
   participant_emails:      path.join(DATA_DIR, 'participant_emails.json'),
   magic_links:             path.join(DATA_DIR, 'magic_links.json'),
   user_participant_links:  path.join(DATA_DIR, 'user_participant_links.json'),
+  attribution_links:       path.join(DATA_DIR, 'attribution_links.json'),
 };
 
 function charger(cle) {
@@ -231,6 +232,27 @@ const localDB = {
       list.push(item); sauvegarder('attributions', list); return item;
     },
     delete: (id) => sauvegarder('attributions', charger('attributions').filter(a => a.id !== +id))
+  },
+  attribution_links: {
+    getByAttribution: (aid) => charger('attribution_links')
+      .filter(l => l.attribution_id === +aid)
+      .sort((a, b) => (a.position || 0) - (b.position || 0) || a.id - b.id),
+    getById: (id) => charger('attribution_links').find(l => l.id === +id),
+    create: (aid, data) => {
+      const list = charger('attribution_links');
+      const maxPos = list.filter(l => l.attribution_id === +aid).reduce((m, l) => Math.max(m, l.position || 0), 0);
+      const item = { ...data, id: nextId(list), attribution_id: +aid, position: maxPos + 1, created_at: new Date().toISOString() };
+      list.push(item); sauvegarder('attribution_links', list); return item;
+    },
+    update: (id, data) => {
+      const list = charger('attribution_links');
+      const idx = list.findIndex(l => l.id === +id);
+      if (idx === -1) return null;
+      list[idx] = { ...list[idx], ...data, id: +id };
+      sauvegarder('attribution_links', list); return list[idx];
+    },
+    deleteByAttribution: (aid) => sauvegarder('attribution_links', charger('attribution_links').filter(l => l.attribution_id !== +aid)),
+    delete: (id) => sauvegarder('attribution_links', charger('attribution_links').filter(l => l.id !== +id))
   },
   commentaires: {
     getByVoyage: (vid) => charger('commentaires').filter(c => c.voyage_id === +vid).sort((a,b) => a.created_at.localeCompare(b.created_at)),
@@ -486,6 +508,13 @@ if (USE_POSTGRES) {
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       participant_id INTEGER NOT NULL, titre TEXT NOT NULL,
       contenu TEXT, document_id INTEGER,
+      created_at TEXT DEFAULT now()::text
+    )`);
+    await m(`CREATE TABLE IF NOT EXISTS attribution_links (
+      id SERIAL PRIMARY KEY, attribution_id INTEGER NOT NULL REFERENCES attributions(id) ON DELETE CASCADE,
+      titre TEXT NOT NULL, url TEXT NOT NULL,
+      description TEXT, type TEXT DEFAULT 'autre',
+      position INTEGER DEFAULT 1,
       created_at TEXT DEFAULT now()::text
     )`);
     await m(`CREATE TABLE IF NOT EXISTS messages_prives (
@@ -809,6 +838,26 @@ const pgDB = pgPool ? {
       [vid, data.participant_id, data.titre, data.contenu||null, data.document_id||null]
     )).rows[0],
     delete: async (id) => pgPool.query('DELETE FROM attributions WHERE id=$1', [id])
+  },
+  attribution_links: {
+    getByAttribution: async (aid) => (await pgPool.query(
+      'SELECT * FROM attribution_links WHERE attribution_id=$1 ORDER BY position ASC, id ASC', [aid]
+    )).rows,
+    getById: async (id) => (await pgPool.query('SELECT * FROM attribution_links WHERE id=$1', [id])).rows[0],
+    create: async (aid, data) => {
+      const maxRes = await pgPool.query('SELECT COALESCE(MAX(position),0)+1 AS next FROM attribution_links WHERE attribution_id=$1', [aid]);
+      const pos = maxRes.rows[0].next || 1;
+      return (await pgPool.query(
+        'INSERT INTO attribution_links(attribution_id,titre,url,description,type,position) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
+        [aid, data.titre, data.url, data.description||null, data.type||'autre', pos]
+      )).rows[0];
+    },
+    update: async (id, data) => (await pgPool.query(
+      'UPDATE attribution_links SET titre=$2,url=$3,description=$4,type=$5,position=$6 WHERE id=$1 RETURNING *',
+      [id, data.titre, data.url, data.description||null, data.type||'autre', data.position||1]
+    )).rows[0],
+    deleteByAttribution: async (aid) => pgPool.query('DELETE FROM attribution_links WHERE attribution_id=$1', [aid]),
+    delete: async (id) => pgPool.query('DELETE FROM attribution_links WHERE id=$1', [id])
   },
   commentaires: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM commentaires WHERE voyage_id=$1 ORDER BY created_at ASC', [vid])).rows,

@@ -4404,14 +4404,41 @@ async function chargerAdmin() {
             <span style="font-weight:700;font-size:.88rem">${h(p?.nom||'Participant #'+pid)}</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;padding-left:34px">` +
-          attrs.map(a => `<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border-solid);display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-              <div style="flex:1;min-width:0">
-                <div style="font-weight:700;font-size:.85rem;margin-bottom:2px">${h(a.titre)}</div>
-                ${a.contenu ? `<div style="font-size:.8rem;color:var(--text-muted);line-height:1.4;white-space:pre-wrap">${h(a.contenu)}</div>` : ''}
-                ${a.document_id ? `<div style="margin-top:6px"><span class="resa-badge-mini resa-badge-doc" style="display:inline-flex;align-items:center;gap:3px"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>Document lié</span></div>` : ''}
+          attrs.map(a => {
+            const links = Array.isArray(a.links) ? a.links : [];
+            const linksHtml = links.length === 0 ? '' :
+              `<div class="attr-links-section">` +
+              links.map(l => `
+                <div class="attr-link-row"
+                  data-link-id="${l.id}"
+                  data-link-type="${h(l.type)}"
+                  data-link-titre="${h(l.titre)}"
+                  data-link-url="${h(l.url)}"
+                  data-link-desc="${h(l.description || '')}">
+                  <div class="attr-link-type-badge" style="background:${_attrLinkTypeColor(l.type)}">${_attrLinkTypeIcon(l.type)}</div>
+                  <div class="attr-link-info">
+                    <div class="attr-link-title">${h(l.titre)}</div>
+                    <div class="attr-link-url">${h(l.url)}</div>
+                  </div>
+                  <div class="attr-link-actions">
+                    <button class="attr-link-btn" onclick="ouvrirModalEditerLien(${l.id})" title="Modifier">✏️</button>
+                    <button class="attr-link-btn attr-link-btn--del" onclick="supprimerLienAttribution(${l.id})" title="Supprimer">🗑️</button>
+                  </div>
+                </div>`).join('') +
+              `</div>`;
+            return `<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border-solid)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:700;font-size:.85rem;margin-bottom:2px">${h(a.titre)}</div>
+                  ${a.contenu ? `<div style="font-size:.8rem;color:var(--text-muted);line-height:1.4;white-space:pre-wrap">${h(a.contenu)}</div>` : ''}
+                  ${a.document_id ? `<div style="margin-top:6px"><span class="resa-badge-mini resa-badge-doc" style="display:inline-flex;align-items:center;gap:3px"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>Document lié</span></div>` : ''}
+                </div>
+                <button class="btn-mini btn-mini-del" onclick="supprimerAttribution(${a.id})" title="Supprimer" style="flex-shrink:0"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
               </div>
-              <button class="btn-mini btn-mini-del" onclick="supprimerAttribution(${a.id})" title="Supprimer" style="flex-shrink:0"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
-            </div>`).join('') +
+              ${linksHtml}
+              <button class="attr-add-link-btn" onclick="ouvrirModalAjouterLien(${a.id})">+ Ajouter un lien</button>
+            </div>`;
+          }).join('') +
           `</div></div>`;
       }).join('') + `</div>`;
   }
@@ -4928,6 +4955,117 @@ async function supprimerAttribution(id) {
   const r = await fetch(`${API}/api/attributions/${id}`, { method: 'DELETE' });
   if (!r.ok) { toast('❌ Erreur lors de la suppression'); return; }
   toast('🗑️ Attribution supprimée');
+  chargerAdmin();
+}
+
+// ─── LIENS D'ATTRIBUTION ──────────────────────────────────────────────────────
+const _LINK_TYPE_META = {
+  billet:      { icon: '🎫', color: 'rgba(249,115,22,.12)',  label: 'Billet' },
+  qrcode:      { icon: '📱', color: 'rgba(16,185,129,.12)',  label: 'QR Code' },
+  document:    { icon: '📄', color: 'rgba(59,130,246,.12)',  label: 'Document' },
+  voucher:     { icon: '🎟️', color: 'rgba(168,85,247,.12)', label: 'Voucher' },
+  information: { icon: 'ℹ️', color: 'rgba(14,165,233,.12)', label: 'Info' },
+  autre:       { icon: '🔗', color: 'rgba(100,116,139,.12)', label: 'Autre' },
+};
+function _attrLinkTypeIcon(type) { return (_LINK_TYPE_META[type] || _LINK_TYPE_META.autre).icon; }
+function _attrLinkTypeColor(type) { return (_LINK_TYPE_META[type] || _LINK_TYPE_META.autre).color; }
+
+let _lienEditId   = null; // null = création, number = édition
+let _lienAttrId   = null; // attribution parente
+
+function _buildLienModal() {
+  return document.getElementById('modal-lien-attribution');
+}
+
+function ouvrirModalAjouterLien(attributionId) {
+  _lienEditId = null;
+  _lienAttrId = attributionId;
+  const m = _buildLienModal();
+  if (!m) return;
+  m.querySelector('.attr-link-modal-title').textContent = 'Nouveau lien';
+  document.getElementById('lien-titre').value   = '';
+  document.getElementById('lien-url').value     = '';
+  document.getElementById('lien-desc').value    = '';
+  // Réinitialiser la sélection de type
+  m.querySelectorAll('.attr-link-type-opt').forEach(el => el.classList.remove('selected'));
+  const defaultOpt = m.querySelector('.attr-link-type-opt[data-type="billet"]');
+  if (defaultOpt) defaultOpt.classList.add('selected');
+  m.classList.remove('hidden');
+  document.getElementById('lien-titre').focus();
+}
+
+async function ouvrirModalEditerLien(linkId) {
+  _lienEditId = linkId;
+  try {
+    // Lire les données depuis les data-attributes stockés au rendu
+    const row = document.querySelector(`.attr-link-row[data-link-id="${linkId}"]`);
+    const titre = row?.dataset.linkTitre || '';
+    const url   = row?.dataset.linkUrl   || '';
+    const desc  = row?.dataset.linkDesc  || '';
+    const type  = row?.dataset.linkType  || 'autre';
+
+    const m = _buildLienModal();
+    if (!m) return;
+    m.querySelector('.attr-link-modal-title').textContent = 'Modifier le lien';
+    document.getElementById('lien-titre').value = titre;
+    document.getElementById('lien-url').value   = url;
+    document.getElementById('lien-desc').value  = desc;
+
+    // Restaurer le type sélectionné
+    m.querySelectorAll('.attr-link-type-opt').forEach(el => {
+      el.classList.toggle('selected', el.dataset.type === type);
+    });
+
+    m.classList.remove('hidden');
+    document.getElementById('lien-titre').focus();
+  } catch {}
+}
+
+async function sauvegarderLienAttribution() {
+  const titre = document.getElementById('lien-titre').value.trim();
+  const url   = document.getElementById('lien-url').value.trim();
+  const desc  = document.getElementById('lien-desc').value.trim();
+  const type  = document.querySelector('.attr-link-type-opt.selected')?.dataset?.type || 'autre';
+
+  if (!titre) { toast('⚠️ Titre requis'); return; }
+  if (!url)   { toast('⚠️ URL requise'); return; }
+  // Validation URL côté client
+  try { const u = new URL(url); if (!['https:', 'http:'].includes(u.protocol)) throw new Error(); }
+  catch { toast('⚠️ URL invalide — commence par https:// ou http://'); return; }
+
+  const body = { titre, url, description: desc || null, type };
+  const btn = document.getElementById('btn-sauvegarder-lien');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+
+  try {
+    let r;
+    if (_lienEditId) {
+      r = await fetch(`${API}/api/attribution-links/${_lienEditId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
+    } else {
+      r = await fetch(`${API}/api/attributions/${_lienAttrId}/links`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
+    }
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      toast(`❌ ${err.error || 'Erreur'}`);
+      return;
+    }
+    document.getElementById('modal-lien-attribution').classList.add('hidden');
+    toast(_lienEditId ? '✅ Lien modifié' : '✅ Lien ajouté');
+    chargerAdmin();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer'; }
+  }
+}
+
+async function supprimerLienAttribution(linkId) {
+  if (!confirm('Supprimer ce lien ?')) return;
+  const r = await fetch(`${API}/api/attribution-links/${linkId}`, { method: 'DELETE' });
+  if (!r.ok) { toast('❌ Erreur lors de la suppression'); return; }
+  toast('🗑️ Lien supprimé');
   chargerAdmin();
 }
 
@@ -5695,6 +5833,16 @@ function _bindStaticHandlers() {
 
   // ── Modal attribution ─────────────────────────────────────────────────────
   _on('btn-sauvegarder-attribution', 'click', sauvegarderAttribution);
+  // ── Modal lien attribution ────────────────────────────────────────────────
+  _on('btn-sauvegarder-lien', 'click', sauvegarderLienAttribution);
+  _on('btn-fermer-lien-modal', 'click', () => document.getElementById('modal-lien-attribution')?.classList.add('hidden'));
+  // Sélection du type de lien par clic sur les tuiles
+  document.querySelectorAll('.attr-link-type-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.attr-link-type-opt').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+    });
+  });
 
   // ── Modal clôture ─────────────────────────────────────────────────────────
   _on('cloture-btn-action', 'click', archiverVoyage);

@@ -1460,6 +1460,16 @@ async function _initPartage() {
       storedIdentite = null;
     }
 
+    // Auto-rematch : si participant_id manquant mais le nom correspond à un participant de la liste
+    // (cas où le participant a été ajouté après l'identification initiale)
+    if (storedIdentite && !storedIdentite.participant_id && storedIdentite.role !== 'owner') {
+      const matched = parts.find(p => p.nom?.toLowerCase() === storedIdentite.nom?.toLowerCase());
+      if (matched) {
+        storedIdentite = { ...storedIdentite, participant_id: matched.id, couleur: matched.couleur || storedIdentite.couleur };
+        _safeStoreIdentite(storedIdentite);
+      }
+    }
+
     // F5 — splash complet la 1ʳᵉ fois, fondu rapide (~400 ms) ensuite
     const _splashSeenKey = 'crewigo_splash_' + _partageToken;
     const _splashFirstVisit = !localStorage.getItem(_splashSeenKey);
@@ -1992,20 +2002,31 @@ function _showEmailBanner() {
         // Transformer la bannière en confirmation
         const bannerInner = banner.querySelector('div');
         if (bannerInner) {
+          // Mode dev : magic_url retourné directement (pas de config email)
+          const devLinkHtml = data.magic_url
+            ? `<div style="margin-top:10px;display:flex;align-items:center;gap:8px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.35);border-radius:8px;padding:8px 10px">
+                <span style="font-size:.75rem;color:#f97316;font-weight:700;flex-shrink:0">DEV</span>
+                <a href="${data.magic_url}" style="font-size:.72rem;color:#94a3b8;word-break:break-all;text-decoration:underline;flex:1">${data.magic_url}</a>
+                <button onclick="navigator.clipboard.writeText('${data.magic_url}').then(()=>this.textContent='✅').catch(()=>{})" style="background:none;border:1px solid #4b5563;border-radius:6px;color:#9ca3af;font-size:.7rem;padding:3px 7px;cursor:pointer;flex-shrink:0">Copier</button>
+              </div>`
+            : '';
           bannerInner.innerHTML = `
             <div style="display:flex;align-items:center;gap:14px">
               <span style="font-size:1.8rem">📧</span>
-              <div>
+              <div style="flex:1">
                 <p style="margin:0 0 4px;font-weight:700;font-size:.95rem;color:#f1f5f9">
-                  ${data.magic_sent ? 'Lien magique envoyé !' : 'Email sauvegardé !'}
+                  ${data.magic_sent ? 'Lien magique envoyé !' : data.magic_url ? '🔧 Mode dev — lien ci-dessous' : 'Email sauvegardé !'}
                 </p>
                 <p style="margin:0;font-size:.82rem;color:#94a3b8;line-height:1.4">
                   ${data.magic_sent
                     ? data.has_account
                       ? 'Lien envoyé 🔮 Ton compte CrewiGO sera automatiquement lié — tu verras tes voyages organisés ici.'
                       : 'Check ta boîte mail — clique le lien pour accéder à ce voyage depuis n\'importe quel appareil 🔮'
-                    : 'Tu retrouveras ce voyage depuis ton adresse email.'}
+                    : data.magic_url
+                      ? 'Aucun provider email configuré. Utilise ce lien directement :'
+                      : 'Tu retrouveras ce voyage depuis ton adresse email.'}
                 </p>
+                ${devLinkHtml}
               </div>
             </div>`;
         }
@@ -2077,8 +2098,13 @@ function _lancerPartage(identite) {
   }
   // FAB "Admin" : toujours visible pour l'organisateur en vue participant
   if (_adminJWTValide()) {
-    const fab = document.getElementById('fab-admin-mode');
+    const fab    = document.getElementById('fab-admin-mode');
+    const fabBtn = document.getElementById('fab-admin-btn');
     if (fab) fab.style.display = '';
+    // Deep-link vers le voyage spécifique (pas juste /app)
+    if (fabBtn) fabBtn.onclick = () => {
+      window.location.href = _partageToken ? `/app?v=${_partageToken}` : '/app';
+    };
   }
 
   // Onglet Souvenirs : visible seulement si voyage completed ou archived
@@ -2706,26 +2732,70 @@ async function chargerMesInfos() {
       fetch(`/api/partage/${_partageToken}/messages-prives/${_partageIdentite.participant_id}`).then(r => r.json()).catch(() => [])
     ]);
 
+    // ── Helpers types de lien ──
+    const _LINK_ICONS = { billet:'🎫', qrcode:'📱', document:'📄', voucher:'🎟️', information:'ℹ️', autre:'🔗' };
+    const _LINK_LABELS = { billet:'Billet', qrcode:'QR Code', document:'Document', voucher:'Voucher', information:'Information', autre:'Lien' };
+    const _LINK_COLORS = { billet:'#FFF7ED', qrcode:'#F0FDF4', document:'#EFF6FF', voucher:'#FDF4FF', information:'#F0F9FF', autre:'#F9FAFB' };
+
+    function _buildLinkCards(links, nomParticipant) {
+      if (!links || links.length === 0) return '';
+      return links.map(l => {
+        const icon  = _LINK_ICONS[l.type] || '🔗';
+        const label = _LINK_LABELS[l.type] || 'Lien';
+        const bg    = _LINK_COLORS[l.type] || '#F9FAFB';
+        const isQR  = l.type === 'qrcode';
+        const isImg = /\.(png|jpg|jpeg|webp|gif|svg)(\?|$)/i.test(l.url);
+        return `
+        <div class="alink-card" style="flex-direction:column;align-items:stretch;cursor:default" role="article">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="alink-icon alink-icon--${l.type}" style="background:${bg}">${icon}</div>
+            <div class="alink-body">
+              <div class="alink-title">${l.titre.replace(/</g,'&lt;')}</div>
+              ${l.description ? `<div class="alink-desc">${l.description.replace(/</g,'&lt;')}</div>` : ''}
+              <div style="display:inline-block;margin-top:4px;font-size:.7rem;color:#94a3b8;background:rgba(148,163,184,.1);border-radius:20px;padding:2px 8px">${label}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            ${isQR || isImg ? `
+            <button onclick="_ouvrirQRViewer('${l.url.replace(/'/g,"\\'").replace(/</g,'&lt;')}', '${l.titre.replace(/'/g,"\\'").replace(/</g,'&lt;')}')"
+              class="alink-qr-btn" style="flex:1">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h7v7M14 17h4M17 14v4"/></svg>
+              ${isQR ? 'Afficher le QR code' : 'Afficher le billet'}
+            </button>` : ''}
+            <a href="${l.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer"
+              style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--bg);border:1.5px solid var(--border-solid);border-radius:12px;padding:12px 16px;font-size:.87rem;font-weight:700;color:var(--text);text-decoration:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Ouvrir
+            </a>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
     const attributionsHtml = items.length === 0 ? '' : `
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 4px">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 2px">
           Informations privées destinées à <strong>${_partageIdentite.nom}</strong>
         </p>
-        ${items.map(a => `
-        <div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);border-left:4px solid #F97316">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <span style="font-size:1.1rem">🔒</span>
-            <span style="font-weight:800;font-size:.95rem">${a.titre}</span>
-          </div>
-          ${a.contenu ? `<div style="font-size:.88rem;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px 12px">${a.contenu}</div>` : ''}
-          ${a.document ? `
-          <div style="margin-top:10px">
-            <a href="/api/partage/${_partageToken}/documents/${a.document.id}/download" target="_blank"
-              style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#F97316;color:#fff;border-radius:20px;font-size:.83rem;font-weight:700;text-decoration:none">
-              ${getDocIcon(a.document.type_fichier)} Ouvrir ${a.document.nom}
-            </a>
-          </div>` : ''}
-        </div>`).join('')}
+        ${items.map(a => {
+          const linkCards = _buildLinkCards(a.links, _partageIdentite.nom);
+          return `
+          <div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);border-left:4px solid #F97316">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:${(a.contenu || a.document || linkCards) ? '10px' : '0'}">
+              <span style="font-size:1.1rem">🔒</span>
+              <span style="font-weight:800;font-size:.95rem">${a.titre.replace(/</g,'&lt;')}</span>
+            </div>
+            ${a.contenu ? `<div style="font-size:.88rem;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:${(a.document || linkCards) ? '10px' : '0'}">${a.contenu.replace(/</g,'&lt;')}</div>` : ''}
+            ${a.document ? `
+            <div style="margin-bottom:${linkCards ? '10px' : '0'}">
+              <a href="/api/partage/${_partageToken}/documents/${a.document.id}/download" target="_blank"
+                style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#F97316;color:#fff;border-radius:20px;font-size:.83rem;font-weight:700;text-decoration:none">
+                ${getDocIcon(a.document.type_fichier)} Ouvrir ${a.document.nom.replace(/</g,'&lt;')}
+              </a>
+            </div>` : ''}
+            ${linkCards ? `<div style="display:flex;flex-direction:column;gap:10px">${linkCards}</div>` : ''}
+          </div>`;
+        }).join('')}
       </div>`;
 
     const docsListHtml = mesDocs.length === 0
@@ -2792,6 +2862,86 @@ async function _uploaderDocPerso(input) {
     chargerMesInfos();
   } catch { _toast('⚠️ Erreur lors de l\'upload'); }
 }
+
+// ── Visionneuse QR / Billet plein écran ──────────────────────────────────────
+let _qrWakeLock = null;
+
+async function _ouvrirQRViewer(url, titre) {
+  const overlay  = document.getElementById('qr-viewer-overlay');
+  const titleEl  = document.getElementById('qr-viewer-title');
+  const content  = document.getElementById('qr-viewer-content');
+  const openBtn  = document.getElementById('qr-viewer-open-btn');
+  const closeBtn = document.getElementById('qr-viewer-close');
+  if (!overlay) return;
+
+  titleEl.textContent = titre || 'Billet';
+  content.innerHTML   = '<div style="color:#94a3b8;font-size:.9rem">Chargement…</div>';
+  openBtn.style.display = 'none';
+  overlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  // Screen Wake Lock — évite que l'écran s'éteigne lors de la présentation
+  try {
+    if ('wakeLock' in navigator) _qrWakeLock = await navigator.wakeLock.request('screen');
+  } catch {}
+
+  // Adapter le contenu selon le type d'URL
+  const isImage = /\.(png|jpg|jpeg|webp|gif|svg)(\?|$)/i.test(url);
+  const isPDF   = /\.pdf(\?|$)/i.test(url);
+
+  if (isImage) {
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = titre;
+    img.style.cssText = 'max-width:100%;max-height:calc(100vh - 120px);border-radius:12px;object-fit:contain';
+    img.onerror = () => {
+      content.innerHTML = `<div style="text-align:center;color:#ef4444;padding:20px">
+        <div style="font-size:2rem;margin-bottom:8px">⚠️</div>
+        <div style="font-size:.9rem">Impossible de charger l'image.</div>
+        <div style="font-size:.8rem;color:#94a3b8;margin-top:4px;word-break:break-all">${url}</div>
+      </div>`;
+      openBtn.style.display = '';
+    };
+    content.innerHTML = '';
+    content.appendChild(img);
+    openBtn.href = url;
+    openBtn.style.display = '';
+    openBtn.textContent = 'Ouvrir dans le navigateur →';
+  } else if (isPDF) {
+    content.innerHTML = `<iframe src="${url}" style="width:100%;height:calc(100vh - 120px);border:none;border-radius:8px" title="${titre}"></iframe>`;
+    openBtn.href = url;
+    openBtn.style.display = '';
+    openBtn.textContent = 'Télécharger le PDF →';
+  } else {
+    // Lien générique — afficher un iframe ou un bouton d'ouverture
+    content.innerHTML = `<div style="text-align:center;padding:40px 20px;display:flex;flex-direction:column;align-items:center;gap:20px">
+      <div style="font-size:3rem">${titre.toLowerCase().includes('qr') ? '📱' : '🎫'}</div>
+      <div style="font-size:1rem;font-weight:700;color:var(--text,#1e293b)">${titre}</div>
+      <div style="font-size:.82rem;color:#64748b;word-break:break-all;max-width:320px;text-align:center">${url}</div>
+    </div>`;
+    openBtn.href = url;
+    openBtn.style.display = '';
+    openBtn.textContent = 'Ouvrir le lien →';
+  }
+
+  // Bouton fermer
+  const _close = () => {
+    overlay.classList.add('hidden');
+    document.body.style.overflow = '';
+    if (_qrWakeLock) { _qrWakeLock.release().catch(() => {}); _qrWakeLock = null; }
+    closeBtn.removeEventListener('click', _close);
+    overlay.removeEventListener('keydown', _onKey);
+  };
+  const _onKey = (e) => { if (e.key === 'Escape') _close(); };
+  closeBtn.addEventListener('click', _close);
+  overlay.addEventListener('keydown', _onKey);
+}
+
+// Convertir le bouton open-btn en vrai lien
+document.addEventListener('DOMContentLoaded', () => {
+  const openBtn = document.getElementById('qr-viewer-open-btn');
+  if (openBtn) openBtn.onclick = function() { if (this.href) window.open(this.href, '_blank', 'noopener'); };
+});
 
 async function _supprimerDocPerso(id) {
   if (!_partageIdentite || !_partageIdentite.participant_id) {
@@ -3177,15 +3327,48 @@ async function chargerDocs() {
 
   const catLabels = { transport:'Transport', hebergement:'Hébergement', activite:'Activité', identite:'Identité', visa:'Visa', assurance:'Assurance', autre:'Autre' };
 
+  // Helper liens attribution (même logique que chargerMesInfos)
+  const _LICONS = { billet:'🎫', qrcode:'📱', document:'📄', voucher:'🎟️', information:'ℹ️', autre:'🔗' };
+  const _LLABELS = { billet:'Billet', qrcode:'QR Code', document:'Document', voucher:'Voucher', information:'Info', autre:'Lien' };
+  const _LCOLORS = { billet:'#FFF7ED', qrcode:'#F0FDF4', document:'#EFF6FF', voucher:'#FDF4FF', information:'#F0F9FF', autre:'#F9FAFB' };
+  function _renderLinks(links) {
+    if (!links || links.length === 0) return '';
+    return `<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">` +
+      links.map(l => {
+        const icon  = _LICONS[l.type] || '🔗';
+        const bg    = _LCOLORS[l.type] || '#F9FAFB';
+        const label = _LLABELS[l.type] || 'Lien';
+        const isQR  = l.type === 'qrcode';
+        const isImg = /\.(png|jpg|jpeg|webp|gif|svg)(\?|$)/i.test(l.url);
+        return `<div class="alink-card" style="flex-direction:column;align-items:stretch;cursor:default">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="alink-icon alink-icon--${l.type}" style="background:${bg}">${icon}</div>
+            <div class="alink-body">
+              <div class="alink-title">${l.titre.replace(/</g,'&lt;')}</div>
+              ${l.description ? `<div class="alink-desc">${l.description.replace(/</g,'&lt;')}</div>` : ''}
+              <div style="display:inline-block;margin-top:4px;font-size:.7rem;color:#94a3b8;background:rgba(148,163,184,.1);border-radius:20px;padding:2px 8px">${label}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            ${isQR || isImg ? `<button onclick="_ouvrirQRViewer('${l.url.replace(/'/g,"\\'").replace(/</g,'&lt;')}','${l.titre.replace(/'/g,"\\'").replace(/</g,'&lt;')}')" class="alink-qr-btn" style="flex:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h7v7M14 17h4M17 14v4"/></svg>${isQR ? 'Afficher le QR code' : 'Afficher le billet'}</button>` : ''}
+            <a href="${l.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--bg);border:1.5px solid var(--border-solid);border-radius:12px;padding:12px 16px;font-size:.87rem;font-weight:700;color:var(--text);text-decoration:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Ouvrir
+            </a>
+          </div>
+        </div>`;
+      }).join('') + `</div>`;
+  }
+
   const infosPriveesHtml = partId && (mesInfos.length > 0 || mesDocs.length > 0) ? `
     <div class="adm-section">
       <div class="adm-section-head"><span class="adm-section-title">🔒 Mes infos privées</span></div>
       <div style="padding:8px 12px">
         ${mesInfos.map(a => `
         <div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);border-left:4px solid #F97316;margin-bottom:10px">
-          <div style="font-weight:800;font-size:.95rem;margin-bottom:6px">🔒 ${a.titre}</div>
-          ${a.contenu ? `<div style="font-size:.88rem;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px 12px">${a.contenu}</div>` : ''}
-          ${a.document ? `<div style="margin-top:10px"><a href="/api/partage/${token}/documents/${a.document.id}/download" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#F97316;color:#fff;border-radius:20px;font-size:.83rem;font-weight:700;text-decoration:none">${getDocIcon(a.document.type_fichier)} ${a.document.nom}</a></div>` : ''}
+          <div style="font-weight:800;font-size:.95rem;margin-bottom:${(a.contenu || a.document || (a.links && a.links.length)) ? '8px' : '0'}">🔒 ${a.titre.replace(/</g,'&lt;')}</div>
+          ${a.contenu ? `<div style="font-size:.88rem;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px 12px">${a.contenu.replace(/</g,'&lt;')}</div>` : ''}
+          ${a.document ? `<div style="margin-top:10px"><a href="/api/partage/${token}/documents/${a.document.id}/download" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#F97316;color:#fff;border-radius:20px;font-size:.83rem;font-weight:700;text-decoration:none">${getDocIcon(a.document.type_fichier)} ${a.document.nom.replace(/</g,'&lt;')}</a></div>` : ''}
+          ${_renderLinks(a.links)}
         </div>`).join('')}
         ${mesDocs.length > 0 ? `<div style="margin-top:8px">${mesDocs.map(doc => `
         <div class="adm-row">
@@ -4806,10 +4989,24 @@ function escHtml(t) {
   </div>
 </div>
 
+<!-- ═══ VISIONNEUSE QR / BILLET PLEIN ÉCRAN ═══ -->
+<div id="qr-viewer-overlay" class="hidden" role="dialog" aria-modal="true" aria-label="Visionneuse billet">
+  <div class="qr-viewer-topbar">
+    <span class="qr-viewer-title" id="qr-viewer-title">Billet</span>
+    <button class="qr-viewer-close" id="qr-viewer-close" aria-label="Fermer">✕</button>
+  </div>
+  <div class="qr-viewer-content" id="qr-viewer-content">
+    <!-- rempli dynamiquement -->
+  </div>
+  <button class="qr-viewer-open-btn" id="qr-viewer-open-btn" style="display:none">
+    Ouvrir dans le navigateur →
+  </button>
+</div>
+
 <!-- ═══ FAB RETOUR MODE ADMIN ═══ -->
 <!-- Visible uniquement quand un JWT admin valide est présent (organisateur en vue participant) -->
 <div id="fab-admin-mode">
-  <button id="fab-admin-btn" onclick="window.location.href='/app'" title="Revenir en mode organisateur">
+  <button id="fab-admin-btn" title="Revenir en mode organisateur">
     <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.63-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
     Admin
   </button>

@@ -1361,6 +1361,73 @@
   </div>
 </div>
 
+<!-- ═══ MODAL LIEN ATTRIBUTION ═══ -->
+<div id="modal-lien-attribution" class="attr-link-modal hidden">
+  <div class="attr-link-modal-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span class="attr-link-modal-title">Nouveau lien</span>
+      <button id="btn-fermer-lien-modal" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.3rem;line-height:1">×</button>
+    </div>
+
+    <!-- Type -->
+    <div class="attr-link-form-row">
+      <span class="attr-link-form-label">Type de contenu</span>
+      <div class="attr-link-type-grid">
+        <label class="attr-link-type-opt selected" data-type="billet">
+          <input type="radio" name="lien-type" value="billet" checked>
+          <span style="font-size:1.3rem">🎫</span>Billet
+        </label>
+        <label class="attr-link-type-opt" data-type="qrcode">
+          <input type="radio" name="lien-type" value="qrcode">
+          <span style="font-size:1.3rem">📱</span>QR Code
+        </label>
+        <label class="attr-link-type-opt" data-type="document">
+          <input type="radio" name="lien-type" value="document">
+          <span style="font-size:1.3rem">📄</span>Document
+        </label>
+        <label class="attr-link-type-opt" data-type="voucher">
+          <input type="radio" name="lien-type" value="voucher">
+          <span style="font-size:1.3rem">🎟️</span>Voucher
+        </label>
+        <label class="attr-link-type-opt" data-type="information">
+          <input type="radio" name="lien-type" value="information">
+          <span style="font-size:1.3rem">ℹ️</span>Info
+        </label>
+        <label class="attr-link-type-opt" data-type="autre">
+          <input type="radio" name="lien-type" value="autre">
+          <span style="font-size:1.3rem">🔗</span>Autre
+        </label>
+      </div>
+    </div>
+
+    <!-- Titre -->
+    <div class="attr-link-form-row">
+      <label class="attr-link-form-label" for="lien-titre">Titre *</label>
+      <input id="lien-titre" type="text" placeholder="Ex : Billet avion Fabian, Ticket entrée, Voucher hôtel…"
+        style="width:100%;border:1.5px solid var(--border-solid);border-radius:10px;padding:10px 12px;background:var(--bg);color:var(--text);font-size:.9rem;font-family:var(--font-body);box-sizing:border-box">
+    </div>
+
+    <!-- URL -->
+    <div class="attr-link-form-row">
+      <label class="attr-link-form-label" for="lien-url">URL *</label>
+      <input id="lien-url" type="url" inputmode="url" placeholder="https://"
+        style="width:100%;border:1.5px solid var(--border-solid);border-radius:10px;padding:10px 12px;background:var(--bg);color:var(--text);font-size:.9rem;font-family:var(--font-body);box-sizing:border-box">
+      <span style="font-size:.72rem;color:var(--text-muted)">Lien vers un PDF, une image, une page de billet, Google Drive, Dropbox…</span>
+    </div>
+
+    <!-- Description optionnelle -->
+    <div class="attr-link-form-row">
+      <label class="attr-link-form-label" for="lien-desc">Description (optionnelle)</label>
+      <input id="lien-desc" type="text" placeholder="Ex : Siège 14A — Vol FR1234 — Embarquement B22"
+        style="width:100%;border:1.5px solid var(--border-solid);border-radius:10px;padding:10px 12px;background:var(--bg);color:var(--text);font-size:.9rem;font-family:var(--font-body);box-sizing:border-box">
+    </div>
+
+    <button id="btn-sauvegarder-lien" class="btn-primary" style="width:100%;padding:14px;font-size:.95rem">
+      Enregistrer
+    </button>
+  </div>
+</div>
+
 <!-- ═══ BOTTOM SHEET : DÉTAIL RÉSERVATION ═══ -->
 <div id="resa-detail-sheet" class="bottom-sheet hidden">
   <div class="bottom-sheet-handle"></div>
