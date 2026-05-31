@@ -1150,6 +1150,23 @@ app.post('/api/partage/:token/save-email', async (req, res) => {
     const existingUser = await run(() => db.users.getByEmail(email));
     const has_account  = !!existingUser;
 
+    // AP-9 : si le compte existe, créer immédiatement le lien user ↔ participant
+    // sans attendre le login ou le clic sur le magic link.
+    if (existingUser) {
+      try {
+        const allParts = await run(() => db.participants.getByVoyage(voyage.id));
+        const part     = allParts.find(p => p.nom === participant_nom);
+        if (part) {
+          await run(() => db.user_participant_links.upsert(
+            existingUser.id, part.id, voyage.id, participant_nom
+          ));
+          console.log(`[AP-9] Lien user_participant créé : user ${existingUser.id} ↔ "${participant_nom}" voyage ${voyage.id}`);
+        }
+      } catch (e) {
+        console.warn('[AP-9] user_participant_links upsert:', e.message);
+      }
+    }
+
     // Envoi du magic link (silencieux si pas de config email)
     try {
       const { generateAndSend } = require('./services/magicLink');
