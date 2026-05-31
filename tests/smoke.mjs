@@ -225,7 +225,42 @@ await test('POST /api/push/subscribe/:voyageId sans auth → 401 (cloud) ou 400/
   }
 });
 
-// ── 6. Sécurité ───────────────────────────────────────────────────────────────
+// ── 6. Nouvelles fonctionnalités ─────────────────────────────────────────────
+console.log('\n🆕 Nouvelles fonctionnalités');
+
+await test('GET /api/stats/public → 200 JSON avec voyages', async () => {
+  const res = await get('/api/stats/public');
+  assert(res.status === 200, `Status ${res.status}`);
+  const data = await res.json();
+  assert(typeof data.voyages === 'number', `Champ voyages manquant ou non numérique: ${JSON.stringify(data)}`);
+  assert(typeof data.participants === 'number', `Champ participants manquant: ${JSON.stringify(data)}`);
+});
+
+await test('GET /api/qr sans auth → 401 (cloud) ou 400 (local)', async () => {
+  const res = await get('/api/qr?url=/partage/test123456');
+  if (IS_LOCAL_MODE) {
+    // En mode local, authMiddleware laisse passer → 400 car URL invalide (pas de token valide)
+    assert([400, 200].includes(res.status), `Status inattendu: ${res.status}`);
+  } else {
+    assert(res.status === 401, `Status attendu 401, reçu ${res.status}`);
+  }
+});
+
+await test('GET /api/qr avec URL non autorisée → 400', async () => {
+  const res = await get('/api/qr?url=https://evil.com/malicious');
+  // Soit 401 (non auth), soit 400 (URL refusée)
+  assert([400, 401].includes(res.status), `Status inattendu: ${res.status}`);
+});
+
+await test('GET /offline.html → HTML avec "Vous êtes hors ligne"', async () => {
+  const res = await get('/offline.html');
+  assert(res.status === 200, `Status ${res.status}`);
+  const body = await res.text();
+  assert(body.includes('hors ligne') || body.includes('offline'), 'Texte "hors ligne" absent');
+  assert(body.includes('CrewiGO') || body.includes('Crewi'), 'Logo CrewiGO absent');
+});
+
+// ── 7. Sécurité ───────────────────────────────────────────────────────────────
 console.log('\n🔒 Sécurité');
 
 await test('Headers sécurité présents (X-Frame-Options ou frame-ancestors)', async () => {
@@ -254,7 +289,8 @@ await test('Route inconnue → 404', async () => {
 
 // ─── Résumé ──────────────────────────────────────────────────────────────────
 console.log('\n' + '─'.repeat(52));
-console.log(`  Résultat : ${passed} ✅  /  ${failed} ❌  /  ${skipped} ⏭️   /  ${passed + failed + skipped} tests`);
+const total = passed + failed + skipped;
+console.log(`  Résultat : ${passed} ✅  /  ${failed} ❌  /  ${skipped} ⏭️   /  ${total} tests`);
 if (errors.length > 0) {
   console.log('\nÉchecs :');
   errors.forEach(e => console.log(`  • ${e.label}\n    ${e.message}`));
