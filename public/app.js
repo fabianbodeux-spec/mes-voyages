@@ -4028,6 +4028,9 @@ function afficherBilan(depenses, participants) {
     });
   });
 
+  // Snapshot avant simplification — net est muté ci-dessous, on en a besoin pour l'affichage
+  const netSnapshot = { ...net };
+
   // Simplifier les dettes
   const transactions = [];
   const debtors = participants.filter(p => net[p.id] < -0.01).map(p => ({ ...p, solde: net[p.id] })).sort((a,b) => a.solde - b.solde);
@@ -4045,14 +4048,15 @@ function afficherBilan(depenses, participants) {
   }
 
   // ── Solde par personne — graphique à barres centré ──────────────────────────
-  const maxAbs = Math.max(...participants.map(p => Math.abs(net[p.id])), 0.01);
+  // Utilise netSnapshot (avant simplification) — net lui-même est à 0 après le while
+  const maxAbs = Math.max(...participants.map(p => Math.abs(netSnapshot[p.id])), 0.01);
   const balanceSection = `
     <div style="padding:14px 16px 6px">
       <span style="font-size:.7rem;font-weight:700;color:var(--text-muted);letter-spacing:.07em;text-transform:uppercase">Solde par personne</span>
     </div>
     <div class="balance-grid">
       ${participants.map(p => {
-        const amount   = Math.round(net[p.id] * 100) / 100;
+        const amount   = Math.round(netSnapshot[p.id] * 100) / 100;
         const isCredit = amount > 0.01;
         const isDebt   = amount < -0.01;
         const pct      = Math.min(Math.abs(amount) / maxAbs * 50, 50);
