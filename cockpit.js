@@ -40,6 +40,21 @@ module.exports = function mountCockpit(app, deps) {
 
   const COCKPIT_PASSWORD = process.env.COCKPIT_PASSWORD || (IS_CLOUD ? null : 'cockpit-dev');
 
+  // ── Identification des fondateurs ──
+  // FOUNDER_EMAILS = liste (séparée par virgules) des comptes internes (toi + cofondateurs).
+  // Sert à distinguer les voyages "de test" (créés par l'équipe) du vrai usage externe.
+  // Matching souple : on compare l'e-mail complet OU sa partie locale (avant @), insensible à la casse,
+  // pour rester robuste quel que soit le domaine utilisé.
+  const FOUNDER_RAW = (process.env.FOUNDER_EMAILS || '')
+    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const isFounderEmail = (email) => {
+    if (!FOUNDER_RAW.length || !email) return false;
+    const e = String(email).toLowerCase();
+    const local = e.split('@')[0];
+    return FOUNDER_RAW.includes(e) || FOUNDER_RAW.includes(local);
+  };
+  const founderConfigured = FOUNDER_RAW.length > 0;
+
   // Cache court des stats : ~30 requêtes SQL par appel × auto-refresh 60s × onglets ouverts.
   // Un cache module-level de 30 s absorbe l'essentiel de la charge (lecture seule, données agrégées).
   const STATS_CACHE_MS = 30000;
@@ -144,7 +159,7 @@ module.exports = function mountCockpit(app, deps) {
                FROM users u JOIN voyages v ON v.owner_id = u.id
                GROUP BY u.id, u.email
                ORDER BY COUNT(v.id) DESC, MAX(v.created_at) DESC
-               LIMIT 50`),
+               LIMIT 500`),
           // Personnes invitées par lien : emails enregistrés via la page de partage
           // (1 ligne = 1 personne distincte ayant rejoint un voyage via son lien d'invitation)
           q(`SELECT COUNT(*) count FROM participant_emails`),
@@ -153,6 +168,18 @@ module.exports = function mountCockpit(app, deps) {
         ]);
         const sm = {}; vStatut.forEach(r => { sm[r.s] = parseInt(r.count) || 0; });
         const voyagesTot = n(vTot);
+
+        // Classement fondateur / externe à partir de la liste des organisateurs (owners de voyages)
+        const orgClassified = orgList.map(r => ({
+          email: r.email || '—',
+          voyages: parseInt(r.voyages) || 0,
+          lastVoyage: r.last_voyage || null,
+          isFounder: isFounderEmail(r.email),
+        }));
+        const foundersList = orgClassified.filter(o => o.isFounder);
+        const externesList = orgClassified.filter(o => !o.isFounder);
+        const voyagesTest  = foundersList.reduce((s, o) => s + o.voyages, 0);
+        const voyagesReels = externesList.reduce((s, o) => s + o.voyages, 0);
         const totals = {
           voyages: voyagesTot,
           voyagesActif: sm['actif'] || 0,
@@ -190,17 +217,19 @@ module.exports = function mountCockpit(app, deps) {
             organisateursMulti:   n(orgMulti, 'multi'),
             organisateursActifs:  n(orgMulti, 'total'),
             multiPct:             pct(n(orgMulti, 'multi'), n(orgMulti, 'total')),
+            founderConfigured,
+            fondateurs:  foundersList.length,
+            externes:    externesList.length,
+            voyagesTest,
+            voyagesReels,
+            reelsPct:    pct(voyagesReels, voyagesReels + voyagesTest),
           },
           series: {
             voyages30:      vSeries.map(r => ({ d: r.d, n: parseInt(r.n) })),
             messages30:     mSeries.map(r => ({ d: r.d, n: parseInt(r.n) })),
             participants30: pSeries.map(r => ({ d: r.d, n: parseInt(r.n) })),
           },
-          organisateurs: orgList.map(r => ({
-            email: r.email || '—',
-            voyages: parseInt(r.voyages) || 0,
-            lastVoyage: r.last_voyage || null,
-          })),
+          organisateurs: orgClassified.slice(0, 50),
         });
       }
 
@@ -245,11 +274,15 @@ module.exports = function mountCockpit(app, deps) {
         if (!ownerLast[v.owner_id] || ts > ownerLast[v.owner_id]) ownerLast[v.owner_id] = ts;
       });
       const ownerVals = Object.values(ownerCounts);
-      const orgList = users
+      const orgClassified = users
         .filter(u => ownerCounts[u.id])
-        .map(u => ({ email: u.email || '—', voyages: ownerCounts[u.id], lastVoyage: ownerLast[u.id] || null }))
-        .sort((a, b) => b.voyages - a.voyages || String(b.lastVoyage).localeCompare(String(a.lastVoyage)))
-        .slice(0, 50);
+        .map(u => ({ email: u.email || '—', voyages: ownerCounts[u.id], lastVoyage: ownerLast[u.id] || null, isFounder: isFounderEmail(u.email) }))
+        .sort((a, b) => b.voyages - a.voyages || String(b.lastVoyage).localeCompare(String(a.lastVoyage)));
+      const foundersList = orgClassified.filter(o => o.isFounder);
+      const externesList = orgClassified.filter(o => !o.isFounder);
+      const voyagesTest  = foundersList.reduce((s, o) => s + o.voyages, 0);
+      const voyagesReels = externesList.reduce((s, o) => s + o.voyages, 0);
+      const orgList = orgClassified.slice(0, 50);
       const voyagesTot = voyages.length;
       const toSeries = (bucket) => Object.keys(bucket).sort().map(d => ({ d, n: bucket[d] }));
       return serve({
@@ -273,7 +306,17 @@ module.exports = function mountCockpit(app, deps) {
           voyagesWithDoc: vDoc.size,  documentsPct:    pct(vDoc.size,  voyagesTot),
           voyagesWithDep: vDep.size,  depensesPct:     pct(vDep.size,  voyagesTot),
         },
-        growth: { organisateursMulti: ownerVals.filter(c => c >= 2).length, organisateursActifs: ownerVals.length, multiPct: pct(ownerVals.filter(c => c >= 2).length, ownerVals.length) },
+        growth: {
+          organisateursMulti: ownerVals.filter(c => c >= 2).length,
+          organisateursActifs: ownerVals.length,
+          multiPct: pct(ownerVals.filter(c => c >= 2).length, ownerVals.length),
+          founderConfigured,
+          fondateurs: foundersList.length,
+          externes: externesList.length,
+          voyagesTest,
+          voyagesReels,
+          reelsPct: pct(voyagesReels, voyagesReels + voyagesTest),
+        },
         series: { voyages30: toSeries(vBucket), messages30: toSeries(mBucket), participants30: toSeries(pBucket) },
         organisateurs: orgList
       });

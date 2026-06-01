@@ -179,10 +179,22 @@
     } else if ((d.server?.uptimeSec || 0) < 300) {
       cls = 'warn'; txt = 'Serveur redémarré récemment'; sub = 'Démarré ' + uptime(d.server.uptimeSec);
     } else {
-      const w = d.week || {}, e = d.engagement || {};
-      const calme = !(w.voyages || w.messages || w.participants || e.voyagesActifs7j);
-      if (calme) { cls = 'warn'; txt = 'Activité calme cette semaine'; sub = 'Aucune action sur 7 jours — normal hors période de voyage'; }
-      else { sub = `${fmt(e.voyagesActifs7j)} voyage(s) actif(s) · ${fmt(w.messages)} message(s)/7j`; }
+      const w = d.week || {}, e = d.engagement || {}, g = d.growth || {};
+      // Verdict d'adoption prioritaire : le but de l'outil est de mesurer la traction externe.
+      if (g.founderConfigured) {
+        const ext = +g.externes || 0;
+        if (ext === 0) {
+          cls = 'warn'; txt = 'Aucun utilisateur externe';
+          sub = `${fmt(g.voyagesReels)} voyage(s) réel(s) · seuls les comptes fondateurs créent des voyages`;
+        } else {
+          cls = 'ok'; txt = `Traction externe · ${fmt(ext)} externe${ext > 1 ? 's' : ''}`;
+          sub = `${fmt(g.voyagesReels)} voyage(s) réel(s) (${g.reelsPct || 0}% du total)`;
+        }
+      } else {
+        const calme = !(w.voyages || w.messages || w.participants || e.voyagesActifs7j);
+        if (calme) { cls = 'warn'; txt = 'Activité calme cette semaine'; sub = 'Aucune action sur 7 jours — normal hors période de voyage'; }
+        else { sub = `${fmt(e.voyagesActifs7j)} voyage(s) actif(s) · ${fmt(w.messages)} message(s)/7j`; }
+      }
     }
     const v = $('verdict');
     v.style.display = '';
@@ -212,13 +224,19 @@
 
     // ── Panneau organisateurs (qui utilise l'app) ──
     const orgs = d.organisateurs || [];
-    const externes = orgs.length > 0 ? orgs.length - 1 : 0; // 1 compte = toi (heuristique : le + de voyages)
+    // Si FOUNDER_EMAILS est configuré côté serveur → distinction fiable fondateur/externe.
+    // Sinon, repli sur l'heuristique « le compte avec le plus de voyages = toi ».
+    const founderMode = !!g.founderConfigured;
+    const externes = founderMode ? (+g.externes || 0) : (orgs.length > 0 ? orgs.length - 1 : 0);
     let orgHtml;
     if (!orgs.length) {
       orgHtml = '<div class="chart-empty">Aucun organisateur pour l\'instant</div>';
     } else {
       orgHtml = orgs.map((o, i) => {
-        const tag = i === 0 ? '<span class="org-tag me">vous ?</span>' : '<span class="org-tag ext">externe</span>';
+        const isFounder = founderMode ? !!o.isFounder : (i === 0);
+        const tag = isFounder
+          ? `<span class="org-tag me">${founderMode ? 'fondateur' : 'vous ?'}</span>`
+          : '<span class="org-tag ext">externe</span>';
         return `<div class="org-row">
           <div class="org-id">
             <div class="org-email">${esc(o.email)}${tag}</div>
@@ -232,13 +250,16 @@
     const html = `
       <!-- Qui utilise CrewiGo (signal d'adoption — placé en tête) -->
       <div class="section-title">Qui utilise CrewiGo ? (organisateurs)</div>
-      <div class="grid g3">
+      <div class="grid ${founderMode ? 'g4' : 'g3'}">
         ${card('🧑‍✈️ Organisateurs', fmt(orgs.length), 'comptes ayant créé ≥ 1 voyage', null, orgs.length === 0)}
-        ${card('🌍 Externes (hors toi)', externes === 0 ? 'Aucun' : fmt(externes), externes === 0 ? 'tu es seul à créer des voyages' : 'd\'autres créent des voyages 🎉', null, externes === 0)}
+        ${card(founderMode ? '🌍 Externes' : '🌍 Externes (hors toi)', externes === 0 ? 'Aucun' : fmt(externes), externes === 0 ? (founderMode ? 'aucun utilisateur hors équipe' : 'tu es seul à créer des voyages') : 'd\'autres créent des voyages 🎉', null, externes === 0)}
+        ${founderMode ? card('🎯 Voyages réels', fmt(g.voyagesReels), `${g.reelsPct || 0}% du total · ${fmt(g.voyagesTest)} en test`, null, !g.voyagesReels) : ''}
         ${card('🔁 Fidèles (≥ 2 voyages)', fmt(g.organisateursMulti), `${g.multiPct || 0}% des organisateurs`, null, !g.organisateursMulti)}
       </div>
       <div class="card">${orgHtml}</div>
-      <div class="hint">ℹ️ « vous ? » = le compte qui a créé le plus de voyages (probablement toi, tes tests inclus). Vérifie l'e-mail pour confirmer. Les autres sont des utilisateurs externes.</div>
+      <div class="hint">${founderMode
+        ? 'ℹ️ « fondateur » = compte interne (équipe CrewiGo) défini via <code>FOUNDER_EMAILS</code> ; ses voyages comptent comme « test ». « externe » = vrai utilisateur — ses voyages comptent comme « réels ».'
+        : 'ℹ️ « vous ? » = le compte qui a créé le plus de voyages (probablement toi, tes tests inclus). Vérifie l\'e-mail pour confirmer. Les autres sont des utilisateurs externes.'}</div>
 
       <!-- Cette semaine -->
       <div class="section-title">Cette semaine · vs 7 jours précédents</div>
