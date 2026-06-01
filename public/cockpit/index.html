@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0B0B0F">
+<title>Centre de Commandement · CrewiGo</title>
+<style>
+  :root{
+    --bg:#0B0B0F; --panel:#15151C; --panel2:#1C1C26; --line:#26262F;
+    --txt:#F4F4F6; --muted:#8B8B99; --accent:#F97316; --accent2:#FB923C;
+    --green:#22C55E; --orange:#F59E0B; --red:#EF4444; --blue:#60A5FA;
+    --radius:18px; --shadow:0 8px 30px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .hidden{display:none !important}
+
+  /* ── Login ── */
+  #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .login-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius);padding:32px 26px;box-shadow:var(--shadow);text-align:center}
+  .login-logo{width:54px;height:54px;border-radius:15px;margin:0 auto 18px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:26px}
+  .login-card h1{font-size:1.15rem;font-weight:800;letter-spacing:-.02em}
+  .login-card p{color:var(--muted);font-size:.82rem;margin:6px 0 22px}
+  .login-card input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:12px;padding:13px 15px;font-size:1rem;outline:none}
+  .login-card input:focus{border-color:var(--accent)}
+  .login-card button{width:100%;margin-top:12px;background:var(--accent);color:#fff;border:none;
+    border-radius:12px;padding:13px;font-size:1rem;font-weight:700;cursor:pointer}
+  .login-card button:active{transform:scale(.98)}
+  .login-err{color:var(--red);font-size:.8rem;margin-top:12px;min-height:1em}
+
+  /* ── Dashboard ── */
+  #dash{max-width:1080px;margin:0 auto;padding:18px 16px 60px}
+  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap}
+  .topbar .brand{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+  .brand-dot{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .brand h1{font-size:1.05rem;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar button{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:10px;padding:8px 12px;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap}
+  .topbar button:active{transform:scale(.97)}
+  .updated{color:var(--muted);font-size:.74rem;margin-bottom:20px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+
+  .section-title{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+    font-weight:700;margin:26px 4px 12px}
+  .grid{display:grid;gap:12px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:720px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:420px){.g4,.g3,.g2{grid-template-columns:1fr 1fr}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 16px 15px}
+  .card .label{color:var(--muted);font-size:.76rem;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .card .value{font-size:1.7rem;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .card .sub{color:var(--muted);font-size:.72rem;margin-top:7px}
+  .card .delta{font-size:.72rem;font-weight:700;margin-left:7px}
+  .delta.up{color:var(--green)} .delta.down{color:var(--red)} .delta.flat{color:var(--muted)}
+  .card.wide{grid-column:1 / -1}
+
+  /* progress bars (adoption) */
+  .bar-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .bar-row:last-child{border-bottom:none}
+  .bar-row .bl{flex:1;min-width:0}
+  .bar-row .bn{font-size:.86rem;font-weight:600}
+  .bar-row .bs{font-size:.72rem;color:var(--muted);margin-top:2px}
+  .bar-track{height:8px;background:var(--panel2);border-radius:6px;overflow:hidden;margin-top:7px}
+  .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:6px;transition:width .5s}
+  .bar-pct{font-size:1.05rem;font-weight:800;min-width:46px;text-align:right}
+
+  /* chart */
+  .chart-card svg{width:100%;height:90px;display:block;margin-top:6px}
+  .chart-bar{fill:var(--accent);opacity:.85}
+  .chart-empty{color:var(--muted);font-size:.78rem;padding:24px 0;text-align:center}
+
+  .health{display:flex;flex-wrap:wrap;gap:10px}
+  .pill{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:9px 13px;font-size:.78rem;color:var(--muted)}
+  .pill b{color:var(--txt);font-weight:700}
+  .note{color:var(--muted);font-size:.74rem;margin-top:12px;line-height:1.55;background:var(--panel2);border:1px dashed var(--line);border-radius:12px;padding:11px 13px}
+  .loading{text-align:center;color:var(--muted);padding:60px 0}
+</style>
+</head>
+<body>
+
+  <!-- ══ ÉCRAN DE CONNEXION ══ -->
+  <div id="login">
+    <form class="login-card" id="login-form">
+      <div class="login-logo">🛰️</div>
+      <h1>Centre de Commandement</h1>
+      <p>Accès privé CrewiGo · réservé au pilotage</p>
+      <input type="password" id="pwd" placeholder="Mot de passe" autocomplete="current-password" autofocus>
+      <button type="submit" id="login-btn">Accéder</button>
+      <div class="login-err" id="login-err"></div>
+    </form>
+  </div>
+
+  <!-- ══ TABLEAU DE BORD ══ -->
+  <div id="dash" class="hidden">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-dot">🛰️</div>
+        <h1>Centre de Commandement</h1>
+      </div>
+      <button id="btn-refresh">↻ Actualiser</button>
+      <button id="btn-logout">Quitter</button>
+    </div>
+    <div class="updated" id="updated"></div>
+    <div id="content"><div class="loading">Chargement des données…</div></div>
+  </div>
+
+<script src="/cockpit/cockpit.js?v=1"></script>
+</body>
+</html>

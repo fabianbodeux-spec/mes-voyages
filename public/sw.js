@@ -1,5 +1,5 @@
 // ─── Cache config ────────────────────────────────────────────────────────────
-const CACHE_VERSION = 'cgo-v58';
+const CACHE_VERSION = 'cgo-v59';
 // NE PAS inclure app.js et style.css non versionnés ici :
 // le serveur les sert via /app?vXX et /style.css?vXX → deux entrées distinctes
 // dans le cache coexisteraient et créeraient un conflit (stale + fresh en même temps)
@@ -51,6 +51,9 @@ self.addEventListener('fetch', event => {
 
   // Non-GET ou cross-origin → bypass total
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  // Centre de Commandement → totalement indépendant de l'app : le SW n'intervient jamais
+  if (url.pathname === '/cockpit' || url.pathname.startsWith('/cockpit/')) return;
 
   // /api/* → network uniquement, jamais de cache
   if (url.pathname.startsWith('/api/')) {
