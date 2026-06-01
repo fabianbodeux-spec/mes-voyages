@@ -3246,7 +3246,8 @@ async function _reactToMessage(id, emoji) {
 // ── Reply ──────────────────────────────────────────────────────────
 function _replyTo(id, auteur, preview) {
   _chatReplyState = { id, auteur, preview };
-  document.getElementById('chat-reply-bar')?.style && (document.getElementById('chat-reply-bar').style.display = 'flex');
+  const bar = document.getElementById('chat-reply-bar');
+  if (bar) bar.style.display = 'flex';
   const aEl = document.getElementById('chat-reply-auteur');
   const pEl = document.getElementById('chat-reply-preview');
   if (aEl) aEl.textContent = auteur;
