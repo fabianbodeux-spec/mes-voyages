@@ -47,8 +47,27 @@
   .topbar button{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
     border-radius:10px;padding:8px 12px;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap}
   .topbar button:active{transform:scale(.97)}
-  .updated{color:var(--muted);font-size:.74rem;margin-bottom:20px}
+  .updated{color:var(--muted);font-size:.74rem;margin-bottom:20px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
+  .live-dot.on{animation:pulse 2s infinite}
+  .live-dot.stale{background:var(--orange);animation:none}
+  .badge-mode{font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.04em}
+  .badge-mode.prod{background:rgba(34,197,94,.15);color:#86efac}
+  .badge-mode.dev{background:rgba(245,158,11,.15);color:#fcd34d}
+
+  /* ── Barre de verdict global ── */
+  .verdict{display:flex;align-items:center;gap:11px;border-radius:14px;padding:13px 16px;margin-bottom:16px;
+    border:1px solid var(--line);font-weight:700;font-size:.92rem;position:sticky;top:8px;z-index:5;backdrop-filter:blur(8px)}
+  .verdict .vdot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+  .verdict .vsub{color:var(--muted);font-weight:500;margin-left:auto;font-size:.76rem;text-align:right}
+  .verdict.ok{background:rgba(34,197,94,.09);border-color:rgba(34,197,94,.35);color:#bbf7d0}
+  .verdict.ok .vdot{background:var(--green);animation:pulse 2.4s infinite}
+  .verdict.warn{background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.42);color:#fde68a}
+  .verdict.warn .vdot{background:var(--orange)}
+  .verdict.crit{background:rgba(239,68,68,.11);border-color:rgba(239,68,68,.45);color:#fecaca}
+  .verdict.crit .vdot{background:var(--red)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
 
   .section-title{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
     font-weight:700;margin:26px 4px 12px}
@@ -63,9 +82,29 @@
   .card .label{color:var(--muted);font-size:.76rem;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
   .card .value{font-size:1.7rem;font-weight:800;letter-spacing:-.03em;line-height:1}
   .card .sub{color:var(--muted);font-size:.72rem;margin-top:7px}
-  .card .delta{font-size:.72rem;font-weight:700;margin-left:7px}
-  .delta.up{color:var(--green)} .delta.down{color:var(--red)} .delta.flat{color:var(--muted)}
+  .card .delta{font-size:.72rem;font-weight:700;margin-left:7px;white-space:nowrap}
+  .delta.up{color:var(--green)} .delta.down{color:var(--red)} .delta.flat{color:var(--muted)} .delta.new{color:var(--accent2)}
+  .card .value.empty{font-size:1rem;font-weight:600;color:var(--muted)}
   .card.wide{grid-column:1 / -1}
+
+  /* seuils d'adoption (couleur sémantique) */
+  .bar-pct.good{color:var(--green)} .bar-pct.mid{color:var(--orange)} .bar-pct.low{color:var(--muted)}
+  .bar-fill.good{background:linear-gradient(90deg,#16a34a,#22c55e)}
+  .bar-fill.mid{background:linear-gradient(90deg,#d97706,#f59e0b)}
+  .bar-fill.low{background:linear-gradient(90deg,#52525b,#71717a)}
+
+  /* panneau organisateurs */
+  .org-row{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .org-row:last-child{border-bottom:none}
+  .org-id{flex:1;min-width:0}
+  .org-email{font-size:.86rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .org-meta{font-size:.72rem;color:var(--muted);margin-top:2px}
+  .org-tag{font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:6px;margin-left:6px;vertical-align:middle;text-transform:uppercase;letter-spacing:.03em}
+  .org-tag.me{background:rgba(96,165,250,.18);color:#93c5fd}
+  .org-tag.ext{background:rgba(34,197,94,.16);color:#86efac}
+  .org-count{font-size:1.1rem;font-weight:800;min-width:34px;text-align:right}
+  .org-count small{display:block;font-size:.6rem;color:var(--muted);font-weight:600}
+  .hint{color:var(--muted);font-size:.74rem;margin:0 4px 12px;line-height:1.5}
 
   /* progress bars (adoption) */
   .bar-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
@@ -113,10 +152,13 @@
       <button id="btn-refresh">↻ Actualiser</button>
       <button id="btn-logout">Quitter</button>
     </div>
+    <div class="verdict warn" id="verdict" style="display:none">
+      <span class="vdot"></span><span id="verdict-txt">Analyse…</span><span class="vsub" id="verdict-sub"></span>
+    </div>
     <div class="updated" id="updated"></div>
     <div id="content"><div class="loading">Chargement des données…</div></div>
   </div>
 
-<script src="/cockpit/cockpit.js?v=1"></script>
+<script src="/cockpit/cockpit.js?v=2"></script>
 </body>
 </html>

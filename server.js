@@ -404,7 +404,7 @@ app.post('/api/cockpit/login', (req, res) => {
 app.get('/api/cockpit/stats', cockpitAuth, async (req, res) => {
   try {
     const dayStr = (off = 0) => new Date(Date.now() - off * 86400000).toISOString().slice(0, 10);
-    const c7 = dayStr(7), c30 = dayStr(30);
+    const c7 = dayStr(7), c14 = dayStr(14), c30 = dayStr(30);
     const pct = (a, b) => b > 0 ? Math.round((a / b) * 100) : 0;
 
     if (IS_CLOUD && db._pool) {
@@ -413,9 +413,10 @@ app.get('/api/cockpit/stats', cockpitAuth, async (req, res) => {
       const [
         vStatut, partTot, orgTot, msgTot, docTot, attrTot, depAgg, pushTot,
         vWeek, pWeek, mWeek, oWeek,
+        vPrev, pPrev, mPrev,
         actifs7, attrVoy, docVoy, depVoy, vTot,
-        orgMulti, avgPart, msgMed,
-        vSeries, mSeries, pSeries
+        orgMulti, avgPart, msgMed, partMed,
+        vSeries, mSeries, pSeries, orgList
       ] = await Promise.all([
         q(`SELECT COALESCE(NULLIF(statut,''),'actif') s, COUNT(*) count FROM voyages GROUP BY 1`),
         q(`SELECT COUNT(*) count FROM participants`),
@@ -429,6 +430,9 @@ app.get('/api/cockpit/stats', cockpitAuth, async (req, res) => {
         q(`SELECT COUNT(*) count FROM participants WHERE created_at >= $1`, [c7]),
         q(`SELECT COUNT(*) count FROM commentaires WHERE created_at >= $1`, [c7]),
         q(`SELECT COUNT(*) count FROM users WHERE created_at >= $1`, [c7]),
+        q(`SELECT COUNT(*) count FROM voyages      WHERE created_at >= $1 AND created_at < $2`, [c14, c7]),
+        q(`SELECT COUNT(*) count FROM participants WHERE created_at >= $1 AND created_at < $2`, [c14, c7]),
+        q(`SELECT COUNT(*) count FROM commentaires WHERE created_at >= $1 AND created_at < $2`, [c14, c7]),
         q(`SELECT COUNT(DISTINCT voyage_id) count FROM (
              SELECT voyage_id FROM commentaires WHERE created_at >= $1
              UNION SELECT voyage_id FROM participants WHERE created_at >= $1
@@ -442,9 +446,16 @@ app.get('/api/cockpit/stats', cockpitAuth, async (req, res) => {
         q(`SELECT COALESCE(AVG(c),0) avg FROM (SELECT voyage_id, COUNT(*) c FROM participants GROUP BY voyage_id) t`),
         q(`SELECT COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY c),0) med
              FROM (SELECT voyage_id, COUNT(*) c FROM commentaires GROUP BY voyage_id) t`),
+        q(`SELECT COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY c),0) med
+             FROM (SELECT voyage_id, COUNT(*) c FROM participants GROUP BY voyage_id) t`),
         q(`SELECT substring(created_at,1,10) d, COUNT(*) n FROM voyages      WHERE created_at >= $1 GROUP BY 1 ORDER BY 1`, [c30]),
         q(`SELECT substring(created_at,1,10) d, COUNT(*) n FROM commentaires WHERE created_at >= $1 GROUP BY 1 ORDER BY 1`, [c30]),
         q(`SELECT substring(created_at,1,10) d, COUNT(*) n FROM participants WHERE created_at >= $1 GROUP BY 1 ORDER BY 1`, [c30]),
+        q(`SELECT u.email, COUNT(v.id) voyages, MAX(v.created_at) last_voyage
+             FROM users u JOIN voyages v ON v.owner_id = u.id
+             GROUP BY u.id, u.email
+             ORDER BY COUNT(v.id) DESC, MAX(v.created_at) DESC
+             LIMIT 50`),
       ]);
       const sm = {}; vStatut.forEach(r => { sm[r.s] = parseInt(r.count) || 0; });
       const voyagesTot = n(vTot);
@@ -468,9 +479,11 @@ app.get('/api/cockpit/stats', cockpitAuth, async (req, res) => {
         server: { uptimeSec: Math.round(process.uptime()), memMB: Math.round(process.memoryUsage().rss / 1048576) },
         totals,
         week: { voyages: n(vWeek), participants: n(pWeek), messages: n(mWeek), organisateurs: n(oWeek) },
+        weekPrev: { voyages: n(vPrev), participants: n(pPrev), messages: n(mPrev) },
         engagement: {
           voyagesActifs7j: n(actifs7),
           msgMedianeParVoyage: Math.round(n(msgMed, 'med') * 10) / 10,
+          medianeParticipants: Math.round(n(partMed, 'med') * 10) / 10,
           avgParticipants: Math.round(n(avgPart, 'avg') * 10) / 10,
         },
         adoption: {
@@ -487,17 +500,23 @@ app.get('/api/cockpit/stats', cockpitAuth, async (req, res) => {
           voyages30:      vSeries.map(r => ({ d: r.d, n: parseInt(r.n) })),
           messages30:     mSeries.map(r => ({ d: r.d, n: parseInt(r.n) })),
           participants30: pSeries.map(r => ({ d: r.d, n: parseInt(r.n) })),
-        }
+        },
+        organisateurs: orgList.map(r => ({
+          email: r.email || '—',
+          voyages: parseInt(r.voyages) || 0,
+          lastVoyage: r.last_voyage || null,
+        })),
       });
     }
 
     // ── Fallback local (JSON) — pour la prévisualisation en dev ──
     const safe = (fn) => { try { const r = fn(); return Array.isArray(r) ? r : []; } catch { return []; } };
     const recent = (ts, cut) => String(ts || '').slice(0, 10) >= cut;
+    const between = (ts, lo, hi) => { const d = String(ts || '').slice(0, 10); return d >= lo && d < hi; };
     const voyages = safe(() => db.voyages.getAll ? db.voyages.getAll() : []);
     const users = safe(() => db.users.getAll ? db.users.getAll() : []);
     let participants = 0, messages = 0, documents = 0, attributions = 0, depCount = 0, depSum = 0;
-    let pWeek = 0, mWeek = 0;
+    let pWeek = 0, mWeek = 0, pPrev = 0, mPrev = 0;
     const vAttr = new Set(), vDoc = new Set(), vDep = new Set(), actifs = new Set();
     const partCounts = [], msgCounts = [];
     const vBucket = {}, mBucket = {}, pBucket = {};
@@ -514,13 +533,24 @@ app.get('/api/cockpit/stats', cockpitAuth, async (req, res) => {
       if (D.length) vDoc.add(v.id);
       if (E.length) vDep.add(v.id);
       if (recent(v.created_at, c30)) vBucket[String(v.created_at).slice(0,10)] = (vBucket[String(v.created_at).slice(0,10)] || 0) + 1;
-      P.forEach(x => { if (recent(x.created_at, c7)) pWeek++; if (recent(x.created_at, c30)) { const d = String(x.created_at).slice(0,10); pBucket[d] = (pBucket[d]||0)+1; } if (recent(x.created_at, c7)) actifs.add(v.id); });
-      C.forEach(x => { if (recent(x.created_at, c7)) { mWeek++; actifs.add(v.id); } if (recent(x.created_at, c30)) { const d = String(x.created_at).slice(0,10); mBucket[d] = (mBucket[d]||0)+1; } });
+      P.forEach(x => { if (recent(x.created_at, c7)) { pWeek++; actifs.add(v.id); } if (between(x.created_at, c14, c7)) pPrev++; if (recent(x.created_at, c30)) { const d = String(x.created_at).slice(0,10); pBucket[d] = (pBucket[d]||0)+1; } });
+      C.forEach(x => { if (recent(x.created_at, c7)) { mWeek++; actifs.add(v.id); } if (between(x.created_at, c14, c7)) mPrev++; if (recent(x.created_at, c30)) { const d = String(x.created_at).slice(0,10); mBucket[d] = (mBucket[d]||0)+1; } });
       D.forEach(x => { if (recent(x.created_at, c7)) actifs.add(v.id); });
     });
     const median = (arr) => { if (!arr.length) return 0; const s = [...arr].sort((a,b)=>a-b); const m = Math.floor(s.length/2); return s.length % 2 ? s[m] : (s[m-1]+s[m])/2; };
-    const ownerCounts = {}; voyages.forEach(v => { if (v.owner_id != null) ownerCounts[v.owner_id] = (ownerCounts[v.owner_id]||0)+1; });
+    const ownerCounts = {}, ownerLast = {};
+    voyages.forEach(v => {
+      if (v.owner_id == null) return;
+      ownerCounts[v.owner_id] = (ownerCounts[v.owner_id] || 0) + 1;
+      const ts = String(v.created_at || '');
+      if (!ownerLast[v.owner_id] || ts > ownerLast[v.owner_id]) ownerLast[v.owner_id] = ts;
+    });
     const ownerVals = Object.values(ownerCounts);
+    const orgList = users
+      .filter(u => ownerCounts[u.id])
+      .map(u => ({ email: u.email || '—', voyages: ownerCounts[u.id], lastVoyage: ownerLast[u.id] || null }))
+      .sort((a, b) => b.voyages - a.voyages || String(b.lastVoyage).localeCompare(String(a.lastVoyage)))
+      .slice(0, 50);
     const voyagesTot = voyages.length;
     const toSeries = (bucket) => Object.keys(bucket).sort().map(d => ({ d, n: bucket[d] }));
     return res.json({
@@ -536,14 +566,16 @@ app.get('/api/cockpit/stats', cockpitAuth, async (req, res) => {
         depensesCount: depCount, depensesSum: Math.round(depSum), pushSubs: 0,
       },
       week: { voyages: voyages.filter(v => recent(v.created_at, c7)).length, participants: pWeek, messages: mWeek, organisateurs: users.filter(u => recent(u.created_at, c7)).length },
-      engagement: { voyagesActifs7j: actifs.size, msgMedianeParVoyage: median(msgCounts), avgParticipants: partCounts.length ? Math.round(participants / partCounts.length * 10) / 10 : 0 },
+      weekPrev: { voyages: voyages.filter(v => between(v.created_at, c14, c7)).length, participants: pPrev, messages: mPrev },
+      engagement: { voyagesActifs7j: actifs.size, msgMedianeParVoyage: median(msgCounts), medianeParticipants: median(partCounts), avgParticipants: partCounts.length ? Math.round(participants / partCounts.length * 10) / 10 : 0 },
       adoption: {
         voyagesWithAttr: vAttr.size, attributionsPct: pct(vAttr.size, voyagesTot),
         voyagesWithDoc: vDoc.size,  documentsPct:    pct(vDoc.size,  voyagesTot),
         voyagesWithDep: vDep.size,  depensesPct:     pct(vDep.size,  voyagesTot),
       },
       growth: { organisateursMulti: ownerVals.filter(c => c >= 2).length, organisateursActifs: ownerVals.length, multiPct: pct(ownerVals.filter(c => c >= 2).length, ownerVals.length) },
-      series: { voyages30: toSeries(vBucket), messages30: toSeries(mBucket), participants30: toSeries(pBucket) }
+      series: { voyages30: toSeries(vBucket), messages30: toSeries(mBucket), participants30: toSeries(pBucket) },
+      organisateurs: orgList
     });
   } catch (e) { console.error('[COCKPIT]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
