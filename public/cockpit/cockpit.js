@@ -226,6 +226,7 @@
       <div class="grid g4">
         ${weekCard('🧳 Voyages créés', w.voyages, wp.voyages)}
         ${weekCard('👥 Participants rejoints', w.participants, wp.participants)}
+        ${weekCard('🔗 Invités par lien', w.invitesParLien, wp.invitesParLien)}
         ${weekCard('💬 Messages envoyés', w.messages, wp.messages)}
         ${card('🧭 Voyages actifs', (+e.voyagesActifs7j ? fmt(e.voyagesActifs7j) : 'Aucun'), 'au moins 1 action sur 7j', null, !e.voyagesActifs7j)}
       </div>
@@ -253,6 +254,7 @@
       <div class="grid g4">
         ${card('🧳 Voyages', fmt(t.voyages), `${fmt(t.voyagesActif)} actifs · ${fmt(t.voyagesCompleted)} terminés · ${fmt(t.voyagesArchived)} archivés`)}
         ${card('👥 Participants', fmt(t.participants), 'tous voyages confondus', null, !t.participants)}
+        ${card('🔗 Invités par lien', fmt(t.invitesParLien), 'rejoints via un lien d\'invitation', null, !t.invitesParLien)}
         ${card('💬 Messages', fmt(t.messages), 'tous voyages confondus', null, !t.messages)}
         ${card('📄 Documents', fmt(t.documents), null, null, !t.documents)}
         ${card('🔒 Attributions privées', fmt(t.attributions), null, null, !t.attributions)}

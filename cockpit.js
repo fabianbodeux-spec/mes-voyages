@@ -89,7 +89,8 @@ module.exports = function mountCockpit(app, deps) {
           vPrev, pPrev, mPrev,
           actifs7, attrVoy, docVoy, depVoy, vTot,
           orgMulti, avgPart, msgMed, partMed,
-          vSeries, mSeries, pSeries, orgList
+          vSeries, mSeries, pSeries, orgList,
+          inviteTot, inviteWeek, invitePrev
         ] = await Promise.all([
           q(`SELECT COALESCE(NULLIF(statut,''),'actif') s, COUNT(*) count FROM voyages GROUP BY 1`),
           q(`SELECT COUNT(*) count FROM participants`),
@@ -129,6 +130,11 @@ module.exports = function mountCockpit(app, deps) {
                GROUP BY u.id, u.email
                ORDER BY COUNT(v.id) DESC, MAX(v.created_at) DESC
                LIMIT 50`),
+          // Personnes invitées par lien : emails enregistrés via la page de partage
+          // (1 ligne = 1 personne distincte ayant rejoint un voyage via son lien d'invitation)
+          q(`SELECT COUNT(*) count FROM participant_emails`),
+          q(`SELECT COUNT(*) count FROM participant_emails WHERE saved_at >= $1::timestamptz`, [c7]),
+          q(`SELECT COUNT(*) count FROM participant_emails WHERE saved_at >= $1::timestamptz AND saved_at < $2::timestamptz`, [c14, c7]),
         ]);
         const sm = {}; vStatut.forEach(r => { sm[r.s] = parseInt(r.count) || 0; });
         const voyagesTot = n(vTot);
@@ -145,14 +151,15 @@ module.exports = function mountCockpit(app, deps) {
           depensesCount: n(depAgg),
           depensesSum: Math.round(n(depAgg, 'sum')),
           pushSubs: n(pushTot),
+          invitesParLien: n(inviteTot),
         };
         return res.json({
           generatedAt: new Date().toISOString(),
           mode: 'postgres',
           server: { uptimeSec: Math.round(process.uptime()), memMB: Math.round(process.memoryUsage().rss / 1048576) },
           totals,
-          week: { voyages: n(vWeek), participants: n(pWeek), messages: n(mWeek), organisateurs: n(oWeek) },
-          weekPrev: { voyages: n(vPrev), participants: n(pPrev), messages: n(mPrev) },
+          week: { voyages: n(vWeek), participants: n(pWeek), messages: n(mWeek), organisateurs: n(oWeek), invitesParLien: n(inviteWeek) },
+          weekPrev: { voyages: n(vPrev), participants: n(pPrev), messages: n(mPrev), invitesParLien: n(invitePrev) },
           engagement: {
             voyagesActifs7j: n(actifs7),
             msgMedianeParVoyage: Math.round(n(msgMed, 'med') * 10) / 10,
@@ -190,6 +197,7 @@ module.exports = function mountCockpit(app, deps) {
       const users = safe(() => db.users.getAll ? db.users.getAll() : []);
       let participants = 0, messages = 0, documents = 0, attributions = 0, depCount = 0, depSum = 0;
       let pWeek = 0, mWeek = 0, pPrev = 0, mPrev = 0;
+      let invitesTot = 0, invitesWeek = 0, invitesPrev = 0;
       const vAttr = new Set(), vDoc = new Set(), vDep = new Set(), actifs = new Set();
       const partCounts = [], msgCounts = [];
       const vBucket = {}, mBucket = {}, pBucket = {};
@@ -199,8 +207,11 @@ module.exports = function mountCockpit(app, deps) {
         const D = safe(() => db.documents.getByVoyage(v.id));
         const A = safe(() => db.attributions.getByVoyage(v.id));
         const E = safe(() => db.depenses.getByVoyage(v.id));
+        const EM = safe(() => db.participant_emails?.getByVoyage ? db.participant_emails.getByVoyage(v.id) : []);
         participants += P.length; messages += C.length; documents += D.length; attributions += A.length;
         depCount += E.length; depSum += E.reduce((s, x) => s + (parseFloat(x.montant) || 0), 0);
+        invitesTot += EM.length;
+        EM.forEach(x => { if (recent(x.saved_at, c7)) invitesWeek++; if (between(x.saved_at, c14, c7)) invitesPrev++; });
         partCounts.push(P.length); if (C.length) msgCounts.push(C.length);
         if (A.length) vAttr.add(v.id);
         if (D.length) vDoc.add(v.id);
@@ -237,9 +248,10 @@ module.exports = function mountCockpit(app, deps) {
           voyagesArchived: voyages.filter(v => v.statut === 'archived').length,
           participants, organisateurs: users.length, messages, documents, attributions,
           depensesCount: depCount, depensesSum: Math.round(depSum), pushSubs: 0,
+          invitesParLien: invitesTot,
         },
-        week: { voyages: voyages.filter(v => recent(v.created_at, c7)).length, participants: pWeek, messages: mWeek, organisateurs: users.filter(u => recent(u.created_at, c7)).length },
-        weekPrev: { voyages: voyages.filter(v => between(v.created_at, c14, c7)).length, participants: pPrev, messages: mPrev },
+        week: { voyages: voyages.filter(v => recent(v.created_at, c7)).length, participants: pWeek, messages: mWeek, organisateurs: users.filter(u => recent(u.created_at, c7)).length, invitesParLien: invitesWeek },
+        weekPrev: { voyages: voyages.filter(v => between(v.created_at, c14, c7)).length, participants: pPrev, messages: mPrev, invitesParLien: invitesPrev },
         engagement: { voyagesActifs7j: actifs.size, msgMedianeParVoyage: median(msgCounts), medianeParticipants: median(partCounts), avgParticipants: partCounts.length ? Math.round(participants / partCounts.length * 10) / 10 : 0 },
         adoption: {
           voyagesWithAttr: vAttr.size, attributionsPct: pct(vAttr.size, voyagesTot),
