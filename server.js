@@ -1974,8 +1974,14 @@ app.get('/api/partage/:token/documents', async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
-    const docs = await run(() => db.documents.getByVoyage(voyage.id));
-    res.json(docs);
+    const [docs, attrs] = await Promise.all([
+      run(() => db.documents.getByVoyage(voyage.id)),
+      run(() => db.attributions.getByVoyage(voyage.id))
+    ]);
+    // Exclure les documents liés à une attribution (documents privés par participant)
+    // Ces docs sont accessibles via /mes-infos/:participantId, jamais dans la liste commune
+    const privateDocIds = new Set(attrs.filter(a => a.document_id).map(a => a.document_id));
+    res.json(docs.filter(d => !privateDocIds.has(d.id)));
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 

@@ -1078,6 +1078,7 @@
 <div id="menu-voyage" class="bottom-sheet hidden">
   <div class="bottom-sheet-handle"></div>
   <button class="sheet-btn" onclick="partagerVoyage()">🔗 Partager ce voyage</button>
+  <button id="sheet-btn-admin-mode" class="sheet-btn" style="display:none">⚙️ Mode organisateur</button>
   <button class="sheet-btn" onclick="fermerBottomSheet();afficherAccueil()">👤 Changer d'identité</button>
   <button class="sheet-btn" onclick="fermerBottomSheet()">Annuler</button>
 </div>
@@ -2111,20 +2112,23 @@ function _lancerPartage(identite) {
     _avatar.textContent = identite.nom[0].toUpperCase();
     if (_btnAvatar) _btnAvatar.style.background = identite.couleur || 'var(--accent)';
   }
+  // FAB "Admin" + bouton bottom sheet : toujours visibles pour l'organisateur en vue participant
+  // NB: placé AVANT le early-return _targetTab pour ne jamais être ignoré quelle que soit la navigation
+  if (_adminJWTValide()) {
+    const fab      = document.getElementById('fab-admin-mode');
+    const fabBtn   = document.getElementById('fab-admin-btn');
+    const sheetBtn = document.getElementById('sheet-btn-admin-mode');
+    const dest     = () => window.location.href = _partageToken ? `/app?v=${_partageToken}` : '/app';
+    if (fab) fab.style.display = '';
+    if (sheetBtn) sheetBtn.style.display = '';
+    if (fabBtn) fabBtn.onclick = dest;
+    if (sheetBtn) sheetBtn.onclick = () => { fermerBottomSheet(); dest(); };
+  }
+
   const _targetTab = new URLSearchParams(window.location.search).get('tab');
   if (_targetTab) {
     const tabBtn = document.querySelector(`[data-tab="${_targetTab}"]`);
     if (tabBtn) { setTimeout(() => changerOnglet(_targetTab, tabBtn), 80); setTimeout(_showPwaInstallBanner, 25000); return; }
-  }
-  // FAB "Admin" : toujours visible pour l'organisateur en vue participant
-  if (_adminJWTValide()) {
-    const fab    = document.getElementById('fab-admin-mode');
-    const fabBtn = document.getElementById('fab-admin-btn');
-    if (fab) fab.style.display = '';
-    // Deep-link vers le voyage spécifique (pas juste /app)
-    if (fabBtn) fabBtn.onclick = () => {
-      window.location.href = _partageToken ? `/app?v=${_partageToken}` : '/app';
-    };
   }
 
   // Onglet Souvenirs : visible seulement si voyage completed ou archived
