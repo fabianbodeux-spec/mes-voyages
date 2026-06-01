@@ -201,6 +201,13 @@
     const t = d.totals || {}, w = d.week || {}, wp = d.weekPrev || {}, e = d.engagement || {};
     const a = d.adoption || {}, g = d.growth || {}, s = d.series || {};
 
+    // ── Dérivés : participants sans e-mail + taux d'arrivée par lien ──
+    // « Sans e-mail » = ajoutés manuellement par l'organisateur ou consultant sans s'identifier.
+    const partTotal   = +t.participants    || 0;
+    const partLien    = +t.invitesParLien  || 0;
+    const partSansMail = Math.max(0, partTotal - partLien);
+    const tauxLien    = partTotal > 0 ? Math.round((partLien / partTotal) * 100) : 0;
+
     // ── Panneau organisateurs (qui utilise l'app) ──
     const orgs = d.organisateurs || [];
     const externes = orgs.length > 0 ? orgs.length - 1 : 0; // 1 compte = toi (heuristique : le + de voyages)
@@ -246,6 +253,7 @@
       <div class="grid g4">
         ${card('👥 Participants / voyage', (e.medianeParticipants ?? '—'), 'médiane — taille de groupe typique')}
         ${card('💬 Messages / voyage', (e.msgMedianeParVoyage ?? '—'), 'médiane CrewiChat')}
+        ${card('🔗 Taux d\'arrivée par lien', partTotal ? tauxLien + '%' : '—', partTotal ? `${fmt(partLien)} sur ${fmt(partTotal)} participants ont rejoint via leur lien` : 'aucun participant', null, !partTotal)}
         ${card('💶 Dépenses suivies', fmtEur(t.depensesSum), `sur ${fmt(t.depensesCount)} dépense(s)`, null, !t.depensesCount)}
       </div>
 
@@ -255,6 +263,7 @@
         ${card('🧳 Voyages', fmt(t.voyages), `${fmt(t.voyagesActif)} actifs · ${fmt(t.voyagesCompleted)} terminés · ${fmt(t.voyagesArchived)} archivés`)}
         ${card('👥 Participants', fmt(t.participants), 'tous voyages confondus', null, !t.participants)}
         ${card('🔗 Invités par lien', fmt(t.invitesParLien), 'rejoints via un lien d\'invitation', null, !t.invitesParLien)}
+        ${card('👤 Participants sans e-mail', fmt(partSansMail), 'ajoutés manuellement / sans s\'identifier', null, !partSansMail)}
         ${card('💬 Messages', fmt(t.messages), 'tous voyages confondus', null, !t.messages)}
         ${card('📄 Documents', fmt(t.documents), null, null, !t.documents)}
         ${card('🔒 Attributions privées', fmt(t.attributions), null, null, !t.attributions)}
