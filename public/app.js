@@ -5475,6 +5475,9 @@ function _couleurChat(nom) {
 }
 
 function _adminNom() { return currentUser?.nom || 'Organisateur'; }
+// Pour la détection "mine" : utiliser uniquement le vrai nom (sans fallback 'Organisateur')
+// Évite que les anciens messages auteur:'Organisateur' soient tous côté "mine"
+function _adminMoi() { return currentUser?.nom || currentUser?.email || null; }
 
 function _relativeTimeAdmin(iso) {
   const d = new Date(iso), diff = Date.now() - d.getTime();
@@ -5558,7 +5561,7 @@ function _buildMsgHtmlAdmin(c, groupClass, showSep, moi) {
 }
 
 function _renderCommentairesAdmin(liste) {
-  const moi = _adminNom();
+  const moi = _adminMoi(); // nom réel uniquement — pas de fallback 'Organisateur'
   const container = document.getElementById('discussion-messages');
   if (!container) return;
 
@@ -5636,8 +5639,11 @@ function _openReactionPickerAdmin(msgId, btn) {
   _chatPickerAdminMsgId = msgId;
   picker.style.display = 'flex';
   const rect = btn.getBoundingClientRect();
-  picker.style.top = (rect.top - 56 + window.scrollY) + 'px';
-  picker.style.left = Math.max(8, Math.min(rect.left - 20, window.innerWidth - 240)) + 'px';
+  // position:fixed → relatif au viewport ; getBoundingClientRect() aussi → pas de scrollY
+  const pickerH = 52;
+  const top = rect.top - pickerH - 6;
+  picker.style.top = Math.max(8, top) + 'px';
+  picker.style.left = Math.max(8, Math.min(rect.left - 20, window.innerWidth - 260)) + 'px';
   setTimeout(() => document.addEventListener('click', _closePickerAdmin, { once: true }), 20);
 }
 function _closePickerAdmin() {
@@ -5726,12 +5732,15 @@ async function _envoyerCommentaireAdmin() {
       body: JSON.stringify(payload)
     });
     const real = await r.json();
+    // Supprimer l'élément optimistic du DOM avant le re-rendu incrémental
+    document.querySelector(`[data-chat-id="${tempId}"]`)?.remove();
     _chatMessagesAdmin = _chatMessagesAdmin.filter(c => c.id !== tempId);
     _chatMessagesAdmin.push(real);
     _chatMessagesAdmin.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
     _renderCommentairesAdmin(_chatMessagesAdmin);
   } catch {
     toast('⚠️ Erreur d\'envoi');
+    document.querySelector(`[data-chat-id="${tempId}"]`)?.remove();
     _chatMessagesAdmin = _chatMessagesAdmin.filter(c => c.id !== tempId);
     _renderCommentairesAdmin(_chatMessagesAdmin);
   } finally { if (btn) btn.disabled = false; }
