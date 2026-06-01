@@ -540,16 +540,36 @@
     </div>
 
     <!-- DISCUSSION -->
-    <div id="tab-discussion" class="tab-panel">
+    <div id="tab-discussion" class="tab-panel" style="display:flex;flex-direction:column;height:100%;position:relative;">
       <div id="notif-banner" style="display:none;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;background:#3B82F610;border-bottom:1px solid #3B82F630">
         <span style="font-size:.82rem;color:var(--text-muted)">🔔 Recevoir les nouveaux messages</span>
         <button onclick="_initPushPartage()" style="background:#3B82F6;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:.78rem;font-weight:700;cursor:pointer">Activer</button>
       </div>
       <div id="discussion-messages" class="chat-messages"></div>
+      <!-- Scroll-to-bottom FAB -->
+      <button id="chat-scroll-fab" class="chat-scroll-fab hidden" onclick="_scrollToBottom(true)" title="Aller en bas">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <!-- Emoji reaction picker (shared, repositioned on open) -->
+      <div id="chat-reaction-picker" class="chat-reaction-picker" style="display:none">
+        <button class="chat-reaction-btn" onclick="_pickReaction('👍')">👍</button>
+        <button class="chat-reaction-btn" onclick="_pickReaction('❤️')">❤️</button>
+        <button class="chat-reaction-btn" onclick="_pickReaction('👌')">👌</button>
+        <button class="chat-reaction-btn" onclick="_pickReaction('🎉')">🎉</button>
+        <button class="chat-reaction-btn" onclick="_pickReaction('🔥')">🔥</button>
+      </div>
       <div class="chat-input-bar" id="discussion-input-bar">
-        <textarea class="chat-input" id="discussion-input" placeholder="Écrire un message…" rows="1"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_envoyerCommentaire();}"></textarea>
-        <button class="chat-send" id="discussion-send" onclick="_envoyerCommentaire()">➤</button>
+        <div id="chat-reply-bar" class="chat-reply-bar" style="display:none">
+          <div class="chat-reply-bar-text"><strong id="chat-reply-auteur"></strong> <span id="chat-reply-preview"></span></div>
+          <button class="chat-reply-bar-cancel" onclick="_cancelReply()" title="Annuler">×</button>
+        </div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="discussion-input" placeholder="Écrire un message…" rows="1"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_envoyerCommentaire();}"></textarea>
+          <button class="chat-send" id="discussion-send" onclick="_envoyerCommentaire()" title="Envoyer">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -2699,7 +2719,15 @@ window.changerOnglet = function(tab, btn) {
     _majBannerNotif();
     chargerCommentaires();
     clearInterval(_chatPollInterval);
-    _chatPollInterval = setInterval(chargerCommentaires, 15000);
+    _chatPollInterval = setInterval(chargerCommentaires, 5000);
+    // FAB scroll tracking
+    const mainEl = document.querySelector('.main-content');
+    if (mainEl && !mainEl._chatScrollBound) {
+      mainEl._chatScrollBound = true;
+      mainEl.addEventListener('scroll', () => {
+        if (_chatPollInterval) _updateScrollFab();
+      }, { passive: true });
+    }
   } else {
     clearInterval(_chatPollInterval);
     _chatPollInterval = null;
@@ -2998,8 +3026,11 @@ function _majBannerNotif() {
   }
 }
 
-// ── Fil de commentaires ──────────────────────────────────────────
+// ── CrewiChat premium ─────────────────────────────────────────────
 let _chatPollInterval = null;
+let _chatMessages = [];
+let _chatReplyState = null;
+let _chatPickerMsgId = null;
 
 function _couleurChat(nom) {
   const palette = ['#F97316','#3B82F6','#10B981','#8B5CF6','#EC4899','#F59E0B','#6366F1','#14B8A6'];
@@ -3008,46 +3039,232 @@ function _couleurChat(nom) {
   return palette[h % palette.length];
 }
 
+function _relativeTime(iso) {
+  const d = new Date(iso), now = Date.now(), diff = now - d.getTime();
+  if (diff < 60000) return 'À l\'instant';
+  if (diff < 3600000) return `Il y a ${Math.floor(diff/60000)} min`;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const yest = new Date(today); yest.setDate(today.getDate()-1);
+  if (d >= today) return d.toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'});
+  if (d >= yest) return 'Hier ' + d.toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString('fr-BE',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'});
+}
+
+function _dateLabel(iso) {
+  const d = new Date(iso);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const yest = new Date(today); yest.setDate(today.getDate()-1);
+  if (d >= today) return 'Aujourd\'hui';
+  if (d >= yest) return 'Hier';
+  return d.toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'});
+}
+
+function _groupClass(msgs, i) {
+  const c = msgs[i], prev = msgs[i-1], next = msgs[i+1];
+  const sp = prev && prev.auteur === c.auteur && (new Date(c.created_at)-new Date(prev.created_at)) < 300000;
+  const sn = next && next.auteur === c.auteur && (new Date(next.created_at)-new Date(c.created_at)) < 300000;
+  if (sp && sn) return 'chat-msg--middle';
+  if (sp)       return 'chat-msg--last';
+  if (sn)       return 'chat-msg--first';
+  return 'chat-msg--solo';
+}
+
+function _showDateSep(msgs, i) {
+  if (i === 0) return true;
+  const d = new Date(msgs[i].created_at); d.setHours(0,0,0,0);
+  const p = new Date(msgs[i-1].created_at); p.setHours(0,0,0,0);
+  return d.getTime() !== p.getTime();
+}
+
+function _reactHtml(c, moi) {
+  try {
+    const reactions = typeof c.reactions === 'string' ? JSON.parse(c.reactions||'{}') : (c.reactions||{});
+    const pills = Object.entries(reactions).filter(([,u])=>u.length>0).map(([emoji,users])=>{
+      const isMine = moi && users.includes(moi);
+      return `<button class="chat-reaction-pill${isMine?' mine':''}" onclick="_reactToMessage(${c.id},'${emoji}')">${emoji}<span class="chat-reaction-count">${users.length}</span></button>`;
+    }).join('');
+    return pills ? `<div class="chat-reactions">${pills}</div>` : '';
+  } catch(e) { return ''; }
+}
+
+function _buildMsgHtml(c, groupClass, showSep, moi) {
+  const mine = moi && c.auteur === moi;
+  const couleur = _couleurChat(c.auteur);
+  const initiale = (c.auteur||'?')[0].toUpperCase();
+  const showMeta = groupClass === 'chat-msg--first' || groupClass === 'chat-msg--solo';
+
+  const safeA = (c.auteur||'').replace(/</g,'&lt;');
+  const safeM = (c.message||'').replace(/</g,'&lt;').replace(/\n/g,'<br>');
+
+  let replyHtml = '';
+  if (c.reply_to_id) {
+    const rA = (c.reply_to_auteur||'').replace(/</g,'&lt;');
+    const rP = (c.reply_to_preview||'').replace(/</g,'&lt;');
+    replyHtml = `<div class="chat-reply-quote" onclick="_scrollToMsg(${c.reply_to_id})"><strong>${rA}</strong><span>${rP}</span></div>`;
+  }
+
+  const metaHtml = showMeta
+    ? `<div class="chat-meta">${!mine?`<span class="chat-auteur">${safeA}</span>`:''}<span>${_relativeTime(c.created_at)}</span></div>`
+    : '';
+
+  const esc = s => String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/</g,'&lt;');
+  const actions = `<div class="chat-msg-actions">
+    <button class="chat-msg-act" onclick="_openReactionPicker(${c.id},this)" title="Réagir">😊</button>
+    <button class="chat-msg-act" onclick="_replyTo(${c.id},'${esc(c.auteur)}','${esc((c.message||'').slice(0,80).replace(/\n/g,' '))}')" title="Répondre">↩</button>
+    ${mine?`<button class="chat-msg-act chat-msg-del" onclick="_supprimerCommentaire(${c.id})" title="Supprimer">✕</button>`:''}
+  </div>`;
+
+  const sep = showSep ? `<div class="chat-date-sep">${_dateLabel(c.created_at)}</div>` : '';
+
+  return `${sep}<div class="chat-msg${mine?' mine':''} ${groupClass}" data-chat-id="${c.id}">
+    <div class="chat-avatar" style="background:${couleur}">${initiale}</div>
+    <div class="chat-bubble">${metaHtml}${replyHtml}<div class="chat-text">${safeM}</div>${_reactHtml(c,moi)}</div>
+    ${actions}
+  </div>`;
+}
+
 function _renderCommentaires(liste) {
   const moi = _partageIdentite?.nom;
   const container = document.getElementById('discussion-messages');
   if (!container) return;
+
   if (!liste.length) {
-    container.innerHTML = `<div class="chat-empty">
-      <div style="font-size:2rem;margin-bottom:8px">💬</div>
-      <p>Aucun message pour l'instant.</p>
-      <p style="font-size:.78rem;margin-top:4px">Soyez le premier à écrire !</p>
-    </div>`;
+    container.innerHTML = `<div class="chat-empty"><span class="chat-empty-icon">💬</span><p>Aucun message pour l'instant.</p><p style="font-size:.78rem;margin-top:4px">Soyez le premier à écrire !</p></div>`;
+    _updateScrollFab();
     return;
   }
-  container.innerHTML = liste.map(c => {
-    const mine = moi && c.auteur === moi;
-    const couleur = _couleurChat(c.auteur);
-    const heure = new Date(c.created_at).toLocaleString('fr-BE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-    return `<div class="chat-msg${mine ? ' mine' : ''}">
-      <div class="chat-avatar" style="background:${couleur}">${(c.auteur||'?')[0].toUpperCase()}</div>
-      <div class="chat-bubble">
-        <div class="chat-meta">
-          <span class="chat-auteur">${c.auteur}</span>
-          <span>${heure}</span>
-          ${mine ? `<button class="chat-del" onclick="_supprimerCommentaire(${c.id})" title="Supprimer">✕</button>` : ''}
-        </div>
-        <div class="chat-text">${c.message.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
-      </div>
-    </div>`;
-  }).join('');
-  // Scroll to bottom
-  const main = document.querySelector('.main-content');
-  if (main) main.scrollTop = main.scrollHeight;
+
+  const existingIds = new Set([...container.querySelectorAll('[data-chat-id]')].map(el=>+el.dataset.chatId));
+  const newMsgs = liste.filter(c => !existingIds.has(c.id));
+  const atBottom = _isScrolledToBottom();
+
+  if (existingIds.size === 0) {
+    // Full initial render
+    container.innerHTML = liste.map((c,i) => _buildMsgHtml(c,_groupClass(liste,i),_showDateSep(liste,i),moi)).join('');
+    _scrollToBottom(false);
+  } else if (newMsgs.length > 0) {
+    // Refresh group class of last existing message
+    const firstNewIdx = liste.findIndex(c => !existingIds.has(c.id));
+    if (firstNewIdx > 0) {
+      const prevMsg = liste[firstNewIdx-1];
+      const prevEl = container.querySelector(`[data-chat-id="${prevMsg.id}"]`);
+      if (prevEl) {
+        const nc = _groupClass(liste, firstNewIdx-1);
+        prevEl.className = `chat-msg${prevMsg.auteur===moi?' mine':''} ${nc}`;
+        const av = prevEl.querySelector('.chat-avatar');
+        if (av) av.style.visibility = (nc==='chat-msg--middle'||nc==='chat-msg--last') ? 'hidden' : '';
+        const meta = prevEl.querySelector('.chat-meta');
+        if (meta) meta.style.display = (nc==='chat-msg--middle'||nc==='chat-msg--last') ? 'none' : '';
+      }
+    }
+    // Append new
+    const tmp = document.createElement('div');
+    newMsgs.forEach(c => {
+      const idx = liste.indexOf(c);
+      tmp.innerHTML = _buildMsgHtml(c,_groupClass(liste,idx),_showDateSep(liste,idx),moi);
+      while (tmp.firstChild) container.appendChild(tmp.firstChild);
+    });
+    if (atBottom) _scrollToBottom(false);
+    else _showScrollFab();
+  } else {
+    // Refresh reactions only
+    liste.forEach(c => {
+      const el = container.querySelector(`[data-chat-id="${c.id}"]`);
+      if (!el) return;
+      const bubble = el.querySelector('.chat-bubble');
+      if (!bubble) return;
+      let rc = el.querySelector('.chat-reactions');
+      const newReactHtml = _reactHtml(c, moi);
+      if (rc) rc.outerHTML = newReactHtml || '';
+      else if (newReactHtml) bubble.insertAdjacentHTML('beforeend', newReactHtml);
+    });
+  }
+  _updateScrollFab();
+}
+
+function _isScrolledToBottom() {
+  const main = document.querySelector('.main-content') || document.documentElement;
+  return main.scrollHeight - main.scrollTop - main.clientHeight < 100;
+}
+
+function _scrollToBottom(animated) {
+  const main = document.querySelector('.main-content') || document.documentElement;
+  if (animated) main.scrollTo({ top: main.scrollHeight, behavior: 'smooth' });
+  else main.scrollTop = main.scrollHeight;
+  _hideScrollFab();
+}
+
+function _scrollToMsg(id) {
+  const el = document.querySelector(`[data-chat-id="${id}"]`);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function _showScrollFab() { document.getElementById('chat-scroll-fab')?.classList.remove('hidden'); }
+function _hideScrollFab() { document.getElementById('chat-scroll-fab')?.classList.add('hidden'); }
+function _updateScrollFab() { if (_isScrolledToBottom()) _hideScrollFab(); else _showScrollFab(); }
+
+// ── Reactions ──────────────────────────────────────────────────────
+function _openReactionPicker(msgId, btn) {
+  const picker = document.getElementById('chat-reaction-picker');
+  if (!picker) return;
+  if (_chatPickerMsgId === msgId && picker.style.display !== 'none') {
+    picker.style.display = 'none'; _chatPickerMsgId = null; return;
+  }
+  _chatPickerMsgId = msgId;
+  picker.style.display = 'flex';
+  const rect = btn.getBoundingClientRect();
+  picker.style.top = (rect.top - 56 + window.scrollY) + 'px';
+  picker.style.left = Math.max(8, Math.min(rect.left - 20, window.innerWidth - 240)) + 'px';
+  setTimeout(() => document.addEventListener('click', _closePicker, { once: true }), 20);
+}
+
+function _closePicker() {
+  const picker = document.getElementById('chat-reaction-picker');
+  if (picker) picker.style.display = 'none';
+  _chatPickerMsgId = null;
+}
+
+function _pickReaction(emoji) {
+  if (_chatPickerMsgId) { _reactToMessage(_chatPickerMsgId, emoji); _closePicker(); }
+}
+
+async function _reactToMessage(id, emoji) {
+  if (!_partageIdentite?.nom) { _toast('⚠️ Identifie-toi d\'abord'); return; }
+  try {
+    const r = await fetch(`/api/partage/${_partageToken}/commentaires/${id}/react`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auteur: _partageIdentite.nom, emoji })
+    });
+    if (r.ok) {
+      const updated = await r.json();
+      const idx = _chatMessages.findIndex(c => c.id === id);
+      if (idx !== -1) { _chatMessages[idx] = updated; _renderCommentaires(_chatMessages); }
+    }
+  } catch(e) { _toast('⚠️ Erreur réaction'); }
+}
+
+// ── Reply ──────────────────────────────────────────────────────────
+function _replyTo(id, auteur, preview) {
+  _chatReplyState = { id, auteur, preview };
+  document.getElementById('chat-reply-bar')?.style && (document.getElementById('chat-reply-bar').style.display = 'flex');
+  const aEl = document.getElementById('chat-reply-auteur');
+  const pEl = document.getElementById('chat-reply-preview');
+  if (aEl) aEl.textContent = auteur;
+  if (pEl) pEl.textContent = preview;
+  document.getElementById('discussion-input')?.focus();
+}
+
+function _cancelReply() {
+  _chatReplyState = null;
+  const bar = document.getElementById('chat-reply-bar');
+  if (bar) bar.style.display = 'none';
 }
 
 async function chargerCommentaires() {
   try {
     const liste = await fetch(`/api/partage/${_partageToken}/commentaires`).then(r => r.json()).catch(() => []);
+    _chatMessages = liste;
     _renderCommentaires(liste);
-    // badge si nouveaux messages
-    const btn = document.querySelector('[data-tab="discussion"]');
-    if (btn) btn.querySelector('#tab-discussion-label').textContent = `CrewiChat`;
   } catch {}
 }
 
@@ -3058,23 +3275,59 @@ async function _envoyerCommentaire() {
   if (!_partageIdentite?.nom) { _toast('⚠️ Identifie-toi d\'abord'); return; }
   const btn = document.getElementById('discussion-send');
   if (btn) btn.disabled = true;
+
+  // Optimistic append
+  const tempId = -(Date.now());
+  const optimistic = {
+    id: tempId, auteur: _partageIdentite.nom, message,
+    reply_to_id: _chatReplyState?.id || null,
+    reply_to_auteur: _chatReplyState?.auteur || null,
+    reply_to_preview: _chatReplyState?.preview || null,
+    reactions: '{}', created_at: new Date().toISOString()
+  };
+  _chatMessages = [..._chatMessages, optimistic];
+  _renderCommentaires(_chatMessages);
+  document.querySelector(`[data-chat-id="${tempId}"]`)?.classList.add('pending');
+
+  const payload = {
+    auteur: _partageIdentite.nom, message,
+    ..._chatReplyState && {
+      reply_to_id: _chatReplyState.id,
+      reply_to_auteur: _chatReplyState.auteur,
+      reply_to_preview: _chatReplyState.preview
+    }
+  };
+
+  input.value = '';
+  input.style.height = '';
+  _cancelReply();
+
   try {
-    await fetch(`/api/partage/${_partageToken}/commentaires`, {
+    const r = await fetch(`/api/partage/${_partageToken}/commentaires`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ auteur: _partageIdentite.nom, message })
+      body: JSON.stringify(payload)
     });
-    input.value = '';
-    input.style.height = '';
-    await chargerCommentaires();
+    const real = await r.json();
+    _chatMessages = _chatMessages.filter(c => c.id !== tempId);
+    _chatMessages.push(real);
+    _chatMessages.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    _renderCommentaires(_chatMessages);
     _trackInteraction();
-  } catch { _toast('⚠️ Erreur d\'envoi'); }
-  finally { if (btn) btn.disabled = false; }
+  } catch {
+    _toast('⚠️ Erreur d\'envoi');
+    _chatMessages = _chatMessages.filter(c => c.id !== tempId);
+    _renderCommentaires(_chatMessages);
+  } finally { if (btn) btn.disabled = false; }
 }
 
 async function _supprimerCommentaire(id) {
   try {
-    await fetch(`/api/partage/${_partageToken}/commentaires/${id}`, { method: 'DELETE' });
-    chargerCommentaires();
+    await fetch(`/api/partage/${_partageToken}/commentaires/${id}`, {
+      method: 'DELETE', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ auteur: _partageIdentite?.nom })
+    });
+    _chatMessages = _chatMessages.filter(c => c.id !== id);
+    _renderCommentaires(_chatMessages);
   } catch {}
 }
 

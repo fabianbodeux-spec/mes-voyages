@@ -256,7 +256,34 @@ const localDB = {
   },
   commentaires: {
     getByVoyage: (vid) => charger('commentaires').filter(c => c.voyage_id === +vid).sort((a,b) => a.created_at.localeCompare(b.created_at)),
-    create: (vid, data) => { const list = charger('commentaires'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('commentaires', list); return item; },
+    create: (vid, data) => {
+      const list = charger('commentaires');
+      const item = {
+        id: nextId(list), voyage_id: +vid,
+        auteur: data.auteur, message: data.message,
+        reply_to_id: data.reply_to_id || null,
+        reply_to_auteur: data.reply_to_auteur || null,
+        reply_to_preview: data.reply_to_preview || null,
+        reactions: '{}',
+        created_at: new Date().toISOString()
+      };
+      list.push(item); sauvegarder('commentaires', list); return item;
+    },
+    react: (id, emoji, auteur) => {
+      const list = charger('commentaires');
+      const item = list.find(c => c.id === +id);
+      if (!item) return null;
+      let reactions = {};
+      try { reactions = JSON.parse(item.reactions || '{}'); } catch(e) {}
+      if (!reactions[emoji]) reactions[emoji] = [];
+      const idx = reactions[emoji].indexOf(auteur);
+      if (idx === -1) reactions[emoji].push(auteur);
+      else reactions[emoji].splice(idx, 1);
+      if (reactions[emoji].length === 0) delete reactions[emoji];
+      item.reactions = JSON.stringify(reactions);
+      sauvegarder('commentaires', list);
+      return item;
+    },
     delete: (id) => sauvegarder('commentaires', charger('commentaires').filter(c => c.id !== +id))
   },
   docs_participants: {
@@ -526,8 +553,15 @@ if (USE_POSTGRES) {
     await m(`CREATE TABLE IF NOT EXISTS commentaires (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       auteur TEXT NOT NULL, message TEXT NOT NULL,
+      reply_to_id INTEGER, reply_to_auteur TEXT, reply_to_preview TEXT,
+      reactions TEXT DEFAULT '{}',
       created_at TEXT DEFAULT now()::text
     )`);
+    // Migration idempotente pour les tables existantes
+    await m(`ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS reply_to_id INTEGER`).catch(()=>{});
+    await m(`ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS reply_to_auteur TEXT`).catch(()=>{});
+    await m(`ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS reply_to_preview TEXT`).catch(()=>{});
+    await m(`ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS reactions TEXT DEFAULT '{}'`).catch(()=>{});
     await m(`CREATE TABLE IF NOT EXISTS docs_participants (
       id SERIAL PRIMARY KEY, voyage_id INTEGER NOT NULL,
       participant_id INTEGER NOT NULL, nom TEXT NOT NULL,
@@ -862,9 +896,27 @@ const pgDB = pgPool ? {
   commentaires: {
     getByVoyage: async (vid) => (await pgPool.query('SELECT * FROM commentaires WHERE voyage_id=$1 ORDER BY created_at ASC', [vid])).rows,
     create: async (vid, data) => (await pgPool.query(
-      'INSERT INTO commentaires(voyage_id,auteur,message) VALUES($1,$2,$3) RETURNING *',
-      [vid, data.auteur, data.message]
+      `INSERT INTO commentaires(voyage_id,auteur,message,reply_to_id,reply_to_auteur,reply_to_preview,reactions)
+       VALUES($1,$2,$3,$4,$5,$6,'{}') RETURNING *`,
+      [vid, data.auteur, data.message,
+       data.reply_to_id || null, data.reply_to_auteur || null, data.reply_to_preview || null]
     )).rows[0],
+    react: async (id, emoji, auteur) => {
+      // Atomic toggle dans JSONB-as-text : parse → toggle → save
+      const row = (await pgPool.query('SELECT reactions FROM commentaires WHERE id=$1', [id])).rows[0];
+      if (!row) return null;
+      let reactions = {};
+      try { reactions = JSON.parse(row.reactions || '{}'); } catch(e) {}
+      if (!reactions[emoji]) reactions[emoji] = [];
+      const idx = reactions[emoji].indexOf(auteur);
+      if (idx === -1) reactions[emoji].push(auteur);
+      else reactions[emoji].splice(idx, 1);
+      if (reactions[emoji].length === 0) delete reactions[emoji];
+      return (await pgPool.query(
+        'UPDATE commentaires SET reactions=$1 WHERE id=$2 RETURNING *',
+        [JSON.stringify(reactions), id]
+      )).rows[0];
+    },
     delete: async (id) => pgPool.query('DELETE FROM commentaires WHERE id=$1', [id])
   },
   docs_participants: {

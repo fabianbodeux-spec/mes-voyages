@@ -1704,11 +1704,17 @@ app.post('/api/partage/:token/commentaires', async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
-    const { auteur, message } = req.body;
+    const { auteur, message, reply_to_id, reply_to_auteur, reply_to_preview } = req.body;
     if (!auteur || !message?.trim()) return res.status(400).json({ error: 'Données manquantes' });
     const safeAuteur = String(auteur).trim().slice(0, 50);
     const safeMessage = message.trim().slice(0, 2000);
-    const item = await run(() => db.commentaires.create(voyage.id, { auteur: safeAuteur, message: safeMessage }));
+    const data = {
+      auteur: safeAuteur, message: safeMessage,
+      reply_to_id: reply_to_id ? +reply_to_id : null,
+      reply_to_auteur: reply_to_auteur ? String(reply_to_auteur).slice(0, 50) : null,
+      reply_to_preview: reply_to_preview ? String(reply_to_preview).slice(0, 100) : null
+    };
+    const item = await run(() => db.commentaires.create(voyage.id, data));
     res.json(item);
     const apercu = safeMessage.length > 60 ? safeMessage.slice(0, 60) + '…' : safeMessage;
     pushToAll(voyage.id, {
@@ -1717,6 +1723,21 @@ app.post('/api/partage/:token/commentaires', async (req, res) => {
       tag: 'commentaire-' + voyage.id,
       url: `/share/${req.params.token}?tab=discussion`
     }).catch(() => {});
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+app.post('/api/partage/:token/commentaires/:id/react', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+    const { auteur, emoji } = req.body;
+    if (!auteur || !emoji) return res.status(400).json({ error: 'Données manquantes' });
+    const ALLOWED_EMOJIS = ['👍','❤️','👌','🎉','🔥'];
+    if (!ALLOWED_EMOJIS.includes(emoji)) return res.status(400).json({ error: 'Emoji non autorisé' });
+    const safeAuteur = String(auteur).trim().slice(0, 50);
+    const item = await run(() => db.commentaires.react(+req.params.id, emoji, safeAuteur));
+    if (!item) return res.status(404).json({ error: 'Message introuvable' });
+    res.json(item);
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
@@ -1744,10 +1765,16 @@ app.get('/api/voyages/:id/commentaires', authMiddleware, requireVoyageOwner(), a
 
 app.post('/api/voyages/:id/commentaires', authMiddleware, requireVoyageOwner(), async (req, res) => {
   try {
-    const { auteur, message } = req.body;
+    const { auteur, message, reply_to_id, reply_to_auteur, reply_to_preview } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
     const nom = auteur || 'Organisateur';
-    const item = await run(() => db.commentaires.create(req.params.id, { auteur: nom, message: message.trim() }));
+    const data = {
+      auteur: nom, message: message.trim(),
+      reply_to_id: reply_to_id ? +reply_to_id : null,
+      reply_to_auteur: reply_to_auteur ? String(reply_to_auteur).slice(0, 50) : null,
+      reply_to_preview: reply_to_preview ? String(reply_to_preview).slice(0, 100) : null
+    };
+    const item = await run(() => db.commentaires.create(req.params.id, data));
     res.json(item);
     const voyage = await run(() => db.voyages.getById(req.params.id));
     if (voyage?.share_token) {
