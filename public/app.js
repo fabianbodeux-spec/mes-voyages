@@ -4394,7 +4394,7 @@ async function chargerAdmin() {
   if (!Array.isArray(attributions) || attributions.length === 0) {
     attributionsHtml = `<div class="adm-empty" style="padding:14px 16px">
       <p style="margin:0 0 4px">Aucune attribution.</p>
-      <p style="font-size:.78rem;color:var(--text-muted);margin:0">Assignez des billets, numéros de place ou documents privés à chaque participant.</p>
+      <p style="font-size:.78rem;color:var(--text-muted);margin:0">Assignez un billet, numéro de siège ou document privé à chaque participant — et attachez-y des liens partageables (billet en ligne, QR code…).</p>
     </div>`;
   } else {
     const byPart = {};
@@ -4949,9 +4949,15 @@ async function sauvegarderAttribution() {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
   });
   if (!r.ok) { toast('❌ Erreur lors de la création'); return; }
+  const newAttrib = await r.json().catch(() => null);
   fermerModal('modal-attribution');
-  toast('✅ Attribution créée');
-  chargerAdmin();
+  await chargerAdmin();
+  // Ouvrir directement la modal "Ajouter un lien" pour inviter à enrichir l'attribution
+  if (newAttrib?.id) {
+    setTimeout(() => ouvrirModalAjouterLien(newAttrib.id), 300);
+  } else {
+    toast('✅ Attribution créée');
+  }
 }
 
 async function supprimerAttribution(id) {
