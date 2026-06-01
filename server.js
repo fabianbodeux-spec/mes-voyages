@@ -1789,6 +1789,18 @@ app.post('/api/voyages/:id/commentaires', authMiddleware, requireVoyageOwner(), 
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
 
+app.post('/api/voyages/:id/commentaires/:cid/react', authMiddleware, requireVoyageOwner(), async (req, res) => {
+  try {
+    const { auteur, emoji } = req.body;
+    if (!auteur || !emoji) return res.status(400).json({ error: 'Données manquantes' });
+    const ALLOWED_EMOJIS = ['👍','❤️','👌','🎉','🔥'];
+    if (!ALLOWED_EMOJIS.includes(emoji)) return res.status(400).json({ error: 'Emoji non autorisé' });
+    const item = await run(() => db.commentaires.react(+req.params.cid, emoji, String(auteur).trim().slice(0, 50)));
+    if (!item) return res.status(404).json({ error: 'Message introuvable' });
+    res.json(item);
+  } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
 app.delete('/api/voyages/:id/commentaires/:cid', authMiddleware, async (req, res) => {
   try {
     const voyage = await run(() => db.voyages.getById(req.params.id));

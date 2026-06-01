@@ -465,10 +465,29 @@
         <button class="btn-mini-add" id="btn-message-prive" style="display:inline-flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Message privé</button>
       </div>
       <div id="discussion-messages" class="chat-messages"></div>
+      <!-- Scroll-to-bottom FAB -->
+      <button id="chat-scroll-fab-admin" class="chat-scroll-fab hidden" onclick="_scrollToBottomAdmin(true)" title="Aller en bas">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <!-- Emoji reaction picker -->
+      <div id="chat-reaction-picker-admin" class="chat-reaction-picker" style="display:none">
+        <button class="chat-reaction-btn" onclick="_pickReactionAdmin('👍')">👍</button>
+        <button class="chat-reaction-btn" onclick="_pickReactionAdmin('❤️')">❤️</button>
+        <button class="chat-reaction-btn" onclick="_pickReactionAdmin('👌')">👌</button>
+        <button class="chat-reaction-btn" onclick="_pickReactionAdmin('🎉')">🎉</button>
+        <button class="chat-reaction-btn" onclick="_pickReactionAdmin('🔥')">🔥</button>
+      </div>
       <div class="chat-input-bar">
-        <textarea class="chat-input" id="discussion-input" placeholder="Écrire un message en tant qu'organisateur…" rows="1"
-          ></textarea>
-        <button class="chat-send" id="discussion-send"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+        <div id="chat-reply-bar-admin" class="chat-reply-bar" style="display:none">
+          <div class="chat-reply-bar-text"><strong id="chat-reply-auteur-admin"></strong> <span id="chat-reply-preview-admin"></span></div>
+          <button class="chat-reply-bar-cancel" onclick="_cancelReplyAdmin()" title="Annuler">×</button>
+        </div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="discussion-input" placeholder="Écrire un message en tant qu'organisateur…" rows="1"></textarea>
+          <button class="chat-send" id="discussion-send">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
       </div>
     </div>
 

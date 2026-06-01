@@ -751,7 +751,15 @@ function changerOnglet(tab, btn) {
     const _fnChat = window.chargerCommentairesAdmin || chargerCommentairesAdmin;
     _fnChat();
     clearInterval(_chatPollAdmin);
-    _chatPollAdmin = setInterval(_fnChat, 15000);
+    _chatPollAdmin = setInterval(_fnChat, 5000);
+    // FAB scroll tracking
+    const mainEl = document.querySelector('#screen-voyage .main-content');
+    if (mainEl && !mainEl._chatAdminScrollBound) {
+      mainEl._chatAdminScrollBound = true;
+      mainEl.addEventListener('scroll', () => {
+        if (_chatPollAdmin) _updateScrollFabAdmin();
+      }, { passive: true });
+    }
   } else {
     clearInterval(_chatPollAdmin);
     _chatPollAdmin = null;
@@ -5453,7 +5461,11 @@ async function envoyerMessagePrive() {
   } catch { toast('⚠️ Erreur lors de l\'envoi'); }
 }
 
-// ─── DISCUSSION ──────────────────────────────────────────────────────────────
+// ─── DISCUSSION ADMIN (CrewiChat) ─────────────────────────────────────────────
+
+let _chatMessagesAdmin = [];
+let _chatReplyAdmin = null;
+let _chatPickerAdminMsgId = null;
 
 function _couleurChat(nom) {
   const palette = ['#C9622F','#3B82F6','#10B981','#8B5CF6','#EC4899','#F59E0B','#6366F1','#14B8A6'];
@@ -5462,49 +5474,216 @@ function _couleurChat(nom) {
   return palette[_hash % palette.length];
 }
 
+function _adminNom() { return currentUser?.nom || 'Organisateur'; }
+
+function _relativeTimeAdmin(iso) {
+  const d = new Date(iso), diff = Date.now() - d.getTime();
+  if (diff < 60000) return 'À l\'instant';
+  if (diff < 3600000) return `Il y a ${Math.floor(diff/60000)} min`;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const yest = new Date(today); yest.setDate(today.getDate()-1);
+  if (d >= today) return d.toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'});
+  if (d >= yest) return 'Hier ' + d.toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString('fr-BE',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'});
+}
+
+function _dateLabelAdmin(iso) {
+  const d = new Date(iso);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const yest = new Date(today); yest.setDate(today.getDate()-1);
+  if (d >= today) return 'Aujourd\'hui';
+  if (d >= yest) return 'Hier';
+  return d.toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long'});
+}
+
+function _groupClassAdmin(msgs, i) {
+  const c = msgs[i], prev = msgs[i-1], next = msgs[i+1];
+  const sp = prev && prev.auteur === c.auteur && (new Date(c.created_at)-new Date(prev.created_at)) < 300000;
+  const sn = next && next.auteur === c.auteur && (new Date(next.created_at)-new Date(c.created_at)) < 300000;
+  if (sp && sn) return 'chat-msg--middle';
+  if (sp)       return 'chat-msg--last';
+  if (sn)       return 'chat-msg--first';
+  return 'chat-msg--solo';
+}
+
+function _showDateSepAdmin(msgs, i) {
+  if (i === 0) return true;
+  const d = new Date(msgs[i].created_at); d.setHours(0,0,0,0);
+  const p = new Date(msgs[i-1].created_at); p.setHours(0,0,0,0);
+  return d.getTime() !== p.getTime();
+}
+
+function _reactHtmlAdmin(c, moi) {
+  try {
+    const reactions = typeof c.reactions === 'string' ? JSON.parse(c.reactions||'{}') : (c.reactions||{});
+    const pills = Object.entries(reactions).filter(([,u])=>u.length>0).map(([emoji,users])=>{
+      const isMine = moi && users.includes(moi);
+      return `<button class="chat-reaction-pill${isMine?' mine':''}" onclick="_reactToMessageAdmin(${c.id},'${emoji}')">${emoji}<span class="chat-reaction-count">${users.length}</span></button>`;
+    }).join('');
+    return pills ? `<div class="chat-reactions">${pills}</div>` : '';
+  } catch(e) { return ''; }
+}
+
+function _buildMsgHtmlAdmin(c, groupClass, showSep, moi) {
+  const mine = moi && c.auteur === moi;
+  const couleur = _couleurChat(c.auteur);
+  const initiale = (c.auteur||'?')[0].toUpperCase();
+  const showMeta = groupClass === 'chat-msg--first' || groupClass === 'chat-msg--solo';
+
+  let replyHtml = '';
+  if (c.reply_to_id) {
+    replyHtml = `<div class="chat-reply-quote" onclick="_scrollToMsgAdmin(${c.reply_to_id})">
+      <strong>${h(c.reply_to_auteur||'')}</strong><span>${h((c.reply_to_preview||''))}</span>
+    </div>`;
+  }
+
+  const metaHtml = showMeta
+    ? `<div class="chat-meta">${!mine?`<span class="chat-auteur">${h(c.auteur)}</span>`:''}<span>${_relativeTimeAdmin(c.created_at)}</span></div>`
+    : '';
+
+  const esc = s => String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const actions = `<div class="chat-msg-actions">
+    <button class="chat-msg-act" onclick="_openReactionPickerAdmin(${c.id},this)" title="Réagir">😊</button>
+    <button class="chat-msg-act" onclick="_replyToAdmin(${c.id},'${esc(c.auteur)}','${esc((c.message||'').slice(0,80).replace(/\n/g,' '))}')" title="Répondre">↩</button>
+    <button class="chat-msg-act chat-msg-del" onclick="_supprimerCommentaireAdmin(${c.id})" title="Supprimer">✕</button>
+  </div>`;
+
+  const sep = showSep ? `<div class="chat-date-sep">${_dateLabelAdmin(c.created_at)}</div>` : '';
+
+  return `${sep}<div class="chat-msg${mine?' mine':''} ${groupClass}" data-chat-id="${c.id}">
+    <div class="chat-avatar" style="background:${couleur}">${initiale}</div>
+    <div class="chat-bubble">${metaHtml}${replyHtml}<div class="chat-text">${h(c.message).replace(/\n/g,'<br>')}</div>${_reactHtmlAdmin(c,moi)}</div>
+    ${actions}
+  </div>`;
+}
+
 function _renderCommentairesAdmin(liste) {
+  const moi = _adminNom();
   const container = document.getElementById('discussion-messages');
   if (!container) return;
+
   if (!liste.length) {
-    container.innerHTML = `<div class="chat-empty"><div style="margin-bottom:8px;display:flex;justify-content:center;opacity:.35"><svg viewBox="0 0 24 24" fill="currentColor" width="36" height="36"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></div><p>Aucun message pour l'instant.</p></div>`;
+    container.innerHTML = `<div class="chat-empty"><span class="chat-empty-icon">💬</span><p>Aucun message pour l'instant.</p></div>`;
+    _updateScrollFabAdmin();
     return;
   }
-  container.innerHTML = liste.map(c => {
-    const mine = c.auteur === 'Organisateur';
-    const couleur = mine ? 'var(--accent)' : _couleurChat(c.auteur);
-    const heure = new Date(c.created_at).toLocaleString('fr-BE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-    return `<div class="chat-msg${mine ? ' mine' : ''}">
-      <div class="chat-avatar" style="background:${couleur}">${(c.auteur||'?')[0].toUpperCase()}</div>
-      <div class="chat-bubble">
-        <div class="chat-meta">
-          <span class="chat-auteur">${h(c.auteur)}</span>
-          <span>${heure}</span>
-          <button class="chat-del" onclick="_supprimerCommentaireAdmin(${c.id})" title="Supprimer">✕</button>
-        </div>
-        <div class="chat-text">${h(c.message).replace(/\n/g,'<br>')}</div>
-      </div>
-    </div>`;
-  }).join('');
-  const main = document.querySelector('#screen-voyage .main-content');
-  if (main) main.scrollTop = main.scrollHeight;
+
+  const existingIds = new Set([...container.querySelectorAll('[data-chat-id]')].map(el=>+el.dataset.chatId));
+  const newMsgs = liste.filter(c => !existingIds.has(c.id));
+  const atBottom = _isScrolledToBottomAdmin();
+
+  if (existingIds.size === 0) {
+    container.innerHTML = liste.map((c,i) => _buildMsgHtmlAdmin(c,_groupClassAdmin(liste,i),_showDateSepAdmin(liste,i),moi)).join('');
+    _scrollToBottomAdmin(false);
+  } else if (newMsgs.length > 0) {
+    const firstNewIdx = liste.findIndex(c => !existingIds.has(c.id));
+    if (firstNewIdx > 0) {
+      const prevMsg = liste[firstNewIdx-1];
+      const prevEl = container.querySelector(`[data-chat-id="${prevMsg.id}"]`);
+      if (prevEl) {
+        const nc = _groupClassAdmin(liste, firstNewIdx-1);
+        prevEl.className = `chat-msg${prevMsg.auteur===moi?' mine':''} ${nc}`;
+        const av = prevEl.querySelector('.chat-avatar');
+        if (av) av.style.visibility = (nc==='chat-msg--middle'||nc==='chat-msg--last') ? 'hidden' : '';
+        const meta = prevEl.querySelector('.chat-meta');
+        if (meta) meta.style.display = (nc==='chat-msg--middle'||nc==='chat-msg--last') ? 'none' : '';
+      }
+    }
+    const tmp = document.createElement('div');
+    newMsgs.forEach(c => {
+      const idx = liste.indexOf(c);
+      tmp.innerHTML = _buildMsgHtmlAdmin(c,_groupClassAdmin(liste,idx),_showDateSepAdmin(liste,idx),moi);
+      while (tmp.firstChild) container.appendChild(tmp.firstChild);
+    });
+    if (atBottom) _scrollToBottomAdmin(false);
+    else _showScrollFabAdmin();
+  } else {
+    // Refresh reactions only
+    liste.forEach(c => {
+      const el = container.querySelector(`[data-chat-id="${c.id}"]`);
+      if (!el) return;
+      const bubble = el.querySelector('.chat-bubble');
+      if (!bubble) return;
+      const rc = el.querySelector('.chat-reactions');
+      const newReact = _reactHtmlAdmin(c, moi);
+      if (rc) rc.outerHTML = newReact || '';
+      else if (newReact) bubble.insertAdjacentHTML('beforeend', newReact);
+    });
+  }
+  _updateScrollFabAdmin();
+}
+
+function _mainAdmin() { return document.querySelector('#screen-voyage .main-content') || document.documentElement; }
+function _isScrolledToBottomAdmin() { const m = _mainAdmin(); return m.scrollHeight - m.scrollTop - m.clientHeight < 100; }
+function _scrollToBottomAdmin(animated) {
+  const m = _mainAdmin();
+  if (animated) m.scrollTo({ top: m.scrollHeight, behavior: 'smooth' });
+  else m.scrollTop = m.scrollHeight;
+  _hideScrollFabAdmin();
+}
+function _scrollToMsgAdmin(id) { document.querySelector(`[data-chat-id="${id}"]`)?.scrollIntoView({ behavior:'smooth', block:'center' }); }
+function _showScrollFabAdmin() { document.getElementById('chat-scroll-fab-admin')?.classList.remove('hidden'); }
+function _hideScrollFabAdmin() { document.getElementById('chat-scroll-fab-admin')?.classList.add('hidden'); }
+function _updateScrollFabAdmin() { if (_isScrolledToBottomAdmin()) _hideScrollFabAdmin(); else _showScrollFabAdmin(); }
+
+// Reactions admin
+function _openReactionPickerAdmin(msgId, btn) {
+  const picker = document.getElementById('chat-reaction-picker-admin');
+  if (!picker) return;
+  if (_chatPickerAdminMsgId === msgId && picker.style.display !== 'none') {
+    picker.style.display = 'none'; _chatPickerAdminMsgId = null; return;
+  }
+  _chatPickerAdminMsgId = msgId;
+  picker.style.display = 'flex';
+  const rect = btn.getBoundingClientRect();
+  picker.style.top = (rect.top - 56 + window.scrollY) + 'px';
+  picker.style.left = Math.max(8, Math.min(rect.left - 20, window.innerWidth - 240)) + 'px';
+  setTimeout(() => document.addEventListener('click', _closePickerAdmin, { once: true }), 20);
+}
+function _closePickerAdmin() {
+  const p = document.getElementById('chat-reaction-picker-admin');
+  if (p) p.style.display = 'none';
+  _chatPickerAdminMsgId = null;
+}
+function _pickReactionAdmin(emoji) {
+  if (_chatPickerAdminMsgId) { _reactToMessageAdmin(_chatPickerAdminMsgId, emoji); _closePickerAdmin(); }
+}
+async function _reactToMessageAdmin(id, emoji) {
+  try {
+    const r = await fetch(`${API}/api/voyages/${voyageActuel}/commentaires/${id}/react`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ auteur: _adminNom(), emoji })
+    });
+    if (r.ok) {
+      const updated = await r.json();
+      const idx = _chatMessagesAdmin.findIndex(c => c.id === id);
+      if (idx !== -1) { _chatMessagesAdmin[idx] = updated; _renderCommentairesAdmin(_chatMessagesAdmin); }
+    }
+  } catch(e) { toast('⚠️ Erreur réaction'); }
+}
+
+// Reply admin
+function _replyToAdmin(id, auteur, preview) {
+  _chatReplyAdmin = { id, auteur, preview };
+  const bar = document.getElementById('chat-reply-bar-admin');
+  if (bar) bar.style.display = 'flex';
+  const aEl = document.getElementById('chat-reply-auteur-admin');
+  const pEl = document.getElementById('chat-reply-preview-admin');
+  if (aEl) aEl.textContent = auteur;
+  if (pEl) pEl.textContent = preview;
+  document.getElementById('discussion-input')?.focus();
+}
+function _cancelReplyAdmin() {
+  _chatReplyAdmin = null;
+  const bar = document.getElementById('chat-reply-bar-admin');
+  if (bar) bar.style.display = 'none';
 }
 
 async function chargerCommentairesAdmin() {
   if (!voyageActuel) return;
   const liste = await fetch(`${API}/api/voyages/${voyageActuel}/commentaires`).then(r => r.ok ? r.json() : []).catch(() => []);
+  _chatMessagesAdmin = liste;
   _renderCommentairesAdmin(liste);
-  const tab = document.querySelector('[data-tab="discussion"]');
-  if (tab) {
-    const existing = tab.querySelector('.tab-badge');
-    if (existing) existing.remove();
-    if (liste.length > 0) {
-      const badge = document.createElement('span');
-      badge.className = 'tab-badge';
-      badge.textContent = liste.length;
-      badge.style.cssText = 'background:#3B82F6;color:#fff;border-radius:10px;font-size:.65rem;font-weight:800;padding:2px 6px;margin-left:4px';
-      tab.appendChild(badge);
-    }
-  }
 }
 
 async function _envoyerCommentaireAdmin() {
@@ -5513,21 +5692,55 @@ async function _envoyerCommentaireAdmin() {
   if (!message) return;
   const btn = document.getElementById('discussion-send');
   if (btn) btn.disabled = true;
+  const moi = _adminNom();
+
+  // Optimistic
+  const tempId = -(Date.now());
+  const optimistic = {
+    id: tempId, auteur: moi, message,
+    reply_to_id: _chatReplyAdmin?.id || null,
+    reply_to_auteur: _chatReplyAdmin?.auteur || null,
+    reply_to_preview: _chatReplyAdmin?.preview || null,
+    reactions: '{}', created_at: new Date().toISOString()
+  };
+  _chatMessagesAdmin = [..._chatMessagesAdmin, optimistic];
+  _renderCommentairesAdmin(_chatMessagesAdmin);
+  document.querySelector(`[data-chat-id="${tempId}"]`)?.classList.add('pending');
+
+  const payload = {
+    auteur: moi, message,
+    ..._chatReplyAdmin && {
+      reply_to_id: _chatReplyAdmin.id,
+      reply_to_auteur: _chatReplyAdmin.auteur,
+      reply_to_preview: _chatReplyAdmin.preview
+    }
+  };
+
+  input.value = '';
+  input.style.height = '';
+  _cancelReplyAdmin();
+
   try {
-    await fetch(`${API}/api/voyages/${voyageActuel}/commentaires`, {
+    const r = await fetch(`${API}/api/voyages/${voyageActuel}/commentaires`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ auteur: 'Organisateur', message })
+      body: JSON.stringify(payload)
     });
-    input.value = '';
-    input.style.height = '';
-    await chargerCommentairesAdmin();
-  } catch { toast('⚠️ Erreur d\'envoi'); }
-  finally { if (btn) btn.disabled = false; }
+    const real = await r.json();
+    _chatMessagesAdmin = _chatMessagesAdmin.filter(c => c.id !== tempId);
+    _chatMessagesAdmin.push(real);
+    _chatMessagesAdmin.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    _renderCommentairesAdmin(_chatMessagesAdmin);
+  } catch {
+    toast('⚠️ Erreur d\'envoi');
+    _chatMessagesAdmin = _chatMessagesAdmin.filter(c => c.id !== tempId);
+    _renderCommentairesAdmin(_chatMessagesAdmin);
+  } finally { if (btn) btn.disabled = false; }
 }
 
 async function _supprimerCommentaireAdmin(id) {
   await fetch(`${API}/api/voyages/${voyageActuel}/commentaires/${id}`, { method: 'DELETE' });
-  chargerCommentairesAdmin();
+  _chatMessagesAdmin = _chatMessagesAdmin.filter(c => c.id !== id);
+  _renderCommentairesAdmin(_chatMessagesAdmin);
 }
 
 function getAgendaColor(type) {
