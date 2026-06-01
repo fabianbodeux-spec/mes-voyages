@@ -72,11 +72,18 @@
   .section-title{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
     font-weight:700;margin:26px 4px 12px}
   .grid{display:grid;gap:12px}
-  .g4{grid-template-columns:repeat(4,1fr)}
-  .g3{grid-template-columns:repeat(3,1fr)}
-  .g2{grid-template-columns:repeat(2,1fr)}
-  @media(max-width:720px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:420px){.g4,.g3,.g2{grid-template-columns:1fr 1fr}}
+  /* Colonnes déterministes : on n'autorise QUE des découpages sans rangée orpheline.
+     g4 (4 cartes) → 4 ou 2 colonnes (jamais 3, qui laisserait 1 carte seule).
+     g3 (3 cartes) → 3 colonnes ou empilé (2 col. laisserait 1 carte seule).
+     Mobile-first : valeurs par défaut = petit écran, puis on élargit. */
+  .g4{grid-template-columns:repeat(2,1fr)}   /* 2+2 */
+  .g3{grid-template-columns:1fr}             /* empilé (évite l'orphelin 2+1) */
+  .g2{grid-template-columns:1fr}
+  @media(min-width:560px){
+    .g3{grid-template-columns:repeat(3,1fr)}
+    .g2{grid-template-columns:repeat(2,1fr)}
+  }
+  @media(min-width:900px){ .g4{grid-template-columns:repeat(4,1fr)} }
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 16px 15px}
   .card .label{color:var(--muted);font-size:.76rem;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
@@ -159,6 +166,6 @@
     <div id="content"><div class="loading">Chargement des données…</div></div>
   </div>
 
-<script src="/cockpit/cockpit.js?v=4"></script>
+<script src="/cockpit/cockpit.js?v=5"></script>
 </body>
 </html>

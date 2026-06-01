@@ -40,6 +40,11 @@ module.exports = function mountCockpit(app, deps) {
 
   const COCKPIT_PASSWORD = process.env.COCKPIT_PASSWORD || (IS_CLOUD ? null : 'cockpit-dev');
 
+  // Cache court des stats : ~30 requêtes SQL par appel × auto-refresh 60s × onglets ouverts.
+  // Un cache module-level de 30 s absorbe l'essentiel de la charge (lecture seule, données agrégées).
+  const STATS_CACHE_MS = 30000;
+  let _statsCache = null, _statsCacheAt = 0;
+
   // ── Middleware : JWT à scope 'cockpit' (indépendant des comptes utilisateurs) ──
   function cockpitAuth(req, res, next) {
     const header = req.headers.authorization;
@@ -76,12 +81,22 @@ module.exports = function mountCockpit(app, deps) {
   // ── Stats globales agrégées (tous voyages confondus) — LECTURE SEULE ──
   app.get('/api/cockpit/stats', cockpitAuth, async (req, res) => {
     try {
+      // Sert le cache s'il est encore frais (sauf ?fresh=1 pour forcer le recalcul)
+      if (_statsCache && req.query.fresh !== '1' && (Date.now() - _statsCacheAt) < STATS_CACHE_MS) {
+        return res.json(_statsCache);
+      }
+      // Mémorise le payload puis l'envoie (un seul point de sortie pour les deux chemins PG/JSON)
+      const serve = (payload) => { _statsCache = payload; _statsCacheAt = Date.now(); return res.json(payload); };
+
       const dayStr = (off = 0) => new Date(Date.now() - off * 86400000).toISOString().slice(0, 10);
       const c7 = dayStr(7), c14 = dayStr(14), c30 = dayStr(30);
       const pct = (a, b) => b > 0 ? Math.round((a / b) * 100) : 0;
 
       if (IS_CLOUD && db._pool) {
-        const q = (sql, params = []) => db._pool.query(sql, params).then(r => r.rows).catch(() => []);
+        // .catch logge l'erreur (au lieu de l'avaler en silence) puis renvoie [] :
+        // une requête cassée affiche 0 mais laisse une trace serveur pour debug.
+        const q = (sql, params = []) => db._pool.query(sql, params).then(r => r.rows)
+          .catch(e => { console.warn('[COCKPIT sql]', e.message); return []; });
         const n = (rows, key = 'count', i = 0) => rows[i] ? (parseFloat(rows[i][key]) || 0) : 0;
         const [
           vStatut, partTot, orgTot, msgTot, docTot, attrTot, depAgg, pushTot,
@@ -153,7 +168,7 @@ module.exports = function mountCockpit(app, deps) {
           pushSubs: n(pushTot),
           invitesParLien: n(inviteTot),
         };
-        return res.json({
+        return serve({
           generatedAt: new Date().toISOString(),
           mode: 'postgres',
           server: { uptimeSec: Math.round(process.uptime()), memMB: Math.round(process.memoryUsage().rss / 1048576) },
@@ -237,7 +252,7 @@ module.exports = function mountCockpit(app, deps) {
         .slice(0, 50);
       const voyagesTot = voyages.length;
       const toSeries = (bucket) => Object.keys(bucket).sort().map(d => ({ d, n: bucket[d] }));
-      return res.json({
+      return serve({
         generatedAt: new Date().toISOString(),
         mode: 'local',
         server: { uptimeSec: Math.round(process.uptime()), memMB: Math.round(process.memoryUsage().rss / 1048576) },

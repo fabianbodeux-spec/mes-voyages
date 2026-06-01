@@ -48,14 +48,16 @@
   });
 
   $('btn-logout').addEventListener('click', () => { setToken(''); showLogin(''); });
-  $('btn-refresh').addEventListener('click', () => load());
+  $('btn-refresh').addEventListener('click', () => load(true));
 
   // ── Chargement des données ──────────────────────────────────────────────────
-  async function load() {
+  async function load(force) {
     const t = token();
     if (!t) return showLogin('');
     try {
-      const r = await fetch('/api/cockpit/stats', { headers: { Authorization: 'Bearer ' + t } });
+      // force=true (bouton Actualiser) court-circuite le cache serveur via ?fresh=1
+      const url = '/api/cockpit/stats' + (force ? '?fresh=1' : '');
+      const r = await fetch(url, { headers: { Authorization: 'Bearer ' + t } });
       if (r.status === 401 || r.status === 403) { setToken(''); return showLogin('Session expirée, reconnecte-toi'); }
       if (!r.ok) throw new Error('http ' + r.status);
       lastData = await r.json();
@@ -228,6 +230,16 @@
     }
 
     const html = `
+      <!-- Qui utilise CrewiGo (signal d'adoption — placé en tête) -->
+      <div class="section-title">Qui utilise CrewiGo ? (organisateurs)</div>
+      <div class="grid g3">
+        ${card('🧑‍✈️ Organisateurs', fmt(orgs.length), 'comptes ayant créé ≥ 1 voyage', null, orgs.length === 0)}
+        ${card('🌍 Externes (hors toi)', externes === 0 ? 'Aucun' : fmt(externes), externes === 0 ? 'tu es seul à créer des voyages' : 'd\'autres créent des voyages 🎉', null, externes === 0)}
+        ${card('🔁 Fidèles (≥ 2 voyages)', fmt(g.organisateursMulti), `${g.multiPct || 0}% des organisateurs`, null, !g.organisateursMulti)}
+      </div>
+      <div class="card">${orgHtml}</div>
+      <div class="hint">ℹ️ « vous ? » = le compte qui a créé le plus de voyages (probablement toi, tes tests inclus). Vérifie l'e-mail pour confirmer. Les autres sont des utilisateurs externes.</div>
+
       <!-- Cette semaine -->
       <div class="section-title">Cette semaine · vs 7 jours précédents</div>
       <div class="grid g4">
@@ -235,39 +247,24 @@
         ${weekCard('👥 Participants rejoints', w.participants, wp.participants)}
         ${weekCard('🔗 Invités par lien', w.invitesParLien, wp.invitesParLien)}
         ${weekCard('💬 Messages envoyés', w.messages, wp.messages)}
-        ${card('🧭 Voyages actifs', (+e.voyagesActifs7j ? fmt(e.voyagesActifs7j) : 'Aucun'), 'au moins 1 action sur 7j', null, !e.voyagesActifs7j)}
       </div>
 
-      <!-- Qui utilise CrewiGo -->
-      <div class="section-title">Qui utilise CrewiGo ? (organisateurs)</div>
+      <!-- Participants & liens (tout ce qui concerne les participants, regroupé) -->
+      <div class="section-title">Participants & liens (cumul)</div>
       <div class="grid g4">
-        ${card('🧑‍✈️ Organisateurs', fmt(orgs.length), 'comptes ayant créé ≥ 1 voyage', null, orgs.length === 0)}
-        ${card('🌍 Externes (hors toi)', externes === 0 ? 'Personne' : fmt(externes), externes === 0 ? 'tu es seul à créer des voyages' : 'd\'autres créent des voyages 🎉', null, externes === 0)}
-        ${card('🔁 Fidèles (≥ 2 voyages)', fmt(g.organisateursMulti), `${g.multiPct || 0}% des organisateurs`, null, !g.organisateursMulti)}
+        ${card('👥 Participants', fmt(t.participants), 'tous voyages confondus', null, !t.participants)}
+        ${card('🔗 Invités par lien', fmt(t.invitesParLien), 'rejoints via leur lien d\'invitation', null, !t.invitesParLien)}
+        ${card('👤 Participants sans e-mail', fmt(partSansMail), 'ajoutés manuellement / sans s\'identifier', null, !partSansMail)}
+        ${card('🔗 Taux d\'arrivée par lien', partTotal ? tauxLien + '%' : '—', partTotal ? `${fmt(partLien)} sur ${fmt(partTotal)} ont rejoint via leur lien` : 'aucun participant', null, !partTotal)}
       </div>
-      <div class="card">${orgHtml}</div>
-      <div class="hint">ℹ️ « vous ? » = le compte qui a créé le plus de voyages (probablement toi, tes tests inclus). Vérifie l'e-mail pour confirmer. Les autres sont des utilisateurs externes.</div>
 
       <!-- Engagement -->
       <div class="section-title">Engagement & dynamique de groupe</div>
       <div class="grid g4">
+        ${card('🧭 Voyages actifs', (+e.voyagesActifs7j ? fmt(e.voyagesActifs7j) : 'Aucun'), 'au moins 1 action sur 7 jours', null, !e.voyagesActifs7j)}
         ${card('👥 Participants / voyage', (e.medianeParticipants ?? '—'), 'médiane — taille de groupe typique')}
         ${card('💬 Messages / voyage', (e.msgMedianeParVoyage ?? '—'), 'médiane CrewiChat')}
-        ${card('🔗 Taux d\'arrivée par lien', partTotal ? tauxLien + '%' : '—', partTotal ? `${fmt(partLien)} sur ${fmt(partTotal)} participants ont rejoint via leur lien` : 'aucun participant', null, !partTotal)}
         ${card('💶 Dépenses suivies', fmtEur(t.depensesSum), `sur ${fmt(t.depensesCount)} dépense(s)`, null, !t.depensesCount)}
-      </div>
-
-      <!-- Vue d'ensemble -->
-      <div class="section-title">Vue d'ensemble (cumul depuis le début)</div>
-      <div class="grid g4">
-        ${card('🧳 Voyages', fmt(t.voyages), `${fmt(t.voyagesActif)} actifs · ${fmt(t.voyagesCompleted)} terminés · ${fmt(t.voyagesArchived)} archivés`)}
-        ${card('👥 Participants', fmt(t.participants), 'tous voyages confondus', null, !t.participants)}
-        ${card('🔗 Invités par lien', fmt(t.invitesParLien), 'rejoints via un lien d\'invitation', null, !t.invitesParLien)}
-        ${card('👤 Participants sans e-mail', fmt(partSansMail), 'ajoutés manuellement / sans s\'identifier', null, !partSansMail)}
-        ${card('💬 Messages', fmt(t.messages), 'tous voyages confondus', null, !t.messages)}
-        ${card('📄 Documents', fmt(t.documents), null, null, !t.documents)}
-        ${card('🔒 Attributions privées', fmt(t.attributions), null, null, !t.attributions)}
-        ${card('🔔 Abonnements push', fmt(t.pushSubs), 'notifications activées', null, !t.pushSubs)}
       </div>
 
       <!-- Graphiques -->
@@ -275,6 +272,15 @@
       <div class="grid g2">
         <div class="card chart-card"><div class="label">🧳 Voyages créés / jour</div>${chart(s.voyages30)}</div>
         <div class="card chart-card"><div class="label">💬 Messages / jour</div>${chart(s.messages30)}</div>
+      </div>
+
+      <!-- Vue d'ensemble -->
+      <div class="section-title">Vue d'ensemble (cumul depuis le début)</div>
+      <div class="grid g4">
+        ${card('🧳 Voyages', fmt(t.voyages), `${fmt(t.voyagesActif)} actifs · ${fmt(t.voyagesCompleted)} terminés · ${fmt(t.voyagesArchived)} archivés`)}
+        ${card('💬 Messages', fmt(t.messages), 'tous voyages confondus', null, !t.messages)}
+        ${card('📄 Documents', fmt(t.documents), null, null, !t.documents)}
+        ${card('🔒 Attributions privées', fmt(t.attributions), null, null, !t.attributions)}
       </div>
 
       <!-- Adoption -->
@@ -291,6 +297,7 @@
         <div class="pill">Base : <b>${d.mode === 'postgres' ? 'PostgreSQL (prod)' : 'JSON local'}</b></div>
         <div class="pill">En ligne depuis : <b>${uptime(d.server?.uptimeSec)}</b></div>
         <div class="pill">Mémoire : <b>${fmt(d.server?.memMB)} Mo</b></div>
+        <div class="pill">🔔 Abonnements push : <b>${fmt(t.pushSubs)}</b></div>
       </div>
     `;
     $('content').innerHTML = html;
