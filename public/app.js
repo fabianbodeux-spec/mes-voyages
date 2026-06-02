@@ -170,8 +170,20 @@ async function initAuth() {
     }
     _showAuthScreen();
     if (authParam === 'register' || authParam === 'login') switchAuthForm(authParam);
+    // Pré-remplir l'email d'inscription si redirigé depuis la landing (?auth=register&email=)
+    if (emailParam && authParam === 'register') {
+      const regEmailEl = document.getElementById('register-email');
+      if (regEmailEl) {
+        regEmailEl.value = emailParam;
+        regEmailEl.dispatchEvent(new Event('input'));
+        setTimeout(() => {
+          const regPwdEl = document.getElementById('register-password');
+          if (regPwdEl) regPwdEl.focus();
+        }, 300);
+      }
+    }
     // Pré-remplir l'email si redirigé depuis une page de partage (magic link)
-    if (emailParam) {
+    else if (emailParam) {
       const loginEmailEl = document.getElementById('login-email');
       if (loginEmailEl) {
         loginEmailEl.value = emailParam;

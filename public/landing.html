@@ -22,15 +22,37 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #000;
-      --card: #141414;
-      --border: rgba(255,255,255,0.08);
+      /* Fond teinté + surfaces par élévation (profondeur > noir pur) */
+      --bg: #0A0A0B;
+      --surface-1: #121214;
+      --surface-2: #18181B;
+      --card: #141416;
+      --border: rgba(255,255,255,0.07);
+      --border-strong: rgba(255,255,255,0.12);
+
+      /* Accent + gradient de marque */
       --accent: #F97316;
-      --accent-dim: rgba(249,115,22,0.15);
-      --accent-glow: rgba(249,115,22,0.25);
-      --text: #fff;
-      --muted: rgba(255,255,255,0.55);
-      --muted-dim: rgba(255,255,255,0.25);
+      --accent-2: #FB923C;
+      --accent-deep: #EA580C;
+      --accent-grad: linear-gradient(135deg, #FB923C 0%, #F97316 45%, #EA580C 100%);
+      --accent-dim: rgba(249,115,22,0.14);
+      --accent-glow: rgba(249,115,22,0.30);
+
+      /* Texte */
+      --text: #FAFAFA;
+      --muted: rgba(255,255,255,0.58);
+      --muted-dim: rgba(255,255,255,0.30);
+
+      /* Rayons */
+      --r-sm: 10px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px;
+
+      /* Élévation multi-couches (cœur du rendu premium) */
+      --e1: 0 1px 2px rgba(0,0,0,.4), 0 2px 6px rgba(0,0,0,.3);
+      --e2: 0 2px 4px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
+      --e3: 0 4px 8px rgba(0,0,0,.45), 0 18px 48px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+      --glow-accent: 0 8px 28px rgba(249,115,22,.40), 0 2px 8px rgba(249,115,22,.30);
+      --ease-out: cubic-bezier(.22,1,.36,1);
+      --ease-spring: cubic-bezier(.34,1.56,.64,1);
     }
 
     html { scroll-behavior: smooth; }
@@ -157,12 +179,10 @@
     .hero::before {
       content: '';
       position: absolute;
-      top: -10%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 900px;
-      height: 600px;
-      background: radial-gradient(ellipse at center, rgba(249,115,22,0.12) 0%, transparent 70%);
+      inset: 0;
+      background:
+        radial-gradient(42% 38% at 30% 18%, rgba(249,115,22,0.16) 0%, transparent 70%),
+        radial-gradient(46% 42% at 78% 32%, rgba(251,146,60,0.10) 0%, transparent 72%);
       pointer-events: none;
     }
 
@@ -209,26 +229,35 @@
       background: var(--accent);
       border-radius: 50%;
       box-shadow: 0 0 8px var(--accent);
-      animation: pulse 2s infinite;
+      animation: pulseGlow 2.4s var(--ease-out) infinite;
     }
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
     }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 6px var(--accent); }
+      50% { box-shadow: 0 0 14px var(--accent), 0 0 24px var(--accent-glow); }
+    }
 
     .hero-headline {
-      font-size: clamp(2.5rem, 8vw, 5rem);
+      font-size: clamp(2.75rem, 8vw, 5.25rem);
       font-weight: 900;
       letter-spacing: -0.04em;
-      line-height: 1.05;
-      background: linear-gradient(180deg, #fff 60%, rgba(255,255,255,0.55));
+      line-height: 1.02;
+      background: linear-gradient(180deg, #fff 55%, rgba(255,255,255,0.62));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      text-wrap: balance;
     }
     .hero-headline span {
-      -webkit-text-fill-color: var(--accent);
+      background: var(--accent-grad);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
       color: var(--accent);
+      text-shadow: 0 0 40px rgba(249,115,22,0.25);
     }
 
     .hero-sub {
@@ -255,39 +284,125 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: var(--accent);
+      background: var(--accent-grad);
       color: #fff;
       font-family: inherit;
       font-size: 1rem;
       font-weight: 700;
-      padding: 14px 28px;
-      border-radius: 14px;
+      padding: 15px 30px;
+      border-radius: var(--r-md);
       text-decoration: none;
-      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      transition: transform 0.18s var(--ease-spring), box-shadow 0.25s var(--ease-out), filter 0.2s;
       border: none;
       cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--e2), var(--glow-accent), inset 0 1px 0 rgba(255,255,255,0.25);
+    }
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%);
+      transform: translateX(-120%);
+      transition: transform 0.6s var(--ease-out);
+      pointer-events: none;
     }
     .btn-primary:hover {
-      background: #fb923c;
       transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(249,115,22,0.45);
+      filter: brightness(1.05);
+      box-shadow: var(--e3), 0 14px 40px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
     }
+    .btn-primary:hover::after { transform: translateX(120%); }
+    .btn-primary:active { transform: translateY(0) scale(0.98); filter: brightness(0.97); }
+    .btn-primary:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
 
     .btn-ghost {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       color: var(--muted);
       font-family: inherit;
       font-size: 0.95rem;
-      font-weight: 500;
+      font-weight: 600;
       text-decoration: none;
-      transition: color 0.2s;
-      padding: 14px 4px;
+      padding: 13px 20px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      transition: color 0.2s, border-color 0.25s var(--ease-out), background 0.25s, box-shadow 0.25s;
     }
-    .btn-ghost:hover { color: var(--text); }
+    .btn-ghost:hover {
+      color: var(--text);
+      border-color: var(--border-strong);
+      background: rgba(255,255,255,0.05);
+      box-shadow: var(--e1);
+    }
+    .btn-ghost:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
     .btn-ghost svg { transition: transform 0.2s; }
     .btn-ghost:hover svg { transform: translateX(3px); }
+
+    /* Champ d'inscription e-mail inline (hero) */
+    .email-capture {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-md);
+      padding: 6px 6px 6px 18px;
+      max-width: 460px;
+      width: 100%;
+      box-shadow: var(--e2);
+      transition: border-color 0.25s var(--ease-out), box-shadow 0.25s;
+    }
+    .email-capture:focus-within {
+      border-color: rgba(249,115,22,0.45);
+      box-shadow: var(--e2), 0 0 0 4px var(--accent-dim);
+    }
+    .email-capture input {
+      flex: 1;
+      min-width: 0;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    .email-capture input::placeholder { color: var(--muted-dim); }
+    .email-capture button {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-grad);
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      padding: 12px 22px;
+      border-radius: var(--r-sm);
+      box-shadow: var(--glow-accent), inset 0 1px 0 rgba(255,255,255,0.25);
+      transition: transform 0.18s var(--ease-spring), filter 0.2s;
+    }
+    .email-capture button:hover { transform: translateY(-1px); filter: brightness(1.06); }
+    .email-capture button:active { transform: translateY(0) scale(0.97); }
+    .email-capture button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
+    .email-capture-note {
+      font-size: 0.82rem;
+      color: var(--muted-dim);
+      margin-top: 10px;
+    }
+    @media (max-width: 480px) {
+      .email-capture { flex-wrap: wrap; padding: 12px; gap: 10px; }
+      .email-capture input { flex: 1 1 100%; padding: 4px 6px; }
+      .email-capture button { width: 100%; justify-content: center; }
+    }
 
     /* ─── PHONE MOCKUP ─── */
     .phone-mockup {
@@ -541,20 +656,30 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 20px;
+      padding: 8px 24px;
       color: var(--muted);
       font-size: 0.875rem;
       font-weight: 500;
       white-space: nowrap;
+      position: relative;
+      transition: color 0.2s;
     }
-    .trust-item + .trust-item {
-      border-left: 1px solid var(--border);
+    .trust-item:hover { color: var(--text); }
+    .trust-item:hover .trust-icon { filter: drop-shadow(0 0 6px var(--accent-glow)); }
+    .trust-item + .trust-item::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 50%;
+      transform: translateY(-50%);
+      width: 1px; height: 20px;
+      background: linear-gradient(180deg, transparent, var(--border-strong), transparent);
     }
     .trust-icon {
       width: 18px;
       height: 18px;
       color: var(--accent);
       flex-shrink: 0;
+      transition: filter 0.2s;
     }
 
     /* ─── SECTION BASE ─── */
@@ -573,15 +698,28 @@
       text-transform: uppercase;
       color: var(--accent);
       margin-bottom: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-eyebrow::before {
+      content: '';
+      width: 18px; height: 2px;
+      background: var(--accent-grad);
+      border-radius: 2px;
     }
 
     .section-title {
       font-size: clamp(2rem, 5vw, 3.2rem);
       font-weight: 900;
       letter-spacing: -0.03em;
-      line-height: 1.1;
-      color: var(--text);
+      line-height: 1.08;
       margin-bottom: 16px;
+      background: linear-gradient(180deg, #fff, rgba(255,255,255,0.78));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-wrap: balance;
     }
 
     .section-sub {
@@ -607,13 +745,14 @@
     }
 
     .feature-card {
-      background: rgba(255,255,255,0.04);
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025));
       border: 1px solid var(--border);
-      border-radius: 20px;
+      border-radius: var(--r-lg);
       padding: 32px 28px;
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+      box-shadow: var(--e1);
+      transition: border-color 0.3s, transform 0.3s var(--ease-out), box-shadow 0.3s;
       cursor: default;
       position: relative;
       overflow: hidden;
@@ -627,23 +766,28 @@
       transition: opacity 0.3s;
     }
     .feature-card:hover {
-      border-color: rgba(249,115,22,0.3);
-      transform: translateY(-4px);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(249,115,22,0.1);
+      border-color: rgba(249,115,22,0.32);
+      transform: translateY(-5px);
+      box-shadow: var(--e3), 0 0 0 1px rgba(249,115,22,0.12);
     }
     .feature-card:hover::before { opacity: 1; }
 
     .feature-icon {
-      width: 48px;
-      height: 48px;
-      background: var(--accent-dim);
-      border: 1px solid rgba(249,115,22,0.25);
-      border-radius: 14px;
+      width: 50px;
+      height: 50px;
+      background: var(--accent-grad);
+      border-radius: var(--r-md);
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 24px;
-      color: var(--accent);
+      color: #fff;
+      box-shadow: var(--glow-accent), inset 0 1px 0 rgba(255,255,255,0.35);
+      transition: transform 0.3s var(--ease-spring), box-shadow 0.3s;
+    }
+    .feature-card:hover .feature-icon {
+      transform: scale(1.06) rotate(-2deg);
+      box-shadow: 0 10px 30px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.4);
     }
     .feature-icon svg { width: 24px; height: 24px; }
 
@@ -1099,68 +1243,6 @@
   .stats-bar-lbl { font-size: .72rem; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .05em; }
   .stats-bar-sep { width: 1px; height: 32px; background: rgba(255,255,255,.12); margin: 0 16px; flex-shrink: 0; }
 
-  .testimonials-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    margin-top: 48px;
-  }
-  @media (max-width: 900px) { .testimonials-grid { grid-template-columns: 1fr; } }
-
-  .testimonial-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    transition: border-color 0.2s;
-  }
-  .testimonial-card:hover { border-color: rgba(249,115,22,0.3); }
-
-  .testimonial-stars {
-    display: flex;
-    gap: 3px;
-    color: #F97316;
-    font-size: 1rem;
-  }
-  .testimonial-quote {
-    font-size: 0.95rem;
-    color: rgba(255,255,255,0.75);
-    line-height: 1.65;
-    font-style: italic;
-    flex: 1;
-  }
-  .testimonial-author {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: auto;
-  }
-  .testimonial-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9rem;
-    font-weight: 800;
-    color: #fff;
-    flex-shrink: 0;
-  }
-  .testimonial-name {
-    font-size: 0.88rem;
-    font-weight: 700;
-    color: rgba(255,255,255,0.9);
-  }
-  .testimonial-context {
-    font-size: 0.78rem;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-
   /* ─── INTRO CINÉMATIQUE ─── */
 
   /* Barres letterbox cinema (pseudo-elements sur l'overlay) */
@@ -1408,11 +1490,18 @@
         <span style="color:rgba(255,255,255,0.5);font-size:0.95em">Les participants rejoignent en un clic · sans compte · sans app.</span>
       </p>
 
-      <div class="hero-ctas reveal reveal-delay-3">
-        <a href="/app?auth=register" class="btn-primary">
-          Créer mon compte — c'est gratuit
+      <form id="hero-signup" class="email-capture reveal reveal-delay-3" novalidate>
+        <input type="email" id="hero-signup-email" name="email"
+               placeholder="ton@email.com" autocomplete="email" inputmode="email"
+               aria-label="Adresse e-mail" required />
+        <button type="submit">
+          Créer mon compte
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </a>
+        </button>
+      </form>
+      <p class="email-capture-note reveal reveal-delay-3">Gratuit · sans carte bancaire · ton crew rejoint sans compte</p>
+
+      <div class="hero-ctas reveal reveal-delay-3">
         <button id="pwa-install-btn-hero" class="btn-ghost">
           Installer l'app
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12M8 12l4 4 4-4"/></svg>
@@ -1535,19 +1624,19 @@
       <div class="features-header">
         <p class="section-eyebrow reveal">Features</p>
         <h2 class="section-title reveal">Tout ce qu'il faut<br />pour partir ensemble.</h2>
-        <p class="section-sub reveal">Planning, budget, chat, photos — ton crew au même endroit, sans friction.</p>
+        <p class="section-sub reveal">Planning, budget, chat, photos, carte live — ton crew au même endroit, sans friction.</p>
       </div>
 
       <div class="features-grid">
 
-        <!-- Planning -->
+        <!-- Road Map -->
         <div class="feature-card reveal">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
           </div>
           <div class="feature-tag">Road Map</div>
           <div class="feature-title">Programme jour par jour</div>
-          <p class="feature-desc">Construis ta roadmap en groupe en temps réel. Ajoute des étapes, des activités, des réservations. Chacun contribue, tout le crew est aligné.</p>
+          <p class="feature-desc">Construisez la roadmap à plusieurs : étapes, activités, réservations. Chacun contribue, tout le crew reste aligné.</p>
         </div>
 
         <!-- CrewiCash -->
@@ -1556,8 +1645,8 @@
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
           </div>
           <div class="feature-tag feature-tag--brand"><span class="brand-dot"></span>CrewiCash</div>
-          <div class="feature-title">Budget partagé &amp; split auto</div>
-          <p class="feature-desc">Un budget commun, des dépenses tracées, des remboursements calculés automatiquement. Fini le tableau Excel et les "tu me dois combien ?".</p>
+          <div class="feature-title">Budget partagé, split automatique</div>
+          <p class="feature-desc">Dépenses tracées, parts par participant, remboursements calculés. Fini l'Excel et les « tu me dois combien ? ».</p>
         </div>
 
         <!-- CrewiChat -->
@@ -1566,8 +1655,8 @@
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
           </div>
           <div class="feature-tag feature-tag--brand"><span class="brand-dot"></span>CrewiChat</div>
-          <div class="feature-title">Chat groupe + push notifs</div>
-          <p class="feature-desc">Discute en groupe ou en privé, reçois des notifications push même sans l'app ouverte. Tout reste dans le voyage — zéro groupe WhatsApp de plus.</p>
+          <div class="feature-title">Discussion de groupe &amp; notifs</div>
+          <p class="feature-desc">Chat du voyage, messages privés et notifications push, même app fermée. Zéro groupe WhatsApp de plus.</p>
         </div>
 
         <!-- CrewiPics -->
@@ -1577,27 +1666,37 @@
           </div>
           <div class="feature-tag feature-tag--brand"><span class="brand-dot"></span>CrewiPics</div>
           <div class="feature-title">Album partagé, en direct</div>
-          <p class="feature-desc">Chaque membre uploade ses photos pendant le trip. Un seul album pour tout le crew. Plus jamais "envoie-moi tes photos sur Drive".</p>
+          <p class="feature-desc">Chacun uploade pendant le trip, un seul album pour tout le crew, avec likes. Plus de « envoie-moi tes photos ».</p>
         </div>
 
-        <!-- Hub destination -->
+        <!-- Sans compte -->
         <div class="feature-card reveal">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zm-6 6h2v2h-2v-2zm0 4h2v2h-2v-2zm4-4h2v2h-2v-2zm0 4h2v2h-2v-2zm2-2h2v2h-2v-2zm0 4h2v2h-2v-2z"/></svg>
+          </div>
+          <div class="feature-tag">Sans compte</div>
+          <div class="feature-title">Rejoindre en un scan</div>
+          <p class="feature-desc">Lien, QR code ou magic link : les participants entrent sans créer de compte. PIN optionnel pour protéger le voyage.</p>
+        </div>
+
+        <!-- Pré-trip -->
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 9.2h3V19H5zM10.5 5h3v14h-3zM16 13h3v6h-3z"/></svg>
+          </div>
+          <div class="feature-tag">Pré-trip</div>
+          <div class="feature-title">Hype, envies &amp; sondages</div>
+          <p class="feature-desc">Avant le départ : jauge d'excitation, mur d'envies et sondages express pour décider ensemble.</p>
+        </div>
+
+        <!-- Hub & Carte live -->
+        <div class="feature-card reveal reveal-delay-2">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
           </div>
-          <div class="feature-tag">Hub · Destination</div>
-          <div class="feature-title">Tout sur ta destination, en un coup d'œil</div>
-          <p class="feature-desc">Le Hub centralise la carte interactive, la météo en direct et les infos Wikipedia de ta destination. Tout le crew part informé — même avant de boucler les valises.</p>
-        </div>
-
-        <!-- PWA -->
-        <div class="feature-card pwa-card reveal reveal-delay-1">
-          <div class="feature-icon" style="background:rgba(249,115,22,0.2);border-color:rgba(249,115,22,0.4);">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-1.99.9-1.99 2v18c0 1.1.89 2 1.99 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/><circle cx="12" cy="17" r="1"/></svg>
-          </div>
-          <div class="feature-tag">PWA · Sans App Store</div>
-          <div class="feature-title">Installe depuis le navigateur. Point.</div>
-          <p class="feature-desc">Installe CrewiGO directement depuis ton navigateur sur iOS ou Android. Aucun téléchargement, aucun compte Apple ou Google requis. Un tap. C'est fait.</p>
+          <div class="feature-tag">Hub &amp; Carte live</div>
+          <div class="feature-title">Destination + positions en direct</div>
+          <p class="feature-desc">Météo 7 jours, infos destination et carte live des positions du groupe sur place, en temps réel.</p>
         </div>
 
       </div>
@@ -1606,14 +1705,14 @@
 
   <div class="section-divider"></div>
 
-  <!-- ─── SOCIAL PROOF ─── -->
+  <!-- ─── PREUVE / TRANSPARENCE ─── -->
   <section id="temoignages">
-    <div class="section-inner">
-      <p class="section-eyebrow reveal">Premiers utilisateurs</p>
-      <h2 class="section-title reveal">Des crews qui ont<br /><span style="color:var(--accent)">sauté le pas.</span></h2>
-      <p class="section-sub reveal">Testeurs bêta — retours authentiques sur leurs premiers voyages avec CrewiGO.</p>
+    <div class="section-inner" style="text-align:center;align-items:center;display:flex;flex-direction:column">
+      <p class="section-eyebrow reveal">En toute transparence</p>
+      <h2 class="section-title reveal">Jeune produit,<br /><span>vraies fondations.</span></h2>
+      <p class="section-sub reveal" style="margin:0 auto">CrewiGO démarre tout juste. Pas de faux avis ici — seulement les chiffres réels, mis à jour en direct.</p>
 
-      <!-- Stats dynamiques -->
+      <!-- Stats dynamiques (données réelles via /api/stats/public) -->
       <div id="stats-bar" class="stats-bar reveal" style="display:none">
         <div class="stats-bar-item">
           <span class="stats-bar-val" id="stat-voyages">—</span>
@@ -1629,46 +1728,6 @@
           <span class="stats-bar-val">100%</span>
           <span class="stats-bar-lbl">gratuit</span>
         </div>
-      </div>
-
-      <div class="testimonials-grid">
-
-        <div class="testimonial-card reveal">
-          <div class="testimonial-stars">★★★★★</div>
-          <p class="testimonial-quote">"On a organisé 8 jours à Tokyo à 6. Avant c'était 3 groupes WhatsApp, un Google Sheet et un Google Doc. Là, tout était au même endroit. On n'a perdu personne au marché Tsukiji."</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar" style="background:#F97316">L</div>
-            <div>
-              <div class="testimonial-name">Lucie M.</div>
-              <div class="testimonial-context">Tokyo · 8 jours · 6 personnes</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="testimonial-card reveal reveal-delay-1">
-          <div class="testimonial-stars">★★★★★</div>
-          <p class="testimonial-quote">"CrewiCash a littéralement sauvé notre amitié. Les remboursements automatiques, c'est juste magique. Plus personne ne garde rancune sur qui a payé quoi."</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar" style="background:#3B82F6">K</div>
-            <div>
-              <div class="testimonial-name">Karim B.</div>
-              <div class="testimonial-context">Barcelone · 5 jours · 4 amis</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="testimonial-card reveal reveal-delay-2">
-          <div class="testimonial-stars">★★★★★</div>
-          <p class="testimonial-quote">"J'ai rejoint en scannant un QR code, sans créer de compte. En 30 secondes j'avais accès au planning et au chat. Aucune app à télécharger. Sérieusement, pourquoi tous les trips ne fonctionnent pas comme ça ?"</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar" style="background:#10B981">S</div>
-            <div>
-              <div class="testimonial-name">Sofia R.</div>
-              <div class="testimonial-context">Lisbonne · participante · iPhone</div>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   </section>
@@ -1896,6 +1955,18 @@
     document.querySelectorAll('.hero .reveal').forEach(el => {
       el.classList.add('visible');
     });
+
+    // ─── Inscription e-mail → handoff vers /app pré-rempli ──────────────────
+    (function initHeroSignup() {
+      const form = document.getElementById('hero-signup');
+      if (!form) return;
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const email = document.getElementById('hero-signup-email').value.trim();
+        const qs = email ? '?auth=register&email=' + encodeURIComponent(email) : '?auth=register';
+        window.location.href = '/app' + qs;
+      });
+    })();
 
     // ─── PWA Install ──────────────────────────────────────────────────────
     (function initPWAInstall() {
