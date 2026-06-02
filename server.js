@@ -104,18 +104,7 @@ app.use('/api/', (req, res, next) => {
 // ─── ROUTES PRINCIPALES (avant express.static pour éviter que index.html soit servi sur /) ──
 // no-store : le navigateur ne cache jamais ces pages HTML
 // Les URLs versionnées app.js?v=XX et style.css?v=XX garantissent le rechargement du JS/CSS
-app.get('/', (req, res) => {
-  res.set({
-    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-    'Content-Type':  'text/html; charset=utf-8'
-  });
-  // Servi dynamiquement pour injecter le nonce CSP dans les blocs <script> inline
-  let html = fs.readFileSync(path.join(__dirname, 'public', 'landing.html'), 'utf8');
-  const nonce = res.locals.cspNonce || '';
-  if (nonce) html = html.replace(/<script>/g, `<script nonce="${nonce}">`);
-  res.end(html);
-});
-
+// La route GET '/' (landing) vit désormais dans le module ./landing (monté plus bas).
 app.get('/app', (req, res) => {
   // no-store + pas d'ETag : res.end() contourne la génération automatique d'ETag
   // d'Express (res.send() en génère un → Safari peut retourner 304 et servir un
@@ -163,65 +152,10 @@ app.get('/confidentialite', (req, res) => {
 // route /cockpit prime sur les middlewares statiques / catch-all.
 require('./cockpit')(app, { db, IS_CLOUD, JWT_SECRET, checkAuthRate, publicDir: path.join(__dirname, 'public') });
 
-// ─── Stats publiques : /api/stats/public ────────────────────────────────────
-// Compteurs pour la landing page — pas d'authentification requise.
-// Cache serveur 5 minutes pour limiter les requêtes DB.
-let _statsCache = null, _statsCacheAt = 0;
-app.get('/api/stats/public', async (req, res) => {
-  try {
-    const now = Date.now();
-    if (_statsCache && now - _statsCacheAt < 300000) {
-      return res.setHeader('Cache-Control', 'public, max-age=300').json(_statsCache);
-    }
-    let stats = { voyages: 0, participants: 0, photos: 0 };
-    if (IS_CLOUD && db._pool) {
-      const [v, p, ph] = await Promise.all([
-        db._pool.query('SELECT COUNT(*) FROM voyages').then(r => parseInt(r.rows[0].count)),
-        db._pool.query('SELECT COUNT(*) FROM participants').then(r => parseInt(r.rows[0].count)),
-        db._pool.query("SELECT COUNT(*) FROM photos WHERE url IS NOT NULL").then(r => parseInt(r.rows[0].count)).catch(() => 0)
-      ]);
-      stats = { voyages: v, participants: p, photos: ph };
-    } else {
-      try {
-        const voyages = db.voyages.getAll ? db.voyages.getAll() : [];
-        // local mode : compter tous les participants via les voyages
-        const partCount = voyages.reduce((sum, v) => {
-          const parts = db.participants?.getByVoyage ? db.participants.getByVoyage(v.id) : [];
-          return sum + (parts?.length || 0);
-        }, 0);
-        stats = { voyages: voyages.length, participants: partCount, photos: 0 };
-      } catch { stats = { voyages: 0, participants: 0, photos: 0 }; }
-    }
-    // Arrondir à la dizaine pour éviter un aspect "trop précis" = moins crédible
-    stats.voyagesDisplay = Math.max(stats.voyages, 12); // minimum affiché
-    _statsCache = stats;
-    _statsCacheAt = now;
-    res.setHeader('Cache-Control', 'public, max-age=300').json(stats);
-  } catch(e) {
-    console.warn('[Stats] Erreur:', e.message);
-    res.json({ voyages: 0, participants: 0, photos: 0, voyagesDisplay: 0 });
-  }
-});
-
-// ─── L7 — QR code local (remplace api.qrserver.com) ────────────────────────
-// Généré en SVG côté serveur via le package qrcode — aucun appel externe.
-app.get('/api/qr-landing', async (req, res) => {
-  try {
-    const QRCode = require('qrcode');
-    const svg = await QRCode.toString('https://crewigo.app', {
-      type:   'svg',
-      color:  { dark: '#F97316ff', light: '#0D0D0Dff' },
-      margin: 2,
-      scale:  4
-    });
-    res.setHeader('Content-Type', 'image/svg+xml');
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h
-    res.send(svg);
-  } catch (e) {
-    console.warn('[QR] Génération échouée:', e.message);
-    res.status(503).end();
-  }
-});
+// ─── Landing page (public/marketing) ────────────────────────────────────────
+// Module AUTONOME : page d'accueil GET '/', stats publiques, QR landing, OG image.
+// Monté AVANT express.static pour que GET '/' prime sur le service statique.
+require('./landing')(app, { db, IS_CLOUD, publicDir: path.join(__dirname, 'public') });
 
 // ─── QR code générique : /api/qr?url=<encodedUrl> ───────────────────────────
 // Utilisé par le modal de partage pour afficher le QR du lien de partage.
@@ -257,11 +191,7 @@ app.get('/api/qr', authMiddleware, async (req, res) => {
   }
 });
 
-// ─── OG image SVG (1200×630) ────────────────────────────────────────────────
-app.get('/og-image.svg', (req, res) => {
-  res.setHeader('Cache-Control', 'public, max-age=86400');
-  res.sendFile(path.join(__dirname, 'public', 'og-image.svg'));
-});
+// La route GET '/og-image.svg' vit désormais dans le module ./landing (monté plus haut).
 
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders(res, filePath) {
