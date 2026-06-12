@@ -4385,7 +4385,7 @@ textarea { resize: vertical; line-height: 1.6; }
    5.30s  Fondu sortie → dissolve linéaire
    ═══════════════════════════════════════════════════════════════ */
 
-/* ─── APP STARTUP SPLASH — logo statique, fondu ~1s, auto-disparition CSS ─── */
+/* ─── APP STARTUP SPLASH — logo seul, sans effet, auto-disparition CSS ─── */
 
 #app-splash {
   position: fixed; inset: 0; z-index: 9999;
@@ -4393,15 +4393,9 @@ textarea { resize: vertical; line-height: 1.6; }
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
   /* Disparition pilotée 100% par CSS : même si le JS est gelé (pause Android),
-     le splash s'efface tout seul et ne peut JAMAIS rester pour bloquer l'app. */
-  animation: splashAuto 1.15s ease forwards;
-}
-
-.intro-content {
-  display: flex; flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  animation: splashContentIn 0.55s cubic-bezier(0.22,1,0.36,1) both;
+     le splash s'efface tout seul et ne peut JAMAIS rester pour bloquer l'app.
+     Pas d'effet d'entrée : le logo est affiché tel quel, puis le voile se retire. */
+  animation: splashAuto 0.9s ease forwards;
 }
 
 .intro-logo-img {
@@ -4414,40 +4408,12 @@ textarea { resize: vertical; line-height: 1.6; }
     0 32px 64px rgba(0,0,0,0.7);
 }
 
-.intro-wordmark {
-  font-family: var(--font-display);
-  font-size: 3.2rem; line-height: 1;
-  letter-spacing: -0.04em;
-}
-.intro-crewi { color: #fff;    font-weight: 800; }
-.intro-go    { color: #F97316; font-weight: 900; font-style: italic; }
-
-.intro-tagline {
-  font-family: var(--font-display);
-  font-size: 0.72rem; font-weight: 600;
-  letter-spacing: 0.28em; text-transform: uppercase;
-  color: rgba(255,255,255,0.38);
-  margin: 0;
-}
-
-/* Apparition douce du contenu */
-@keyframes splashContentIn {
-  0%   { opacity: 0; transform: scale(0.92); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-/* Le splash entier : tient ~0,7s puis fond et se neutralise.
+/* Le voile tient le logo affiché, puis se retire et se neutralise.
    pointer-events:none + visibility:hidden garantissent qu'il ne bloque plus rien. */
 @keyframes splashAuto {
   0%   { opacity: 1; visibility: visible; }
-  62%  { opacity: 1; }
+  70%  { opacity: 1; }
   100% { opacity: 0; visibility: hidden; pointer-events: none; }
-}
-
-/* Accessibilité : mouvement réduit → splash encore plus court */
-@media (prefers-reduced-motion: reduce) {
-  .intro-content { animation: none; }
-  #app-splash { animation: splashAuto 0.5s ease forwards; }
 }
 
 /* ════════════════════════════════════════════════
