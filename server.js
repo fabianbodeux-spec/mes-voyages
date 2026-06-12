@@ -16,7 +16,7 @@ const IS_CLOUD = db.usePostgres;
 
 // Version de l'app — doit correspondre à CACHE_VERSION dans sw.js
 // Changer ici ET dans sw.js à chaque déploiement pour forcer le rechargement
-const APP_VERSION = 'v59';
+const APP_VERSION = 'v60';
 const fs = require('fs');
 if (!process.env.JWT_SECRET && IS_CLOUD) {
   console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
@@ -843,15 +843,37 @@ app.post('/api/voyages/:id/join-as-participant', authMiddleware, async (req, res
     let ownerPart = parts.find(p => p.role === 'owner');
 
     if (!ownerPart) {
-      const nom = (req.body.nom || 'Organisateur').trim().slice(0, 50);
-      const couleur = req.body.couleur || '#FF6B35';
+      // Anti-doublon : l'organisateur a souvent été créé à la création du voyage
+      // SANS role='owner'. On promeut ce participant existant plutôt que d'en créer un 2e.
+      // a) via le lien user ↔ participant déjà enregistré pour ce voyage
+      const links = await run(() => db.user_participant_links.getByUser(req.user.id))
+        .catch(() => []);
+      const link = (links || []).find(l => +l.voyage_id === voyageId);
+      let existing = link ? parts.find(p => +p.id === +link.participant_id) : null;
 
-      ownerPart = await run(() => db.participants.create(voyageId, {
-        nom,
-        couleur,
-        pin: null,
-        role: 'owner',
-      }));
+      // b) fallback : correspondance par nom (insensible à la casse)
+      if (!existing) {
+        const wanted = (req.body.nom || '').trim().toLowerCase();
+        if (wanted) existing = parts.find(p => (p.nom || '').trim().toLowerCase() === wanted);
+      }
+
+      // c) dernier recours : s'il n'existe qu'un seul participant, c'est l'organisateur
+      if (!existing && parts.length === 1) existing = parts[0];
+
+      if (existing) {
+        await run(() => db.participants.setRole(existing.id, 'owner'))
+          .catch(e => console.warn('[JOIN-AS-PARTICIPANT] setRole:', e.message));
+        ownerPart = { ...existing, role: 'owner' };
+      } else {
+        const nom = (req.body.nom || 'Organisateur').trim().slice(0, 50);
+        const couleur = req.body.couleur || '#FF6B35';
+        ownerPart = await run(() => db.participants.create(voyageId, {
+          nom,
+          couleur,
+          pin: null,
+          role: 'owner',
+        }));
+      }
     }
 
     // 3. Générer un session token

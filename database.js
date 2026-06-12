@@ -160,6 +160,7 @@ const localDB = {
     getById: (id) => charger('participants').find(p => p.id === +id),
     create: (vid, data) => { const list = charger('participants'); const item = { ...data, id: nextId(list), voyage_id: +vid, created_at: new Date().toISOString() }; list.push(item); sauvegarder('participants', list); return item; },
     update: (id, data) => { const list = charger('participants'); const idx = list.findIndex(p => p.id === +id); if (idx === -1) return false; list[idx] = { ...list[idx], ...data }; sauvegarder('participants', list); return true; },
+    setRole: (id, role) => { const list = charger('participants'); const idx = list.findIndex(p => p.id === +id); if (idx === -1) return false; list[idx] = { ...list[idx], role }; sauvegarder('participants', list); return true; },
     delete: (id) => {
       sauvegarder('bagages', charger('bagages').filter(b => b.participant_id !== +id));
       sauvegarder('participants', charger('participants').filter(p => p.id !== +id));
@@ -802,6 +803,7 @@ const pgDB = pgPool ? {
     getById: async (id) => (await pgPool.query('SELECT * FROM participants WHERE id=$1', [id])).rows[0],
     create: async (vid, data) => (await pgPool.query('INSERT INTO participants(voyage_id,nom,couleur,pin,role) VALUES($1,$2,$3,$4,$5) RETURNING *', [vid,data.nom,data.couleur||'#6366F1',data.pin||null,data.role||'participant'])).rows[0],
     update: async (id, data) => { await pgPool.query('UPDATE participants SET nom=$1,couleur=$2,pin=$3 WHERE id=$4', [data.nom,data.couleur,data.pin??null,id]); return true; },
+    setRole: async (id, role) => { await pgPool.query('UPDATE participants SET role=$1 WHERE id=$2', [role, id]); return true; },
     delete: async (id) => {
       await pgPool.query('DELETE FROM bagages WHERE participant_id=$1', [id]);
       await pgPool.query('DELETE FROM participants WHERE id=$1', [id]);
