@@ -440,42 +440,16 @@ document.addEventListener('DOMContentLoaded', () => {
   (function initAppSplash() {
     const splash = document.getElementById('app-splash');
     if (!splash) return;
-    let t1, t2;
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReduced) {
-      // Version rapide sans animation
-      t1 = setTimeout(() => {
-        splash.classList.add('app-splash-out');
-        const done = () => { splash.style.display = 'none'; clearTimeout(t2); };
-        splash.addEventListener('transitionend', done, { once: true });
-        t2 = setTimeout(done, 400);
-      }, 400);
-    } else {
-      // Sortie cinématique à 3.4s — animations CSS terminent à ~2.5s
-      t1 = setTimeout(() => {
-        // Étape 1 : barres letterbox se rétractent
-        splash.classList.add('bars-out');
-
-        // Étape 2 (150ms) : contenu se compresse et disparaît
-        const content = splash.querySelector('.intro-content');
-        if (content) {
-          setTimeout(() => {
-            content.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-            content.style.opacity = '0';
-            content.style.transform = 'scale(0.93)';
-          }, 150);
-        }
-
-        // Étape 3 (520ms) : overlay entier fade out → révèle l'app
-        setTimeout(() => {
-          splash.classList.add('app-splash-out');
-          const done = () => { splash.style.display = 'none'; clearTimeout(t2); };
-          splash.addEventListener('transitionend', done, { once: true });
-          t2 = setTimeout(done, 750);
-        }, 520);
-      }, 3400);
-    }
+    // La disparition est 100% pilotée par l'animation CSS `splashAuto`
+    // (le splash devient pointer-events:none + visibility:hidden tout seul,
+    //  même si le JS est gelé pendant une mise en pause Android → ne peut JAMAIS
+    //  rester pour bloquer l'app). Ce filet ne fait que retirer l'élément du DOM
+    //  une fois l'animation finie ; lui-même ne peut pas se retrouver bloqué.
+    const remove = () => { splash.style.display = 'none'; };
+    splash.addEventListener('animationend', e => {
+      if (e.animationName === 'splashAuto') remove();
+    });
+    setTimeout(remove, 1500); // filet ultime
   })();
 
   initAuth().then(() => { if (currentUser) chargerVoyages(); });
