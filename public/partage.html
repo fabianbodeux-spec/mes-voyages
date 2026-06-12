@@ -375,7 +375,10 @@
 </div>
 
 <!-- ═══ ÉCRAN VOYAGE (identique à l'app principale) ══════════════ -->
-<div id="screen-voyage" class="screen active">
+<!-- Pas de classe "active" au repos : l'écran reste masqué tant que les
+     données ne sont pas chargées (évite un flash d'en-tête vide sans nom
+     de voyage / participant). _lancerPartage() ajoute "active" une fois prêt. -->
+<div id="screen-voyage" class="screen">
 
   <header class="app-header voyage-header" id="voyage-header">
     <div class="header-content">
