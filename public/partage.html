@@ -160,58 +160,6 @@
       text-transform: uppercase; flex-shrink: 0;
     }
 
-    /* ── Welcome Splash ───────────────────────────── */
-    #welcome-splash {
-      position: fixed; inset: 0; z-index: 3000;
-      background: #1C1917;
-      display: flex; align-items: center; justify-content: center;
-      padding: 32px;
-      transition: opacity 0.48s ease, transform 0.48s ease;
-    }
-    #welcome-splash.splash-out {
-      opacity: 0; transform: scale(0.96); pointer-events: none;
-    }
-    .ws-inner {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 14px; text-align: center; max-width: 320px;
-      animation: splashEnter 0.7s cubic-bezier(0.34,1.56,0.64,1) both;
-    }
-    .ws-img {
-      width: 80px; height: 80px;
-      border-radius: 20px;
-      box-shadow: 0 0 40px rgba(249,115,22,0.45), 0 0 80px rgba(249,115,22,0.20);
-      animation: splashPulse 1.8s ease-in-out infinite;
-    }
-    .ws-wordmark {
-      font-family: var(--font-display);
-      font-size: 2.2rem; font-weight: 800;
-      letter-spacing: -0.04em; line-height: 1;
-      animation: splashEnter 0.7s 0.15s cubic-bezier(0.34,1.56,0.64,1) both;
-    }
-    .ws-wordmark .cs-crew { color: #FFFFFF; }
-    .ws-wordmark .cs-go   { color: #F97316; font-style: italic; }
-    .ws-bienvenue {
-      font-size: 0.72rem; font-weight: 700;
-      letter-spacing: 0.12em; text-transform: uppercase;
-      color: rgba(255,255,255,0.40);
-      opacity: 0; transition: opacity 0.4s ease 0.3s;
-    }
-    .ws-nom {
-      font-size: 1.5rem; font-weight: 800;
-      font-family: var(--font-display);
-      color: #F97316;
-      min-height: 1.8rem; letter-spacing: -0.02em;
-      opacity: 0; transition: opacity 0.45s ease 0.5s;
-    }
-    .ws-tagline {
-      font-size: 0.84rem; color: rgba(255,255,255,0.45);
-      font-weight: 500; line-height: 1.5;
-      opacity: 0; transition: opacity 0.4s ease 0.75s;
-    }
-    #welcome-splash.ws-ready .ws-bienvenue,
-    #welcome-splash.ws-ready .ws-nom,
-    #welcome-splash.ws-ready .ws-tagline { opacity: 1; }
-
     /* ── CrewiRewind — Capsules Mémoire ───────────────── */
     .cr-section {
       background: var(--card);
@@ -382,17 +330,6 @@
   </style>
 </head>
 <body>
-
-<!-- ═══ WELCOME SPLASH ════════════════════════════════════════════ -->
-<div id="welcome-splash">
-  <div class="ws-inner">
-    <img src="/logo-icon.png" alt="CrewiGO" class="ws-img">
-    <div class="ws-wordmark"><span class="cs-crew">Crewi</span><span class="cs-go">GO</span></div>
-    <p class="ws-bienvenue">Bienvenue sur</p>
-    <p class="ws-nom" id="ws-nom">…</p>
-    <p class="ws-tagline">C'est parti pour l'aventure&nbsp;🏕️</p>
-  </div>
-</div>
 
 <!-- ═══ IDENTIFICATION ═══════════════════════════════════════════ -->
 <div id="id-overlay" style="display:none">
@@ -1278,22 +1215,8 @@ window.afficherAccueil = function() {
   document.getElementById('id-overlay').style.display = 'flex';
 };
 
-let _splashWelcomeT1 = null, _splashWelcomeT2 = null;
-
-function _cacherWelcomeSplash(callback) {
-  clearTimeout(_splashWelcomeT2);
-  const splash = document.getElementById('welcome-splash');
-  if (!splash) { callback?.(); return; }
-  splash.classList.add('splash-out');
-  splash.style.pointerEvents = 'none'; // sécurité iOS : empêche tout blocage de touch dès maintenant
-  const proceed = () => {
-    splash.style.display = 'none';
-    splash.style.pointerEvents = 'none';
-    callback?.();
-  };
-  splash.addEventListener('transitionend', proceed, { once: true });
-  _splashWelcomeT2 = setTimeout(proceed, 650); // fallback si transitionend ne se déclenche pas (iOS bg tab)
-}
+// Plus aucune intro CrewiGo : le contenu se lance immédiatement (zéro splash, zéro délai).
+function _cacherWelcomeSplash(callback) { callback?.(); }
 
 /**
  * Vérifie si un JWT admin est présent et non expiré dans localStorage.
@@ -1421,15 +1344,6 @@ async function _initPartage() {
     const hdr = document.getElementById('voyage-header');
     if (hdr && d.voyage.couleur) hdr.style.borderBottom = '3px solid ' + d.voyage.couleur;
 
-    // Afficher le nom du voyage sur le splash + animer l'entrée
-    const wsNom = document.getElementById('ws-nom');
-    if (wsNom) wsNom.textContent = d.voyage.nom;
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() =>
-        document.getElementById('welcome-splash')?.classList.add('ws-ready')
-      )
-    );
-
     // Préparer l'écran d'identification
     document.getElementById('id-voyage-nom').textContent = d.voyage.nom;
     const pEl = document.getElementById('id-participants');
@@ -1531,34 +1445,13 @@ async function _initPartage() {
       }
     };
 
-    // ── Bascule organisateur → AUCUNE interface CrewiGo ──
-    // Quand l'organisateur passe en vue participant, on n'affiche pas le splash de
-    // marque : le basculement est signalé par un simple cadre + le FAB « Mode
-    // organisateur ». Le welcome-splash reste réservé aux vrais invités du lien.
-    const _isOrgSwitch = _adminJWTValide() || storedIdentite?.role === 'owner';
-    if (_isOrgSwitch) {
-      const _ws = document.getElementById('welcome-splash');
-      if (_ws) _ws.style.display = 'none';   // masquage instantané, zéro branding
-      _afterSplash();
-      _checkOrganizerMode();                  // cadre + bannière + FAB tout de suite
-    } else {
-      // F5 — splash complet la 1ʳᵉ fois, fondu rapide (~400 ms) ensuite
-      const _splashSeenKey = 'crewigo_splash_' + _partageToken;
-      const _splashFirstVisit = !localStorage.getItem(_splashSeenKey);
-      try { localStorage.setItem(_splashSeenKey, '1'); } catch(e) {}
-
-      // Sur une visite de retour, supprimer ws-ready pour éviter les animations longues
-      if (!_splashFirstVisit) {
-        document.getElementById('welcome-splash')?.classList.remove('ws-ready');
-      }
-
-      // Attendre puis cacher le splash
-      const elapsed = performance.now(); // l'API a déjà pris du temps
-      const delay = _splashFirstVisit
-        ? Math.max(0, 2000 - elapsed)   // 1ʳᵉ visite : expérience complète ≥ 2 s
-        : Math.max(0,  400 - elapsed);  // retour   : fondu rapide ≤ 400 ms
-      clearTimeout(_splashWelcomeT1);
-      _splashWelcomeT1 = setTimeout(() => { _cacherWelcomeSplash(_afterSplash); }, delay);
+    // ── Plus aucune intro CrewiGo ──
+    // Le contenu se lance immédiatement pour tout le monde (invité ou organisateur).
+    // Pour l'organisateur en vue participant, le basculement reste signalé par le
+    // cadre orange + le FAB « Mode organisateur » (aucun branding plein écran).
+    _afterSplash();
+    if (_adminJWTValide() || storedIdentite?.role === 'owner') {
+      _checkOrganizerMode();
     }
 
   } catch(e) {
