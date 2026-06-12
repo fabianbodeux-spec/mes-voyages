@@ -1851,7 +1851,7 @@ async function _checkOrganizerMode() {
     // confirmée (source de vérité fiable, quel que soit le chemin de navigation).
     const _fab    = document.getElementById('fab-admin-mode');
     const _fabBtn = document.getElementById('fab-admin-btn');
-    if (_fab) _fab.style.display = '';
+    if (_fab) _fab.style.display = 'block'; // valeur explicite : '' retomberait sur la règle CSS display:none
     if (_fabBtn) _fabBtn.onclick = () => {
       window.location.href = _partageToken ? `/app?v=${_partageToken}` : '/app';
     };
@@ -2050,7 +2050,7 @@ function _lancerPartage(identite) {
     const fabBtn   = document.getElementById('fab-admin-btn');
     const sheetBtn = document.getElementById('sheet-btn-admin-mode');
     const dest     = () => window.location.href = _partageToken ? `/app?v=${_partageToken}` : '/app';
-    if (fab) fab.style.display = '';
+    if (fab) fab.style.display = 'block'; // valeur explicite : '' retomberait sur la règle CSS display:none
     if (fabBtn) fabBtn.onclick = dest;
     // Le bouton "Mode organisateur" du menu reste masqué : un seul repère de
     // retour fait foi désormais (le FAB en haut à droite), pour éviter la
