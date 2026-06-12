@@ -310,38 +310,81 @@ body {
 
 /* ── Header user badge (home screen) ─────────────────────── */
 .header-user {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
   margin-left: auto;
 }
-.header-user-nom {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.65);
-  max-width: 110px;
+
+/* Avatar compte — regroupe nom, langue et déconnexion derrière un seul point d'entrée */
+.account-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.9rem;
+  font-family: var(--font-display);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.account-avatar:hover,
+.account-avatar[aria-expanded="true"] {
+  background: rgba(249,115,22,0.18);
+  border-color: rgba(249,115,22,0.5);
+}
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 210px;
+  background: #16161a;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 16px 44px rgba(0,0,0,0.55);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.account-menu-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.92);
+  padding: 9px 12px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.header-logout-btn {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 8px;
-  width: 34px;
-  height: 34px;
+.account-menu-item {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.75);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  padding: 10px 12px;
+  border-radius: 9px;
   cursor: pointer;
-  color: rgba(255,255,255,0.50);
-  transition: background 0.15s, color 0.15s;
-  flex-shrink: 0;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
 }
-.header-logout-btn:hover {
-  background: rgba(249,115,22,0.15);
-  color: var(--accent);
-}
+.account-menu-item svg { flex-shrink: 0; opacity: 0.8; }
+.account-menu-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.account-menu-item--danger { color: #fca5a5; }
+.account-menu-item--danger:hover { background: rgba(239,68,68,0.12); color: #fecaca; }
 
 @media (prefers-reduced-motion: reduce) {
   .auth-btn { transition: opacity 0.2s; }
@@ -385,18 +428,8 @@ body {
 .home-hero-bg::before,
 .home-hero-bg::after { display: none; }
 
-/* Grille subtile — même esprit que la landing */
-.home-hero-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
-  background-size: 40px 40px;
-  mask-image: radial-gradient(ellipse 90% 70% at 50% 25%, #000 15%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 25%, #000 15%, transparent 100%);
-  pointer-events: none;
-}
+/* Grille déco retirée — bruit visuel sur un écran de travail */
+.home-hero-grid { display: none; }
 
 .home-hero-grad { display: none; }
 
@@ -419,63 +452,11 @@ body {
 }
 #screen-home .btn-icon:hover { background: rgba(255,255,255,0.14); }
 
-.home-tagline {
-  position: relative;
-  z-index: 10;
-  padding: 22px 24px 0;
-}
-
-/* Eyebrow "crew we GO" — style brand, pas uppercase générique */
-.home-tagline-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: rgba(249,115,22,0.75);
-  margin-bottom: 12px;
-  padding: 4px 12px 4px 10px;
-  background: rgba(249,115,22,0.10);
-  border: 1px solid rgba(249,115,22,0.25);
-  border-radius: 999px;
-}
-.home-tagline-eyebrow::before {
-  content: '';
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: #F97316;
-  box-shadow: 0 0 6px rgba(249,115,22,0.7);
-  flex-shrink: 0;
-}
-.home-tagline-eyebrow em {
-  font-style: italic;
-  color: rgba(255,255,255,0.65);
-}
-
-/* Headline — gradient blanc + "et GO." en orange italic */
-.home-tagline-main {
-  font-family: var(--font-display);
-  font-size: 2.15rem;
-  font-weight: 900;
-  line-height: 1.1;
-  letter-spacing: -0.04em;
-  background: linear-gradient(175deg, #fff 50%, rgba(255,255,255,0.5));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.home-tagline-go {
-  -webkit-text-fill-color: #F97316;
-  color: #F97316;
-  font-style: italic;
-}
-
 /* CTA principal — premium, avec glow */
 .home-cta-row {
   position: relative;
   z-index: 10;
-  padding: 20px 20px 0;
+  padding: 16px 20px 0;
   display: flex;
   gap: 12px;
   align-items: center;
@@ -524,18 +505,10 @@ body {
   border-color: rgba(249,115,22,0.5);
   background: rgba(249,115,22,0.06);
 }
-.home-tagline-sub {
-  font-size: 0.75rem;
-  color: rgba(255,255,255,0.35);
-  font-weight: 500;
-  font-style: italic;
-  letter-spacing: 0.02em;
-}
-
 .home-banner {
   position: relative;
   z-index: 10;
-  padding: 16px 20px 20px;
+  padding: 14px 20px 18px;
 }
 .home-stats { display: flex; gap: 8px; flex-wrap: wrap; }
 .stat-pill {
@@ -2679,8 +2652,6 @@ textarea { resize: vertical; line-height: 1.6; }
   .modal::before { display: none; }
   .bottom-sheet { max-width: 480px; left: 50%; transform: translateX(-50%); border-radius: 14px 14px 0 0; }
   .carte-frame { height: 500px; }
-  #screen-home .app-header { min-height: 300px; }
-  .home-tagline-main { font-size: 2.5rem; }
 }
 
 @media (min-width: 1024px) {

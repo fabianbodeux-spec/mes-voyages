@@ -291,8 +291,11 @@ function _hideAuthScreen() {
 }
 
 function _updateHeaderUser() {
+  const nom = currentUser ? (currentUser.nom || currentUser.email || '') : '';
   const el = document.getElementById('header-user-nom');
-  if (el && currentUser) el.textContent = currentUser.nom || currentUser.email;
+  if (el) el.textContent = nom;
+  const ini = document.getElementById('header-user-initial');
+  if (ini) ini.textContent = (nom.trim()[0] || '?').toUpperCase();
 }
 
 function switchAuthForm(form) {
@@ -628,27 +631,11 @@ function afficherVoyage(id) {
       const header = document.getElementById('voyage-header');
       header.style.borderBottom = `3px solid ${voyage.couleur}`;
 
-      // ── Indicateur de mode PERMANENT + bascule vers la vue participant ──
-      // Symétrique avec le FAB "Vue participant" côté participant : le libellé
-      // affiche le mode ACTUEL ("Organisateur"), et un clic bascule vers
-      // l'autre rôle. Toujours présent → on sait en permanence où l'on est.
+      // Le retour vers la vue participant n'encombre plus le header : il reste
+      // accessible via l'onglet Hub et le menu « ⋯ » (Rejoindre le voyage).
+      // Nettoyage défensif d'un éventuel chip laissé par une version cache.
       const _existingChip = document.getElementById('role-switch-chip');
       if (_existingChip) _existingChip.remove();
-      const linked = _myParticipations.find(p => p.id === id);
-      const chip = document.createElement('button');
-      chip.id        = 'role-switch-chip';
-      chip.className = 'role-switch-chip';
-      chip.title     = 'Basculer en vue participant';
-      chip.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg> Organisateur <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="opacity:.7"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
-      chip.onclick   = () => {
-        if (linked && linked.share_token) {
-          window.location.href = `/voyage/${linked.share_token}`; // URL canonique unifiée
-        } else if (typeof rejoindreVoyage === 'function') {
-          rejoindreVoyage(); // pas encore de session participant → flux de jonction
-        }
-      };
-      const headerContent = header.querySelector('.header-content');
-      if (headerContent) headerContent.appendChild(chip);
 
       // Mettre à jour la barre de mode participant (session admin active ?)
       _updateParticipantModeBar();
@@ -1016,17 +1003,11 @@ async function chargerVoyages() {
   // ── Stats banner ───────────────────────────────────────────────
   const statsEl = document.getElementById('home-stats');
   if (statsEl) {
+    // Bandeau allégé : 2 pilules max (total + en cours) pour réduire le bruit visuel
     const pills = [];
-    if (ongoing.length > 0) pills.push(`<span class="stat-pill stat-pill--ongoing"><svg viewBox="0 0 24 24" fill="currentColor" width="8" height="8"><circle cx="12" cy="12" r="6"/></svg>${ongoing.length} en cours</span>`);
-    if (upcoming.length > 0) pills.push(`<span class="stat-pill stat-pill--upcoming"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="11" height="11"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>${upcoming.length} à venir</span>`);
     pills.push(`<span class="stat-pill stat-pill--total"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>${voyages.length} voyage${voyages.length > 1 ? 's' : ''}</span>`);
-    if (partUniques.length > 0) {
-      pills.push(`<span class="stat-pill stat-pill--participant">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-        ${partUniques.length} participation${partUniques.length > 1 ? 's' : ''}
-      </span>`);
-    }
-    statsEl.innerHTML = pills.join('');
+    if (ongoing.length > 0) pills.push(`<span class="stat-pill stat-pill--ongoing"><svg viewBox="0 0 24 24" fill="currentColor" width="8" height="8"><circle cx="12" cy="12" r="6"/></svg>${ongoing.length} en cours</span>`);
+    statsEl.innerHTML = pills.slice(0, 2).join('');
   }
 
   // ── Rendu 3 sections ──────────────────────────────────────────
@@ -4333,9 +4314,14 @@ async function chargerAdmin() {
       adminTab.appendChild(badge);
     }
   }
-  // Synchroniser le badge sur le bouton gear aussi
-  const gearBadge = document.getElementById('admin-gear-badge');
-  if (gearBadge) gearBadge.style.display = (enAttente > 0) ? 'block' : 'none';
+  // Indicateur ambiant : pastille sur le kebab « ⋯ » + compteur sur la ligne Administration
+  const menuDot = document.getElementById('menu-voyage-badge');
+  if (menuDot) menuDot.style.display = (enAttente > 0) ? 'block' : 'none';
+  const sheetAdminBadge = document.getElementById('sheet-admin-badge');
+  if (sheetAdminBadge) {
+    sheetAdminBadge.style.display = (enAttente > 0) ? 'inline-block' : 'none';
+    sheetAdminBadge.textContent = enAttente;
+  }
 
   // Alimenter les caches pour voirReservation()
   _resasCache = reservations;
@@ -5832,6 +5818,27 @@ function _bindStaticHandlers() {
   // ── Header / home ─────────────────────────────────────────────────────────
   _on('logout-btn',          'click', logout);
   _on('home-cta-btn',        'click', ouvrirCreateTrip);
+
+  // Menu compte (avatar) — regroupe nom, langue, déconnexion
+  (function initAccountMenu() {
+    const btn  = document.getElementById('header-account-btn');
+    const menu = document.getElementById('account-menu');
+    if (!btn || !menu) return;
+    const close = () => { menu.classList.add('hidden'); btn.setAttribute('aria-expanded', 'false'); };
+    const open  = () => { menu.classList.remove('hidden'); btn.setAttribute('aria-expanded', 'true'); };
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      menu.classList.contains('hidden') ? open() : close();
+    });
+    // Clic en dehors → fermer
+    document.addEventListener('click', e => {
+      if (!menu.classList.contains('hidden') && !menu.contains(e.target) && e.target !== btn) close();
+    });
+    // Échap → fermer
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    // Sélection langue → fermer (la déconnexion change de toute façon d'écran)
+    menu.querySelectorAll('.account-menu-item').forEach(it => it.addEventListener('click', close));
+  })();
   _on('empty-create-btn',    'click', ouvrirCreateTrip);
 
   // ── RGPD — gestion du compte ──────────────────────────────────────────────
@@ -5914,12 +5921,13 @@ function _bindStaticHandlers() {
   _on('btn-retour-accueil',  'click', afficherAccueil);
   _on('btn-menu-voyage',     'click', menuVoyageActuel);
 
-  // P1 — Bouton admin gear (remplace l'onglet Admin)
-  _on('btn-admin-gear', 'click', () => {
+  // Administration : accessible depuis le menu « ⋯ » (1ʳᵉ ligne du bottom-sheet)
+  _on('btn-admin-from-sheet', 'click', () => {
+    fermerBottomSheet();
     changerOnglet('admin', null);
-    // Cacher le badge quand on ouvre l'admin
-    const badge = document.getElementById('admin-gear-badge');
-    if (badge) badge.style.display = 'none';
+    // L'admin consulté → on éteint l'indicateur de demandes en attente
+    const dot = document.getElementById('menu-voyage-badge');
+    if (dot) dot.style.display = 'none';
   });
 
   // ── Tab nav (delegation) ──────────────────────────────────────────────────
