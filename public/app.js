@@ -670,19 +670,27 @@ function afficherVoyage(id) {
       const header = document.getElementById('voyage-header');
       header.style.borderBottom = `3px solid ${voyage.couleur}`;
 
-      // ── Chip "Vue participant" si lien participant existe pour ce voyage ──
+      // ── Indicateur de mode PERMANENT + bascule vers la vue participant ──
+      // Symétrique avec le FAB "Vue participant" côté participant : le libellé
+      // affiche le mode ACTUEL ("Organisateur"), et un clic bascule vers
+      // l'autre rôle. Toujours présent → on sait en permanence où l'on est.
       const _existingChip = document.getElementById('role-switch-chip');
       if (_existingChip) _existingChip.remove();
       const linked = _myParticipations.find(p => p.id === id);
-      if (linked && linked.share_token) {
-        const chip = document.createElement('button');
-        chip.id        = 'role-switch-chip';
-        chip.className = 'role-switch-chip';
-        chip.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> Vue participant`;
-        chip.onclick   = () => { window.location.href = `/voyage/${linked.share_token}`; }; // URL canonique unifiée
-        const headerContent = header.querySelector('.header-content');
-        if (headerContent) headerContent.appendChild(chip);
-      }
+      const chip = document.createElement('button');
+      chip.id        = 'role-switch-chip';
+      chip.className = 'role-switch-chip';
+      chip.title     = 'Basculer en vue participant';
+      chip.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg> Organisateur <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="opacity:.7"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
+      chip.onclick   = () => {
+        if (linked && linked.share_token) {
+          window.location.href = `/voyage/${linked.share_token}`; // URL canonique unifiée
+        } else if (typeof rejoindreVoyage === 'function') {
+          rejoindreVoyage(); // pas encore de session participant → flux de jonction
+        }
+      };
+      const headerContent = header.querySelector('.header-content');
+      if (headerContent) headerContent.appendChild(chip);
 
       // Mettre à jour la barre de mode participant (session admin active ?)
       _updateParticipantModeBar();
