@@ -4385,37 +4385,6 @@ textarea { resize: vertical; line-height: 1.6; }
    5.30s  Fondu sortie → dissolve linéaire
    ═══════════════════════════════════════════════════════════════ */
 
-/* ─── APP STARTUP SPLASH — logo seul, sans effet, auto-disparition CSS ─── */
-
-#app-splash {
-  position: fixed; inset: 0; z-index: 9999;
-  background: #000;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-  /* Disparition pilotée 100% par CSS : même si le JS est gelé (pause Android),
-     le splash s'efface tout seul et ne peut JAMAIS rester pour bloquer l'app.
-     Pas d'effet d'entrée : le logo est affiché tel quel, puis le voile se retire. */
-  animation: splashAuto 0.9s ease forwards;
-}
-
-.intro-logo-img {
-  width: 108px; height: 108px;
-  border-radius: 26px;
-  display: block;
-  box-shadow:
-    0 0 40px 10px rgba(249,115,22,0.4),
-    0 0 90px 28px rgba(249,115,22,0.15),
-    0 32px 64px rgba(0,0,0,0.7);
-}
-
-/* Le voile tient le logo affiché, puis se retire et se neutralise.
-   pointer-events:none + visibility:hidden garantissent qu'il ne bloque plus rien. */
-@keyframes splashAuto {
-  0%   { opacity: 1; visibility: visible; }
-  70%  { opacity: 1; }
-  100% { opacity: 0; visibility: hidden; pointer-events: none; }
-}
-
 /* ════════════════════════════════════════════════
    PRE-TRIP HUB — Onglet Préparation
    ════════════════════════════════════════════════ */

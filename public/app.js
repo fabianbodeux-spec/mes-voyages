@@ -436,22 +436,6 @@ let voyageInfoActuel = null;
 // ─── INIT ────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // ── Startup splash cinématique ──────────────────────────────
-  (function initAppSplash() {
-    const splash = document.getElementById('app-splash');
-    if (!splash) return;
-    // La disparition est 100% pilotée par l'animation CSS `splashAuto`
-    // (le splash devient pointer-events:none + visibility:hidden tout seul,
-    //  même si le JS est gelé pendant une mise en pause Android → ne peut JAMAIS
-    //  rester pour bloquer l'app). Ce filet ne fait que retirer l'élément du DOM
-    //  une fois l'animation finie ; lui-même ne peut pas se retrouver bloqué.
-    const remove = () => { splash.style.display = 'none'; };
-    splash.addEventListener('animationend', e => {
-      if (e.animationName === 'splashAuto') remove();
-    });
-    setTimeout(remove, 1500); // filet ultime
-  })();
-
   initAuth().then(() => { if (currentUser) chargerVoyages(); });
   if ('serviceWorker' in navigator) {
     const _swActivateWaiting = (sw) => sw.postMessage({ type: 'SKIP_WAITING' });
@@ -6150,12 +6134,7 @@ if (window.visualViewport) {
 
   function _reconcileOverlays() {
     try {
-      // 1) Splash de démarrage : ne doit jamais survivre à une mise en pause
-      //    (#app-splash est position:fixed inset:0 z-index:9999 → bloque tout).
-      const splash = document.getElementById('app-splash');
-      if (splash && splash.style.display !== 'none') splash.style.display = 'none';
-
-      // 2) Modales en cours de fermeture (animationend jamais reçu) → finaliser
+      // 1) Modales en cours de fermeture (animationend jamais reçu) → finaliser
       document.querySelectorAll('.modal-overlay.modal-closing').forEach(ov => {
         ov.classList.remove('modal-closing');
         ov.classList.add('hidden');
