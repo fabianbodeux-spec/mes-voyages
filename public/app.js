@@ -5107,12 +5107,16 @@ function fermerModal(id) {
   // Animation de fermeture — on retire hidden après que l'anim CSS soit terminée
   overlay.classList.add('modal-closing');
   const inner = overlay.querySelector('.modal');
+  let _hidden = false;
   const hide = () => {
+    if (_hidden) return; _hidden = true;
     overlay.classList.remove('modal-closing');
     overlay.classList.add('hidden');
   };
   if (inner) inner.addEventListener('animationend', hide, { once: true });
-  else setTimeout(hide, 200); // fallback si .modal est absent
+  // Fallback systématique : si animationend n'arrive jamais (animation gelée par
+  // une mise en pause Android, ou sautée), la modale se ferme quand même.
+  setTimeout(hide, 250);
 }
 
 // Modale de confirmation custom (Promise<bool>). Remplace confirm() qui est
@@ -5136,9 +5140,10 @@ function _confirmModal({ title = 'Confirmer', message = '', confirmLabel = 'Conf
       // Animation de fermeture avant de retirer l'overlay du DOM
       overlay.classList.add('modal-closing');
       const inner = overlay.querySelector('.modal');
-      const remove = () => { overlay.remove(); resolve(val); };
+      let _removed = false;
+      const remove = () => { if (_removed) return; _removed = true; overlay.remove(); resolve(val); };
       if (inner) inner.addEventListener('animationend', remove, { once: true });
-      else setTimeout(remove, 200);
+      setTimeout(remove, 250); // fallback : animationend gelé/sauté (pause Android)
     };
     const onKey = (e) => { if (e.key === 'Escape') done(false); };
     overlay.addEventListener('click', (e) => {
@@ -6148,6 +6153,65 @@ if (window.visualViewport) {
   }
   window.visualViewport.addEventListener('resize', _ajusterModalesPourClavier);
 }
+
+// ─── FIX ANDROID : réconciliation de l'UI au retour d'arrière-plan ───────────
+// Quand une PWA Android est mise en pause (app en arrière-plan), les timers
+// (setTimeout) et les événements d'animation (transitionend/animationend) sont
+// gelés ou abandonnés. Une transition de FERMETURE interrompue par la mise en
+// pause ne se termine alors jamais : l'overlay plein écran reste « coincé »
+// par-dessus l'app au retour → les écrans se superposent et l'interaction est
+// bloquée. On force donc la finalisation de ces transitions dès que l'app
+// redevient visible après une vraie mise en arrière-plan.
+(function initResumeReconcile() {
+  let _wasHidden = false;
+
+  function _reconcileOverlays() {
+    try {
+      // 1) Splash de démarrage : ne doit jamais survivre à une mise en pause
+      //    (#app-splash est position:fixed inset:0 z-index:9999 → bloque tout).
+      const splash = document.getElementById('app-splash');
+      if (splash && splash.style.display !== 'none') splash.style.display = 'none';
+
+      // 2) Modales en cours de fermeture (animationend jamais reçu) → finaliser
+      document.querySelectorAll('.modal-overlay.modal-closing').forEach(ov => {
+        ov.classList.remove('modal-closing');
+        ov.classList.add('hidden');
+      });
+
+      // 3) Onboarding en fondu sortant (setTimeout gelé) → finaliser
+      document.querySelectorAll('.onboarding-overlay.fading').forEach(ov => {
+        ov.classList.remove('fading');
+        ov.classList.add('hidden');
+      });
+
+      // 4) Splash du wizard de création (transitionend jamais reçu) → finaliser
+      const cSplash = document.getElementById('create-splash');
+      if (cSplash && cSplash.classList.contains('splash-out')) cSplash.classList.add('hidden');
+
+      // 5) Wizard de création : ne garder qu'une seule étape active
+      //    (_slideStep s'appuie sur rAF + setTimeout, gelés en pause).
+      const steps = document.querySelectorAll('.create-step');
+      if (steps.length && typeof _createStep === 'number') {
+        steps.forEach((el, i) => el.classList.toggle('active', i === _createStep - 1));
+      }
+    } catch {}
+  }
+
+  function _onVisible() {
+    if (!_wasHidden) return;       // ignore les bascules de visibilité au démarrage
+    _wasHidden = false;
+    // Laisser le navigateur reprendre le rendu avant de réconcilier l'UI
+    requestAnimationFrame(() => requestAnimationFrame(_reconcileOverlays));
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') _wasHidden = true;
+    else _onVisible();
+  });
+  // bfcache (retour navigateur) + Page Lifecycle API (resume après freeze Android)
+  window.addEventListener('pageshow', e => { if (e.persisted) { _wasHidden = true; _onVisible(); } });
+  document.addEventListener('resume', _onVisible);
+})();
 
 // ─── PRE-TRIP HUB (vue organisateur — interactive) ───────────────────────────
 async function chargerPreparationAdmin() {
