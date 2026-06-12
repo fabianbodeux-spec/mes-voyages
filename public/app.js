@@ -1204,7 +1204,6 @@ function _enrichirPhotosSouvenirs(voyages) {
 // ═══════════════════════════════════════════════════════
 
 const _P_COLORS = ['#6366F1','#F97316','#10B981','#EC4899','#F59E0B','#14B8A6','#EF4444','#8B5CF6'];
-let _createStep = 1;
 let _createSelectedColor = '#F97316';
 let _createParticipants = [];
 let _createPColorIdx = 0;
@@ -1212,6 +1211,27 @@ let _createTripType = null;
 
 // Timers splash — conservés pour pouvoir les annuler à tout moment
 let _splashT1 = null, _splashT2 = null, _splashT3 = null;
+
+// ─── Flux « Créer un trip » IA-first : entrée langage naturel → récap éditable ───
+const _TYPE_META = {
+  ski:{e:'🎿',l:'Ski'}, city:{e:'🏙️',l:'City Trip'}, plage:{e:'🏖️',l:'Plage'},
+  ile:{e:'🏝️',l:'Île'}, road:{e:'🚗',l:'Road Trip'}, evg:{e:'🎉',l:'EVG'},
+  evf:{e:'💍',l:'EVF'}, camping:{e:'🏕️',l:'Camping'}, rando:{e:'🌿',l:'Rando'},
+  plongee:{e:'🤿',l:'Plongée'}, potes:{e:'🍻',l:'Entre potes'}, autre:{e:'✈️',l:'Autre'}
+};
+const _AI_EXAMPLES = [
+  "EVG de Tom à Barcelone, 1er week-end de juillet, on est 8",
+  "Ski à Chamonix avec 6 potes en février",
+  "Road trip Portugal cet été, 10 jours, 4 personnes",
+  "City trip Lisbonne en mai, juste nous deux"
+];
+const _AI_PLACEHOLDERS = [
+  "EVG de Tom à Barcelone, 1er week-end de juillet, on est 8…",
+  "Ski à Chamonix avec 6 potes en février…",
+  "Weekend entre filles à Lisbonne en mai…",
+  "Road trip Islande cet été, 12 jours…"
+];
+let _aiNbHint = null, _aiPhIdx = 0, _aiPhTimer = null, _aiSubTimer = null;
 
 function ouvrirCreateTrip() {
   // Marquer l'onboarding comme terminé si on crée un voyage depuis l'empty state
@@ -1221,99 +1241,230 @@ function ouvrirCreateTrip() {
     _ob.classList.add('fading');
     setTimeout(() => { _ob.classList.add('hidden'); _ob.classList.remove('fading'); }, 300);
   }
-  // ── Annuler toute séquence splash en cours ──────────────
-  clearTimeout(_splashT1);
-  clearTimeout(_splashT2);
-  clearTimeout(_splashT3);
 
-  _createStep = 1;
   _createSelectedColor = '#F97316';
   _createParticipants = [];
   _createPColorIdx = 0;
+  _createTripType = null;
+  _aiNbHint = null;
 
   // Afficher le screen
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-create').classList.add('active');
 
-  // Reset phases — état propre avant toute animation
-  const splash = document.getElementById('create-splash');
-  const wizard = document.getElementById('create-wizard');
-  const confirm = document.getElementById('create-confirm');
-  splash.classList.remove('hidden', 'splash-out');
-  wizard.classList.add('hidden');
-  wizard.classList.remove('wizard-in', 'wizard-out');
-  confirm.classList.add('hidden');
+  // Phases : entrée visible, récap + confirm cachés
+  document.getElementById('create-entry')?.classList.remove('hidden');
+  document.getElementById('create-recap')?.classList.add('hidden');
+  document.getElementById('create-confirm')?.classList.add('hidden');
+  _hideAILoading();
+  closeEditSheet();
 
-  // Reset steps
-  document.querySelectorAll('.create-step').forEach((el, i) => {
-    el.classList.toggle('active', i === 0);
-    el.style.transform = '';
-    el.style.opacity = '';
-    el.style.transition = '';
-  });
-
-  // Reset fields
+  // Reset des champs cachés (réutilisés par les sheets d'édition)
   ['c-pays','c-ville','c-nom','c-date-debut','c-date-fin','c-p-nom','c-orga-nom'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
+    const el = document.getElementById(id); if (el) el.value = '';
   });
-  // Pré-remplir l'organisateur
   const orgaInput = document.getElementById('c-orga-nom');
   if (orgaInput && currentUser?.nom) orgaInput.value = currentUser.nom;
   const orgaAvatar = document.getElementById('create-orga-avatar');
   if (orgaAvatar) orgaAvatar.textContent = currentUser?.nom ? currentUser.nom[0].toUpperCase() : '?';
-  _createTripType = null;
-  // Reset type cards
   document.querySelectorAll('.create-type-card').forEach(c => c.classList.remove('active'));
-  const debutVal = document.getElementById('c-date-debut-val');
-  const finVal   = document.getElementById('c-date-fin-val');
-  if (debutVal) debutVal.textContent = '—';
-  if (finVal)   finVal.textContent   = '—';
-  const duree = document.getElementById('create-duree-badge');
-  if (duree) { duree.textContent = ''; duree.style.display = 'none'; }
-  const pList = document.getElementById('create-p-list');
-  if (pList) pList.innerHTML = '';
-  const suggestions = document.getElementById('create-suggestions');
-  if (suggestions) suggestions.innerHTML = '';
+  const dB = document.getElementById('c-date-debut-val'); if (dB) dB.textContent = '—';
+  const dF = document.getElementById('c-date-fin-val');   if (dF) dF.textContent = '—';
+  const duree = document.getElementById('create-duree-badge'); if (duree) { duree.textContent = ''; duree.style.display = 'none'; }
+  const pList = document.getElementById('create-p-list'); if (pList) pList.innerHTML = '';
 
-  // ── Séquence splash robuste ─────────────────────────────
-  // Phase 1 : déclencher immédiatement le fade-out CSS (QW5 — splash superflu supprimé)
-  _splashT1 = setTimeout(() => {
-    const splashEl = document.getElementById('create-splash');
-    if (!splashEl) return;
-    splashEl.classList.add('splash-out');
+  // Champ IA
+  const ta = document.getElementById('c-ai-input'); if (ta) ta.value = '';
+  _updateAISend();
+  _renderAIChips();
+  _startAIPlaceholders();
+}
 
-    // Phase 2 : transitionend OU fallback à 650ms (plus large que 480ms)
-    let done = false;
-    const proceed = () => {
-      if (done) return;
-      done = true;
-      splashEl.removeEventListener('transitionend', proceed);
-      clearTimeout(_splashT2);
+function fermerCreateTrip() {
+  _stopAIPlaceholders();
+  _hideAILoading();
+  closeEditSheet();
+  document.getElementById('screen-create')?.classList.remove('active');
+  document.getElementById('screen-home')?.classList.add('active');
+}
 
-      splashEl.classList.add('hidden');
-      splashEl.classList.remove('splash-out'); // nettoyage état
+// ── Champ IA : chips, placeholder rotatif, état du bouton ──
+function _renderAIChips() {
+  const c = document.getElementById('create-chips');
+  if (!c) return;
+  c.innerHTML = _AI_EXAMPLES.map(ex => `<button class="create-chip">${h(ex)}</button>`).join('');
+  c.querySelectorAll('.create-chip').forEach((btn, i) => {
+    btn.addEventListener('click', () => {
+      const ta = document.getElementById('c-ai-input');
+      if (ta) { ta.value = _AI_EXAMPLES[i]; _updateAISend(); lancerAITrip(); }
+    });
+  });
+}
+function _updateAISend() {
+  const ta = document.getElementById('c-ai-input');
+  const btn = document.getElementById('create-ai-send');
+  if (btn && ta) btn.disabled = ta.value.trim().length < 3;
+}
+function _startAIPlaceholders() {
+  _stopAIPlaceholders();
+  const ta = document.getElementById('c-ai-input');
+  if (!ta) return;
+  ta.placeholder = _AI_PLACEHOLDERS[0];
+  _aiPhTimer = setInterval(() => {
+    if (document.activeElement === ta || ta.value) return;
+    _aiPhIdx = (_aiPhIdx + 1) % _AI_PLACEHOLDERS.length;
+    ta.placeholder = _AI_PLACEHOLDERS[_aiPhIdx];
+  }, 2600);
+}
+function _stopAIPlaceholders() { if (_aiPhTimer) { clearInterval(_aiPhTimer); _aiPhTimer = null; } }
 
-      const wizardEl = document.getElementById('create-wizard');
-      if (!wizardEl) return;
-      wizardEl.classList.remove('hidden');
+// ── Overlay « IA réfléchit » : animation CSS pure, sous-titre cosmétique ──
+const _AI_SUBS = ['Lecture de ta phrase','Identification de la destination','Choix du type de trip','Génération du nom','Calcul des dates'];
+function _showAILoading() {
+  const ld = document.getElementById('create-ai-loading'); if (!ld) return;
+  ld.classList.add('show');
+  const subEl = document.getElementById('ai-loading-sub');
+  let i = 0; if (subEl) subEl.textContent = _AI_SUBS[0];
+  _aiSubTimer = setInterval(() => {
+    i = (i + 1) % _AI_SUBS.length;
+    if (subEl) { subEl.style.opacity = '0'; setTimeout(() => { subEl.textContent = _AI_SUBS[i]; subEl.style.opacity = '1'; }, 180); }
+  }, 700);
+}
+function _hideAILoading() {
+  document.getElementById('create-ai-loading')?.classList.remove('show');
+  if (_aiSubTimer) { clearInterval(_aiSubTimer); _aiSubTimer = null; }
+}
 
-      // Double rAF : garantit que le display:flex est appliqué
-      // avant d'ajouter l'animation d'entrée
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          wizardEl.classList.add('wizard-in');
-          _splashT3 = setTimeout(() => wizardEl.classList.remove('wizard-in'), 420);
-        });
-      });
+// ── Appel IA → récap (fallback gracieux si IA indisponible) ──
+async function lancerAITrip() {
+  const ta = document.getElementById('c-ai-input');
+  const text = (ta?.value || '').trim();
+  if (text.length < 3) return;
+  _stopAIPlaceholders();
+  _showAILoading();
+  try {
+    const res = await fetch(`${API}/api/ai/parse-trip`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!res.ok) throw new Error('parse failed');
+    const data = await res.json();
+    _applyAITrip(data.trip || {});
+    _hideAILoading();
+    _renderRecap(true);
+    _showRecap();
+  } catch (e) {
+    _hideAILoading();
+    toast('✨ IA indisponible — complète à la main');
+    _applyAITrip({});
+    _renderRecap(false);
+    _showRecap();
+  }
+}
 
-      _updateCreateUI();
-      setTimeout(() => document.getElementById('c-pays')?.focus(), 60);
-    };
+function ouvrirRecapManuel() {
+  _stopAIPlaceholders();
+  _applyAITrip({});
+  _renderRecap(false);
+  _showRecap();
+}
 
-    splashEl.addEventListener('transitionend', proceed, { once: true });
-    _splashT2 = setTimeout(proceed, 650); // fallback si transitionend ne se déclenche pas
-  }, 0);
+// Injecte le résultat IA dans les champs cachés + l'état
+function _applyAITrip(t) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('c-nom', t.nom);
+  set('c-ville', t.ville);
+  set('c-pays', t.pays);
+  set('c-date-debut', t.date_debut);
+  set('c-date-fin', t.date_fin);
+  _createTripType = (t.type && _TYPE_META[t.type]) ? t.type : null;
+  _aiNbHint = t.nb_participants || null;
+  document.querySelectorAll('.create-type-card').forEach(c =>
+    c.classList.toggle('active', c.dataset.type === _createTripType));
+  createUpdateDuree();
+}
+
+function _showRecap() {
+  document.getElementById('create-entry')?.classList.add('hidden');
+  document.getElementById('create-recap')?.classList.remove('hidden');
+}
+function retourEntry() {
+  closeEditSheet();
+  document.getElementById('create-recap')?.classList.add('hidden');
+  document.getElementById('create-entry')?.classList.remove('hidden');
+  _startAIPlaceholders();
+}
+
+// ── Rendu des cartes de récap ──
+function _renderRecap(fromAI) {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const ville = v('c-ville'), pays = v('c-pays'), nom = v('c-nom');
+  const dd = v('c-date-debut'), df = v('c-date-fin');
+  const dest = ville ? (ville + (pays ? ', ' + pays : '')) : (pays || '');
+  const fmtD = s => s ? new Date(s).toLocaleDateString('fr-BE', { day:'numeric', month:'short' }) : '';
+  const dates = (dd && df) ? (fmtD(dd) + ' → ' + fmtD(df)) : (dd ? fmtD(dd) : '');
+  const tm = _createTripType ? _TYPE_META[_createTripType] : null;
+  const orga = v('c-orga-nom');
+
+  const members = [];
+  if (orga) members.push({ nom: orga, couleur: _createSelectedColor });
+  _createParticipants.forEach(p => members.push(p));
+
+  const cards = [
+    { key:'nom',   emoji:'✏️',                label:'Nom du trip', value:nom,  ai:fromAI && !!nom },
+    { key:'dest',  emoji:'📍',                label:'Destination', value:dest, ai:fromAI && !!dest },
+    { key:'type',  emoji:(tm ? tm.e : '❓'),  label:'Type',        value:(tm ? tm.l : ''), ai:fromAI && !!tm },
+    { key:'dates', emoji:'📅',                label:'Dates',       value:dates, ai:fromAI && !!dates },
+    { key:'crew',  emoji:'👥',                label:'Le crew',     crew:true }
+  ];
+
+  const list = document.getElementById('create-recap-list');
+  if (!list) return;
+  list.innerHTML = cards.map(c => {
+    let body;
+    if (c.crew) {
+      if (members.length) {
+        const av = members.slice(0, 6).map(m =>
+          `<span class="crew-av" style="background:${h(m.couleur || '#6366F1')}">${h((m.nom || '?')[0].toUpperCase())}</span>`).join('');
+        const extra = members.length > 6 ? `<span class="crew-av crew-av--more">+${members.length - 6}</span>` : '';
+        const hint = (_aiNbHint && _aiNbHint > members.length) ? `<span class="crew-hint">≈ ${_aiNbHint} prévus</span>` : '';
+        body = `<div class="crew-avs">${av}${extra}${hint}</div>`;
+      } else {
+        body = `<div class="rcard-val empty">Toi + ajoute ton crew</div>`;
+      }
+    } else {
+      body = c.value ? `<div class="rcard-val">${h(String(c.value))}</div>` : `<div class="rcard-val empty">À compléter</div>`;
+    }
+    return `<button class="rcard ${c.ai ? 'ai' : ''}" onclick="openEditSheet('${c.key}')">
+      <span class="rcard-emoji">${c.emoji}</span>
+      <span class="rcard-body"><span class="rcard-label">${c.label}</span>${body}</span>
+      <span class="rcard-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4v16h16v-7M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+    </button>`;
+  }).join('');
+}
+
+// ── Sheet d'édition (un panel par champ) ──
+const _EDIT_TITLES = { nom:'Nom du trip', dest:'Destination', type:'Type de trip', dates:'Dates', crew:'Le crew' };
+function openEditSheet(field) {
+  const titleEl = document.getElementById('create-edit-title');
+  if (titleEl) titleEl.textContent = _EDIT_TITLES[field] || 'Modifier';
+  document.querySelectorAll('.cedit-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === field));
+  if (field === 'crew') _renderCreateParticipants();
+  document.getElementById('create-edit-mask')?.classList.add('show');
+  document.getElementById('create-edit-sheet')?.classList.add('show');
+  setTimeout(() => {
+    const focusMap = { nom:'c-nom', dest:'c-ville', dates:'c-date-debut', crew:'c-orga-nom' };
+    if (focusMap[field]) document.getElementById(focusMap[field])?.focus();
+  }, 280);
+}
+function saveEditSheet() {
+  createUpdateDuree();
+  closeEditSheet();
+  _renderRecap(false);
+}
+function closeEditSheet() {
+  document.getElementById('create-edit-mask')?.classList.remove('show');
+  document.getElementById('create-edit-sheet')?.classList.remove('show');
 }
 
 function createSelectType(type, btn) {
@@ -1321,40 +1472,6 @@ function createSelectType(type, btn) {
   document.querySelectorAll('.create-type-card').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
 }
-
-function _generateNameSuggestions(ville, pays, type) {
-  const year = new Date().getFullYear() + 1;
-  const dest = ville || pays || 'Trip';
-  if (type === 'evg')   return ['EVG ' + dest + ' ' + year, 'Last Night in ' + dest, 'Adios Liberté ' + year];
-  if (type === 'evf')   return ['EVF ' + dest + ' ' + year, 'Girls Just Wanna GO', 'Last Dance ' + dest];
-  if (type === 'ski')   return ['Ski Squad ' + dest + ' ' + year, 'On the Slopes ' + year, dest + ' Snow Trip'];
-  if (type === 'city')  return [dest + ' City Trip ' + year, 'Weekend ' + dest, 'Crew x ' + dest];
-  if (type === 'road')  return ['Road Trip ' + year, dest + ' x ' + year, 'On the Road'];
-  return [dest + ' ' + year, 'Le Trip de ' + dest, 'Crew ' + dest + ' ' + year];
-}
-
-function _renderNameSuggestions() {
-  const container = document.getElementById('create-suggestions');
-  if (!container) return;
-  const ville = (document.getElementById('c-ville')?.value || '').trim();
-  const pays  = (document.getElementById('c-pays')?.value  || '').trim();
-  const suggestions = _generateNameSuggestions(ville, pays, _createTripType);
-  container.innerHTML = suggestions.map(s => `
-    <button class="create-suggestion-pill" data-sug="${h(s)}">${h(s)}</button>
-  `).join('');
-  container.querySelectorAll('.create-suggestion-pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const el = document.getElementById('c-nom');
-      if (el) { el.value = btn.dataset.sug; el.focus(); }
-      _updateCreateCTA();
-    });
-  });
-}
-
-function createInputChanged() {
-  _updateCreateCTA();
-}
-
 
 function createUpdateDuree() {
   const d1 = document.getElementById('c-date-debut').value;
@@ -1386,7 +1503,6 @@ function createAddParticipant() {
   input.value = '';
   _renderCreateParticipants();
   input.focus();
-  _updateCreateCTA();
 }
 
 function _renderCreateParticipants() {
@@ -1406,109 +1522,6 @@ function _renderCreateParticipants() {
 function createRemoveP(id) {
   _createParticipants = _createParticipants.filter(p => p.id !== id);
   _renderCreateParticipants();
-  _updateCreateCTA();
-}
-
-function _updateCreateUI() {
-  const total = 5;
-  const pct = (_createStep / total) * 100;
-  document.getElementById('create-progress-fill').style.width = pct + '%';
-  document.getElementById('create-step-counter').textContent = `${_createStep} · ${total}`;
-
-  // Bouton retour
-  const backBtn = document.getElementById('create-back-btn');
-  backBtn.style.visibility = _createStep === 1 ? 'hidden' : 'visible';
-
-  // Bouton passer (seulement étapes 4 et 5)
-  const skipBtn = document.getElementById('create-skip-btn');
-  skipBtn.style.visibility = _createStep >= 4 ? 'visible' : 'hidden';
-
-  // CTA label
-  const ctaLabel = document.getElementById('create-cta-label');
-  ctaLabel.textContent = _createStep === 5 ? 'Créer le trip 🚀' : 'Continuer';
-
-  // Suggestions de nom au step 3
-  if (_createStep === 3) {
-    _renderNameSuggestions();
-  }
-
-  _updateCreateCTA();
-}
-
-function _updateCreateCTA() {
-  const btn = document.getElementById('create-cta-btn');
-  let enabled = true;
-  if (_createStep === 1) enabled = !!(document.getElementById('c-ville')?.value.trim());
-  if (_createStep === 2) enabled = true; // toujours activé (optionnel)
-  if (_createStep === 3) enabled = !!(document.getElementById('c-nom')?.value.trim());
-  if (_createStep === 4) enabled = true; // toujours activé (optionnel)
-  if (_createStep === 5) enabled = !!(document.getElementById('c-orga-nom')?.value.trim());
-  btn.disabled = !enabled;
-  btn.style.opacity = enabled ? '1' : '0.45';
-}
-
-function _slideStep(fromIdx, toIdx, direction) {
-  const steps = document.querySelectorAll('.create-step');
-  const fromEl = steps[fromIdx - 1];
-  const toEl   = steps[toIdx - 1];
-
-  const enterFrom = direction === 'forward' ? '100%' : '-100%';
-  const exitTo    = direction === 'forward' ? '-100%' : '100%';
-
-  toEl.style.transform = `translateX(${enterFrom})`;
-  toEl.style.opacity = '0';
-  toEl.classList.add('active');
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      fromEl.style.transform = `translateX(${exitTo})`;
-      fromEl.style.opacity = '0';
-      toEl.style.transform = 'translateX(0)';
-      toEl.style.opacity = '1';
-    });
-  });
-
-  setTimeout(() => {
-    fromEl.classList.remove('active');
-    fromEl.style.transform = '';
-    fromEl.style.opacity = '';
-  }, 360);
-}
-
-function createNext() {
-  const btn = document.getElementById('create-cta-btn');
-  if (btn.disabled) return;
-
-  if (_createStep < 5) {
-    const next = _createStep + 1;
-    _slideStep(_createStep, next, 'forward');
-    _createStep = next;
-    _updateCreateUI();
-    // Focus sur le bon input
-    const focusMap = { 2: null, 3: 'c-nom', 4: 'c-date-debut', 5: 'c-orga-nom' };
-    if (focusMap[_createStep]) setTimeout(() => document.getElementById(focusMap[_createStep])?.focus(), 380);
-  } else {
-    _creerTrip();
-  }
-}
-
-function createBack() {
-  if (_createStep <= 1) return;
-  const prev = _createStep - 1;
-  _slideStep(_createStep, prev, 'backward');
-  _createStep = prev;
-  _updateCreateUI();
-}
-
-function createSkip() {
-  if (_createStep < 5) {
-    const next = _createStep + 1;
-    _slideStep(_createStep, next, 'forward');
-    _createStep = next;
-    _updateCreateUI();
-  } else {
-    _creerTrip();
-  }
 }
 
 async function _creerTrip() {
@@ -1520,11 +1533,11 @@ async function _creerTrip() {
   const date_fin    = document.getElementById('c-date-fin').value;
   const orgaNom     = (document.getElementById('c-orga-nom')?.value || '').trim();
 
-  if (!nom) return;
+  if (!nom) { toast('Donne un nom à ton trip'); openEditSheet('nom'); return; }
 
-  const btn = document.getElementById('create-cta-btn');
-  btn.disabled = true;
-  btn.style.opacity = '0.6';
+  closeEditSheet();
+  const btn = document.getElementById('create-recap-cta');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
 
   try {
     // Créer le voyage
@@ -1551,8 +1564,7 @@ async function _creerTrip() {
     }
 
     // Phase 3 — confirmation
-    const wizard = document.getElementById('create-wizard');
-    wizard.classList.add('wizard-out');
+    const recap = document.getElementById('create-recap');
 
     // Générer le lien de partage en parallèle (idem à ce que fait l'onglet Admin)
     const partagePromise = fetch(`${API}/api/voyages/${id}/partager`, { method: 'POST' })
@@ -1560,7 +1572,7 @@ async function _creerTrip() {
       .catch(() => null);
 
     setTimeout(async () => {
-      wizard.classList.add('hidden');
+      if (recap) recap.classList.add('hidden');
       const conf = document.getElementById('create-confirm');
       conf.classList.remove('hidden');
       const totalPax = _createParticipants.length + (orgaNom ? 1 : 0);
@@ -1603,8 +1615,7 @@ async function _creerTrip() {
 
   } catch(e) {
     toast('⚠️ Erreur lors de la création');
-    btn.disabled = false;
-    btn.style.opacity = '1';
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
   }
 }
 
@@ -5955,32 +5966,31 @@ function _bindStaticHandlers() {
   });
   _on('discussion-send', 'click', _envoyerCommentaireAdmin);
 
-  // ── Create wizard ─────────────────────────────────────────────────────────
-  _on('create-back-btn', 'click', createBack);
-  _on('create-skip-btn', 'click', createSkip);
-  _on('create-cta-btn',  'click', createNext);
-  _on('c-pays', 'input',   createInputChanged);
-  _on('c-pays', 'keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('c-ville').focus(); } });
-  _on('c-ville', 'input',   createInputChanged);
-  _on('c-ville', 'keydown', e => { if (e.key === 'Enter') createNext(); });
-  _on('c-nom',  'input',   createInputChanged);
-  _on('c-nom',  'keydown', e => { if (e.key === 'Enter') createNext(); });
+  // ── Create — flux IA-first ────────────────────────────────────────────────
+  _on('create-entry-back', 'click', fermerCreateTrip);
+  _on('create-recap-back', 'click', retourEntry);
+  _on('create-recap-cta',  'click', _creerTrip);
+  _on('create-manual-link','click', ouvrirRecapManuel);
+  _on('create-ai-send',    'click', lancerAITrip);
+  _on('create-edit-save',  'click', saveEditSheet);
+  _on('create-edit-mask',  'click', closeEditSheet);
+  _on('c-ai-input', 'input', _updateAISend);
+  _on('c-ai-input', 'keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); lancerAITrip(); } });
   _on('c-date-debut', 'change', createUpdateDuree);
   _on('c-date-fin',   'change', createUpdateDuree);
   _on('c-orga-nom', 'input', function () {
-    createInputChanged();
     const a = document.getElementById('create-orga-avatar');
     if (a) a.textContent = this.value ? this.value[0].toUpperCase() : '?';
   });
   _on('c-p-nom', 'keydown', e => { if (e.key === 'Enter') { e.preventDefault(); createAddParticipant(); } });
   _on('create-p-add-btn', 'click', createAddParticipant);
 
-  // ── Create type grid (delegation) ─────────────────────────────────────────
-  const typeGrid = document.querySelector('.create-type-grid');
-  if (typeGrid) typeGrid.addEventListener('click', e => {
-    const btn = e.target.closest('.create-type-card[data-type]');
-    if (btn) createSelectType(btn.dataset.type, btn);
-  });
+  // ── Create type grid (delegation, depuis le sheet d'édition) ──────────────
+  document.querySelectorAll('.create-type-grid').forEach(grid =>
+    grid.addEventListener('click', e => {
+      const btn = e.target.closest('.create-type-card[data-type]');
+      if (btn) createSelectType(btn.dataset.type, btn);
+    }));
 
   // ── Modal voyage ──────────────────────────────────────────────────────────
   _on('form-voyage', 'submit', sauvegarderVoyage);
@@ -6154,16 +6164,9 @@ if (window.visualViewport) {
         ov.classList.add('hidden');
       });
 
-      // 4) Splash du wizard de création (transitionend jamais reçu) → finaliser
-      const cSplash = document.getElementById('create-splash');
-      if (cSplash && cSplash.classList.contains('splash-out')) cSplash.classList.add('hidden');
-
-      // 5) Wizard de création : ne garder qu'une seule étape active
-      //    (_slideStep s'appuie sur rAF + setTimeout, gelés en pause).
-      const steps = document.querySelectorAll('.create-step');
-      if (steps.length && typeof _createStep === 'number') {
-        steps.forEach((el, i) => el.classList.toggle('active', i === _createStep - 1));
-      }
+      // 4) Création IA : l'overlay de chargement est piloté par la promesse
+      //    fetch (pas un timer) et toutes les animations sont du CSS pur en boucle,
+      //    donc rien à réconcilier ici au retour d'arrière-plan.
     } catch {}
   }
 

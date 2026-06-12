@@ -556,147 +556,151 @@
 <!-- ═══ SCREEN CRÉER UN TRIP — WIZARD ═══ -->
 <div id="screen-create" class="screen">
 
-  <!-- PHASE 1 : Splash -->
-  <div id="create-splash" class="create-splash">
-    <div class="create-splash-inner">
-      <div class="create-splash-logo">
-        <img src="logo-icon.png" alt="CrewiGO" class="create-splash-img">
-      </div>
-      <div class="create-splash-wordmark"><span class="cs-crew">Crewi</span><span class="cs-go">GO</span></div>
-      <p class="create-splash-tagline">Crée ton prochain trip</p>
-    </div>
-  </div>
-
-  <!-- PHASE 2 : Wizard -->
-  <div id="create-wizard" class="create-wizard hidden">
-
-    <!-- Barre de progression -->
-    <div class="create-progress-track">
-      <div class="create-progress-fill" id="create-progress-fill"></div>
-    </div>
-
-    <!-- Nav haut -->
+  <!-- PHASE 1 : Entrée IA -->
+  <div id="create-entry" class="create-entry">
     <div class="create-topnav">
-      <button class="create-back-btn" id="create-back-btn">
+      <button class="create-back-btn" id="create-entry-back">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
       </button>
-      <span class="create-step-counter" id="create-step-counter">1 · 5</span>
-      <button class="create-skip-btn" id="create-skip-btn">Passer</button>
+      <span class="create-step-counter">Nouveau trip</span>
+      <span style="width:36px"></span>
     </div>
 
-    <!-- Zone des steps -->
-    <div class="create-steps-wrap" id="create-steps-wrap">
-
-      <!-- STEP 1 — Pays + Ville -->
-      <div class="create-step active" id="create-step-1">
-        <div class="create-eyebrow">Étape 1 · 5</div>
-        <h2 class="create-title">Où file<br><em>le crew ?</em></h2>
-        <div class="create-dest-fields">
-          <div class="create-dest-field">
-            <span class="create-dest-label">Pays</span>
-            <input type="text" id="c-pays" class="create-big-input"
-                   placeholder="France, Espagne, Japon…"
-                   >
-          </div>
-          <div class="create-dest-field">
-            <span class="create-dest-label">Ville</span>
-            <input type="text" id="c-ville" class="create-big-input"
-                   placeholder="Paris, Barcelone, Tokyo…"
-                   >
-          </div>
-        </div>
+    <div class="create-entry-body">
+      <div class="create-eyebrow create-eyebrow--ai">
+        <svg class="ai-spark" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6L12 2z"/></svg>
+        Propulsé par l'IA
       </div>
+      <h2 class="create-title">Raconte-moi<br><em>ton trip.</em></h2>
+      <p class="create-entry-sub">Une phrase suffit. On s'occupe du reste.</p>
 
-      <!-- STEP 2 — Type de trip -->
-      <div class="create-step" id="create-step-2">
-        <div class="create-eyebrow">Étape 2 · 5</div>
-        <h2 class="create-title">Quel type<br><em>de trip ?</em></h2>
-        <div class="create-type-grid">
-          <button class="create-type-card" data-type="ski"><span class="type-emoji">🎿</span>Ski</button>
-          <button class="create-type-card" data-type="city"><span class="type-emoji">🏙️</span>City Trip</button>
-          <button class="create-type-card" data-type="plage"><span class="type-emoji">🏖️</span>Plage</button>
-          <button class="create-type-card" data-type="ile"><span class="type-emoji">🏝️</span>Île</button>
-          <button class="create-type-card" data-type="road"><span class="type-emoji">🚗</span>Road Trip</button>
-          <button class="create-type-card" data-type="evg"><span class="type-emoji">🎉</span>EVG</button>
-          <button class="create-type-card" data-type="evf"><span class="type-emoji">💍</span>EVF</button>
-          <button class="create-type-card" data-type="camping"><span class="type-emoji">🏕️</span>Camping</button>
-          <button class="create-type-card" data-type="rando"><span class="type-emoji">🌿</span>Rando</button>
-          <button class="create-type-card" data-type="plongee"><span class="type-emoji">🤿</span>Plongée</button>
-          <button class="create-type-card" data-type="potes"><span class="type-emoji">🍻</span>Entre potes</button>
-          <button class="create-type-card" data-type="autre"><span class="type-emoji">✈️</span>Autre</button>
-        </div>
-      </div>
-
-      <!-- STEP 3 — Nom du voyage -->
-      <div class="create-step" id="create-step-3">
-        <div class="create-eyebrow">Étape 3 · 5</div>
-        <h2 class="create-title">Comment<br><em>on l'appelle ?</em></h2>
-        <input type="text" id="c-nom" class="create-big-input"
-               placeholder="Mon Trip 2026…"
-               >
-        <p class="create-suggestions-label">Suggestions pour toi</p>
-        <div class="create-suggestions" id="create-suggestions"></div>
-      </div>
-
-      <!-- STEP 4 — Dates -->
-      <div class="create-step" id="create-step-4">
-        <div class="create-eyebrow">Étape 4 · 5</div>
-        <h2 class="create-title">Quand on<br><em>décolle ?</em></h2>
-        <div class="create-dates-row">
-          <div class="create-date-card">
-            <span class="create-date-label">Départ</span>
-            <input type="date" id="c-date-debut" class="create-date-input">
-            <span class="create-date-val" id="c-date-debut-val">—</span>
-          </div>
-          <div class="create-date-sep">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M5 12h14M15 6l6 6-6 6"/></svg>
-          </div>
-          <div class="create-date-card">
-            <span class="create-date-label">Retour</span>
-            <input type="date" id="c-date-fin" class="create-date-input">
-            <span class="create-date-val" id="c-date-fin-val">—</span>
-          </div>
-        </div>
-        <div class="create-duree-badge" id="create-duree-badge"></div>
-        <p class="create-hint" style="margin-top:16px">Optionnel — tu pourras modifier ça plus tard</p>
-      </div>
-
-      <!-- STEP 5 — Organisateur + Crew -->
-      <div class="create-step" id="create-step-5">
-        <div class="create-eyebrow">Étape 5 · 5</div>
-        <h2 class="create-title">L'orga,<br><em>c'est toi.</em></h2>
-        <div class="create-orga-block">
-          <div class="create-orga-avatar" id="create-orga-avatar">?</div>
-          <div class="create-orga-info">
-            <span class="create-orga-label">Organisateur</span>
-            <input type="text" id="c-orga-nom" placeholder="Ton prénom"
-                   >
-          </div>
-        </div>
-        <div class="create-crew-sep"><span>Ajouter des membres</span></div>
-        <div class="create-p-add-row">
-          <input type="text" id="c-p-nom" class="create-participant-input"
-                 placeholder="Prénom du voyageur…"
-                 >
-          <button class="create-p-add-btn" id="create-p-add-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+      <div class="create-ai-field" id="create-ai-field">
+        <textarea id="c-ai-input" class="create-ai-input" rows="3"
+                  placeholder="EVG de Tom à Barcelone, 1er week-end de juillet, on est 8…"></textarea>
+        <div class="create-ai-foot">
+          <span class="create-ai-hint">
+            <svg class="ai-spark" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6L12 2z"/></svg>
+            L'IA remplit tout
+          </span>
+          <button class="create-ai-send" id="create-ai-send" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
-        <div class="create-p-list" id="create-p-list"></div>
-        <p class="create-hint">Optionnel — tu peux ajouter des membres plus tard</p>
       </div>
 
-    </div><!-- /create-steps-wrap -->
+      <p class="create-chips-label">Pas d'inspiration ? Essaie :</p>
+      <div class="create-chips" id="create-chips"></div>
 
-    <!-- CTA bas de page -->
-    <div class="create-footer">
-      <button class="create-cta-btn" id="create-cta-btn">
-        <span id="create-cta-label">Continuer</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M15 6l6 6-6 6"/></svg>
-      </button>
+      <button class="create-manual-link" id="create-manual-link">Je préfère <u>remplir à la main</u></button>
     </div>
 
-  </div><!-- /create-wizard -->
+    <!-- Overlay « IA réfléchit » (animation CSS pure, robuste) -->
+    <div class="create-ai-loading" id="create-ai-loading">
+      <div class="ai-orb">
+        <div class="ai-orb-core">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6L12 2z"/></svg>
+        </div>
+      </div>
+      <div class="ai-loading-txt">La magie opère…</div>
+      <div class="ai-loading-sub" id="ai-loading-sub">Lecture de ta phrase</div>
+    </div>
+  </div><!-- /create-entry -->
+
+  <!-- PHASE 2 : Récap éditable -->
+  <div id="create-recap" class="create-recap hidden">
+    <div class="create-topnav">
+      <button class="create-back-btn" id="create-recap-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      </button>
+      <span class="create-step-counter">Vérifie &amp; ajuste</span>
+      <span style="width:36px"></span>
+    </div>
+
+    <div class="create-recap-head">
+      <h2 class="create-title create-title--sm">Voilà <em>ton trip.</em></h2>
+      <p class="create-recap-sub">Corrige ce qui cloche d'un tap.</p>
+    </div>
+
+    <div class="create-recap-list" id="create-recap-list"></div>
+
+    <div class="create-footer">
+      <button class="create-cta-btn" id="create-recap-cta">
+        <span>Créer le trip 🚀</span>
+      </button>
+    </div>
+  </div><!-- /create-recap -->
+
+  <!-- Sheet d'édition (un panel par champ) — héberge les champs réutilisés -->
+  <div class="create-edit-mask" id="create-edit-mask"></div>
+  <div class="create-edit-sheet" id="create-edit-sheet">
+    <div class="create-edit-handle"></div>
+    <h3 class="create-edit-title" id="create-edit-title">Modifier</h3>
+
+    <div class="cedit-panel" data-panel="nom">
+      <input type="text" id="c-nom" class="cedit-input" placeholder="Nom du trip…">
+    </div>
+
+    <div class="cedit-panel" data-panel="dest">
+      <input type="text" id="c-ville" class="cedit-input" placeholder="Ville (Barcelone, Tokyo…)">
+      <input type="text" id="c-pays" class="cedit-input" style="margin-top:10px" placeholder="Pays (Espagne, Japon…)">
+    </div>
+
+    <div class="cedit-panel" data-panel="type">
+      <div class="create-type-grid">
+        <button class="create-type-card" data-type="ski"><span class="type-emoji">🎿</span>Ski</button>
+        <button class="create-type-card" data-type="city"><span class="type-emoji">🏙️</span>City Trip</button>
+        <button class="create-type-card" data-type="plage"><span class="type-emoji">🏖️</span>Plage</button>
+        <button class="create-type-card" data-type="ile"><span class="type-emoji">🏝️</span>Île</button>
+        <button class="create-type-card" data-type="road"><span class="type-emoji">🚗</span>Road Trip</button>
+        <button class="create-type-card" data-type="evg"><span class="type-emoji">🎉</span>EVG</button>
+        <button class="create-type-card" data-type="evf"><span class="type-emoji">💍</span>EVF</button>
+        <button class="create-type-card" data-type="camping"><span class="type-emoji">🏕️</span>Camping</button>
+        <button class="create-type-card" data-type="rando"><span class="type-emoji">🌿</span>Rando</button>
+        <button class="create-type-card" data-type="plongee"><span class="type-emoji">🤿</span>Plongée</button>
+        <button class="create-type-card" data-type="potes"><span class="type-emoji">🍻</span>Entre potes</button>
+        <button class="create-type-card" data-type="autre"><span class="type-emoji">✈️</span>Autre</button>
+      </div>
+    </div>
+
+    <div class="cedit-panel" data-panel="dates">
+      <div class="create-dates-row">
+        <div class="create-date-card">
+          <span class="create-date-label">Départ</span>
+          <input type="date" id="c-date-debut" class="create-date-input">
+          <span class="create-date-val" id="c-date-debut-val">—</span>
+        </div>
+        <div class="create-date-sep">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M5 12h14M15 6l6 6-6 6"/></svg>
+        </div>
+        <div class="create-date-card">
+          <span class="create-date-label">Retour</span>
+          <input type="date" id="c-date-fin" class="create-date-input">
+          <span class="create-date-val" id="c-date-fin-val">—</span>
+        </div>
+      </div>
+      <div class="create-duree-badge" id="create-duree-badge"></div>
+    </div>
+
+    <div class="cedit-panel" data-panel="crew">
+      <div class="create-orga-block">
+        <div class="create-orga-avatar" id="create-orga-avatar">?</div>
+        <div class="create-orga-info">
+          <span class="create-orga-label">Organisateur</span>
+          <input type="text" id="c-orga-nom" placeholder="Ton prénom">
+        </div>
+      </div>
+      <div class="create-crew-sep"><span>Ajouter des membres</span></div>
+      <div class="create-p-add-row">
+        <input type="text" id="c-p-nom" class="create-participant-input" placeholder="Prénom du voyageur…">
+        <button class="create-p-add-btn" id="create-p-add-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        </button>
+      </div>
+      <div class="create-p-list" id="create-p-list"></div>
+    </div>
+
+    <button class="create-cta-btn" id="create-edit-save"><span>Enregistrer</span></button>
+  </div><!-- /create-edit-sheet -->
 
   <!-- PHASE 3 : Confirmation -->
   <div id="create-confirm" class="create-confirm hidden">

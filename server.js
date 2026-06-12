@@ -16,7 +16,7 @@ const IS_CLOUD = db.usePostgres;
 
 // Version de l'app — doit correspondre à CACHE_VERSION dans sw.js
 // Changer ici ET dans sw.js à chaque déploiement pour forcer le rechargement
-const APP_VERSION = 'v57';
+const APP_VERSION = 'v58';
 const fs = require('fs');
 if (!process.env.JWT_SECRET && IS_CLOUD) {
   console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
@@ -525,6 +525,24 @@ app.post('/api/voyages', authMiddleware, async (req, res) => {
   }
   try { const item = await run(() => db.voyages.create({ ...req.body, owner_id: req.user.id })); res.json({ id: item.id }); }
   catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
+});
+
+// POST /api/ai/parse-trip — langage naturel → trip structuré (création assistée par IA)
+// Renvoie { fallback: true } si l'IA est indisponible → le front bascule sur le formulaire manuel
+app.post('/api/ai/parse-trip', authMiddleware, async (req, res) => {
+  const text = (req.body?.text || '').toString().trim();
+  if (!text) return res.status(400).json({ error: 'Texte requis' });
+  if (text.length > 500) return res.status(400).json({ error: 'Texte trop long' });
+  if (!process.env.ANTHROPIC_API_KEY)
+    return res.status(503).json({ error: 'IA indisponible', fallback: true });
+  try {
+    const { parseTrip } = require('./services/parseTripAI');
+    const trip = await parseTrip(text);
+    res.json({ ok: true, trip });
+  } catch(e) {
+    console.error('[AI PARSE]', e.message);
+    res.status(502).json({ error: 'Échec analyse IA', fallback: true });
+  }
 });
 
 app.put('/api/voyages/:id', authMiddleware, async (req, res) => {
