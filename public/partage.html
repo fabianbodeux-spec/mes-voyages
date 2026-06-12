@@ -108,6 +108,16 @@
       0%, 100% { box-shadow: 0 4px 16px rgba(234,88,12,.45), 0 2px 6px rgba(0,0,0,.2); }
       50%      { box-shadow: 0 4px 22px rgba(234,88,12,.75), 0 0 0 4px rgba(249,115,22,.18); }
     }
+    /* ── Cadre « vue participant » : signale le basculement organisateur ── */
+    /* Bordure orange fixe autour de l'écran, ne capte aucun clic, n'altère pas le layout */
+    #org-switch-frame {
+      position: fixed; inset: 0; z-index: 8000;
+      pointer-events: none; display: none;
+      border: 2.5px solid #F97316;
+      box-shadow: inset 0 0 0 1px rgba(249,115,22,.25), inset 0 0 22px rgba(249,115,22,.18);
+    }
+    #org-switch-frame.show { display: block; animation: orgFrameIn .45s ease both; }
+    @keyframes orgFrameIn { from { opacity: 0; } to { opacity: 1; } }
     /* ── Modal prénom admin dans partage.html ────── */
     #modal-rejoindre-admin {
       position: fixed; inset: 0; z-index: 9500;
@@ -1497,46 +1507,59 @@ async function _initPartage() {
       }
     }
 
-    // F5 — splash complet la 1ʳᵉ fois, fondu rapide (~400 ms) ensuite
-    const _splashSeenKey = 'crewigo_splash_' + _partageToken;
-    const _splashFirstVisit = !localStorage.getItem(_splashSeenKey);
-    try { localStorage.setItem(_splashSeenKey, '1'); } catch(e) {}
-
-    // Sur une visite de retour, supprimer ws-ready pour éviter les animations longues
-    if (!_splashFirstVisit) {
-      document.getElementById('welcome-splash')?.classList.remove('ws-ready');
-    }
-
-    // Attendre puis cacher le splash
-    const elapsed = performance.now(); // l'API a déjà pris du temps
-    const delay = _splashFirstVisit
-      ? Math.max(0, 2000 - elapsed)   // 1ʳᵉ visite : expérience complète ≥ 2 s
-      : Math.max(0,  400 - elapsed);  // retour   : fondu rapide ≤ 400 ms
-    clearTimeout(_splashWelcomeT1);
-    _splashWelcomeT1 = setTimeout(() => {
-      _cacherWelcomeSplash(() => {
-        if (storedIdentite) {
-          // Si role owner déjà stocké → lancer directement sans formulaire
-          _lancerPartage(storedIdentite);
-        } else {
-          // Afficher l'overlay d'identification
-          document.getElementById('id-overlay').style.display = 'flex';
-          // Si admin JWT valide → injecter le bouton "Rejoindre comme organisateur"
-          if (_adminJWTValide()) {
-            const idCard = document.querySelector('#id-overlay .id-card');
-            if (idCard && !document.getElementById('btn-admin-organisateur')) {
-              const adminBtn = document.createElement('button');
-              adminBtn.id = 'btn-admin-organisateur';
-              adminBtn.className = 'btn-primary';
-              adminBtn.style.cssText = 'margin-top: 12px; width: 100%';
-              adminBtn.textContent = '🔑 Rejoindre comme organisateur';
-              adminBtn.onclick = _rejoindreCommeOrganisateur;
-              idCard.appendChild(adminBtn);
-            }
+    // Suite commune une fois le splash écarté : lancer le partage ou l'identification
+    const _afterSplash = () => {
+      if (storedIdentite) {
+        // Si role owner déjà stocké → lancer directement sans formulaire
+        _lancerPartage(storedIdentite);
+      } else {
+        // Afficher l'overlay d'identification
+        document.getElementById('id-overlay').style.display = 'flex';
+        // Si admin JWT valide → injecter le bouton "Rejoindre comme organisateur"
+        if (_adminJWTValide()) {
+          const idCard = document.querySelector('#id-overlay .id-card');
+          if (idCard && !document.getElementById('btn-admin-organisateur')) {
+            const adminBtn = document.createElement('button');
+            adminBtn.id = 'btn-admin-organisateur';
+            adminBtn.className = 'btn-primary';
+            adminBtn.style.cssText = 'margin-top: 12px; width: 100%';
+            adminBtn.textContent = '🔑 Rejoindre comme organisateur';
+            adminBtn.onclick = _rejoindreCommeOrganisateur;
+            idCard.appendChild(adminBtn);
           }
         }
-      });
-    }, delay);
+      }
+    };
+
+    // ── Bascule organisateur → AUCUNE interface CrewiGo ──
+    // Quand l'organisateur passe en vue participant, on n'affiche pas le splash de
+    // marque : le basculement est signalé par un simple cadre + le FAB « Mode
+    // organisateur ». Le welcome-splash reste réservé aux vrais invités du lien.
+    const _isOrgSwitch = _adminJWTValide() || storedIdentite?.role === 'owner';
+    if (_isOrgSwitch) {
+      const _ws = document.getElementById('welcome-splash');
+      if (_ws) _ws.style.display = 'none';   // masquage instantané, zéro branding
+      _afterSplash();
+      _checkOrganizerMode();                  // cadre + bannière + FAB tout de suite
+    } else {
+      // F5 — splash complet la 1ʳᵉ fois, fondu rapide (~400 ms) ensuite
+      const _splashSeenKey = 'crewigo_splash_' + _partageToken;
+      const _splashFirstVisit = !localStorage.getItem(_splashSeenKey);
+      try { localStorage.setItem(_splashSeenKey, '1'); } catch(e) {}
+
+      // Sur une visite de retour, supprimer ws-ready pour éviter les animations longues
+      if (!_splashFirstVisit) {
+        document.getElementById('welcome-splash')?.classList.remove('ws-ready');
+      }
+
+      // Attendre puis cacher le splash
+      const elapsed = performance.now(); // l'API a déjà pris du temps
+      const delay = _splashFirstVisit
+        ? Math.max(0, 2000 - elapsed)   // 1ʳᵉ visite : expérience complète ≥ 2 s
+        : Math.max(0,  400 - elapsed);  // retour   : fondu rapide ≤ 400 ms
+      clearTimeout(_splashWelcomeT1);
+      _splashWelcomeT1 = setTimeout(() => { _cacherWelcomeSplash(_afterSplash); }, delay);
+    }
 
   } catch(e) {
     console.error('initPartage error:', e);
@@ -1939,6 +1962,8 @@ async function _checkOrganizerMode() {
     if (_fabBtn) _fabBtn.onclick = () => {
       window.location.href = _partageToken ? `/app?v=${_partageToken}` : '/app';
     };
+    // Cadre permanent : signale visuellement le mode « vue participant »
+    document.getElementById('org-switch-frame')?.classList.add('show');
     _showOrganisateurBanner();
   } catch { /* silencieux — participant normal si erreur réseau */ }
 }
@@ -5281,6 +5306,10 @@ function escHtml(t) {
     Ouvrir dans le navigateur →
   </button>
 </div>
+
+<!-- ═══ CADRE VUE PARTICIPANT ═══ -->
+<!-- Bordure discrète signalant que l'organisateur est en vue participant (remplace l'ancien splash de marque) -->
+<div id="org-switch-frame" aria-hidden="true"></div>
 
 <!-- ═══ FAB RETOUR MODE ADMIN ═══ -->
 <!-- Visible uniquement quand un JWT admin valide est présent (organisateur en vue participant) -->

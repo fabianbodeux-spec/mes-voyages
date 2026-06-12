@@ -1,5 +1,5 @@
 // ─── Cache config ────────────────────────────────────────────────────────────
-const CACHE_VERSION = 'cgo-v73';
+const CACHE_VERSION = 'cgo-v74';
 // NE PAS inclure app.js et style.css non versionnés ici :
 // le serveur les sert via /app?vXX et /style.css?vXX → deux entrées distinctes
 // dans le cache coexisteraient et créeraient un conflit (stale + fresh en même temps)
