@@ -3753,44 +3753,6 @@ textarea { resize: vertical; line-height: 1.6; }
   overflow: hidden;
 }
 
-/* ── Wizard (conteneur historique réutilisé par le flux IA) ────── */
-.create-wizard {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
-  border-radius: 20px 20px 0 0;
-  overflow: hidden;
-  padding-top: env(safe-area-inset-top);
-}
-.create-wizard.wizard-in {
-  animation: wizardSlideIn 0.4s cubic-bezier(0.4,0,0.2,1) both;
-}
-.create-wizard.wizard-out {
-  animation: wizardSlideOut 0.3s ease forwards;
-}
-@keyframes wizardSlideIn {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes wizardSlideOut {
-  to { opacity: 0; transform: scale(0.97); }
-}
-
-/* Barre de progression */
-.create-progress-track {
-  height: 3px;
-  background: var(--border-solid);
-  flex-shrink: 0;
-}
-.create-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #F97316, #FBBF24);
-  border-radius: 2px;
-  transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
-}
-
 /* Nav haut */
 .create-topnav {
   display: flex;
@@ -3816,40 +3778,6 @@ textarea { resize: vertical; line-height: 1.6; }
   color: var(--text-muted);
   letter-spacing: 0.04em;
 }
-.create-skip-btn {
-  border: none; background: transparent; cursor: pointer;
-  font-size: 0.82rem; font-weight: 600;
-  color: var(--text-muted);
-  font-family: 'Satoshi', var(--font-body);
-  padding: 6px 0;
-  transition: color 0.15s;
-}
-.create-skip-btn:hover { color: var(--accent); }
-
-/* Conteneur des steps */
-.create-steps-wrap {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-}
-.create-step {
-  position: absolute;
-  inset: 0;
-  padding: 24px 28px 0;
-  display: flex;
-  flex-direction: column;
-  opacity: 0;
-  pointer-events: none;
-  transition: transform 0.36s cubic-bezier(0.4,0,0.2,1),
-              opacity   0.36s cubic-bezier(0.4,0,0.2,1);
-  overflow-y: auto;
-}
-.create-step.active {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0) !important;
-}
-
 /* Contenu des steps */
 .create-eyebrow {
   font-size: 0.65rem;
@@ -4612,7 +4540,6 @@ textarea { resize: vertical; line-height: 1.6; }
 
 /* ── Dark mode ────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
-  .create-wizard { background: #1A1917; }
   .create-big-input { background: #2A2520; border-color: #3A3530; color: #F5F5F4; }
   .create-big-input:focus { background: #2A2520; }
   .create-participant-input { background: #2A2520; border-color: #3A3530; color: #F5F5F4; }
