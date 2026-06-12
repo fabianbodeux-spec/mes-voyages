@@ -5274,9 +5274,10 @@ async function _rejoindreVoyageConfirme() {
     } catch(e) { toast('❌ Erreur réseau'); return; }
   }
 
-  // Demander le nom à l'admin via modal HTML
-  // prompt() est bloqué en mode PWA standalone iOS (retourne null immédiatement)
-  const nomAdmin = await _nomAdminModal(currentUser?.nom || '');
+  // Pas de saisie : on réutilise le nom déjà connu de l'organisateur
+  // (saisi à la création du trip). La bascule devient immédiate et silencieuse.
+  // (Le nom d'affichage participant reste modifiable depuis la page participant.)
+  const nomAdmin = currentUser?.nom || currentUser?.email;
   if (!nomAdmin) return;
 
   try {

@@ -16,7 +16,7 @@ const IS_CLOUD = db.usePostgres;
 
 // Version de l'app — doit correspondre à CACHE_VERSION dans sw.js
 // Changer ici ET dans sw.js à chaque déploiement pour forcer le rechargement
-const APP_VERSION = 'v53';
+const APP_VERSION = 'v54';
 const fs = require('fs');
 if (!process.env.JWT_SECRET && IS_CLOUD) {
   console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
