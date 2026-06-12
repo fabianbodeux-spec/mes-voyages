@@ -20,9 +20,9 @@
       // Navigation
       'nav.hub':        'Hub',
       'nav.roadmap':    'Road Map',
-      'nav.budget':     'CrewiCash',
-      'nav.chat':       'CrewiChat',
-      'nav.pics':       'CrewiPics',
+      'nav.budget':     'Budget',
+      'nav.chat':       'Chat',
+      'nav.pics':       'Photos',
 
       // App chrome
       'app.title':              'CrewiGO — Voyages entre amis',
@@ -161,9 +161,9 @@
       // Navigation
       'nav.hub':        'Hub',
       'nav.roadmap':    'Road Map',
-      'nav.budget':     'CrewiCash',
-      'nav.chat':       'CrewiChat',
-      'nav.pics':       'CrewiPics',
+      'nav.budget':     'Budget',
+      'nav.chat':       'Chat',
+      'nav.pics':       'Photos',
 
       // App chrome
       'app.title':              'CrewiGO — Group Travel',
