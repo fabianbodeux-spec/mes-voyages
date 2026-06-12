@@ -3748,6 +3748,7 @@ textarea { resize: vertical; line-height: 1.6; }
 #screen-create {
   background: #1C1917;
   min-height: 100vh;
+  min-height: 100dvh; /* dvh = hauteur visible réelle : évite que le footer CTA passe sous la barre du navigateur mobile (overflow:hidden le couperait) */
   position: relative;
   overflow: hidden;
 }
@@ -4339,11 +4340,13 @@ textarea { resize: vertical; line-height: 1.6; }
   flex-direction: column;
   color: #F5F5F4;
   padding-top: env(safe-area-inset-top);
-  animation: createScreenIn 0.4s cubic-bezier(0.22,1,0.36,1) both;
+  animation: createScreenIn 0.35s ease both;
 }
+/* Opacité seule : un éventuel état figé (PWA en arrière-plan) ne décale jamais
+   la mise en page → le footer CTA reste dans le cadre malgré overflow:hidden. */
 @keyframes createScreenIn {
-  from { opacity: 0; transform: translateY(18px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .create-entry .create-title,
 .create-recap .create-title { color: #F5F5F4; }
@@ -4357,11 +4360,13 @@ textarea { resize: vertical; line-height: 1.6; }
 /* ── Écran 1 : entrée IA ── */
 .create-entry-body {
   flex: 1;
+  min-height: 0; /* autorise le scroll interne sans pousser le contenu hors écran */
   display: flex;
   flex-direction: column;
-  padding: 18px 28px 0;
+  padding: 12px 28px 0;
   overflow-y: auto;
 }
+.create-entry .create-title { margin-bottom: 18px; }
 .create-eyebrow--ai {
   display: inline-flex;
   align-items: center;
@@ -4377,7 +4382,7 @@ textarea { resize: vertical; line-height: 1.6; }
   margin: -16px 0 0;
 }
 .create-ai-field {
-  margin-top: 22px;
+  margin-top: 16px;
   position: relative;
   border-radius: 22px;
   background: #2A2520;
@@ -4398,8 +4403,8 @@ textarea { resize: vertical; line-height: 1.6; }
   font-family: 'Satoshi', var(--font-body);
   font-size: 1.06rem;
   line-height: 1.5;
-  padding: 18px 18px 12px;
-  min-height: 116px;
+  padding: 16px 18px 10px;
+  min-height: 92px;
 }
 .create-ai-input::placeholder { color: rgba(245,245,244,0.32); }
 .create-ai-foot {
@@ -4434,7 +4439,7 @@ textarea { resize: vertical; line-height: 1.6; }
   font-size: 0.74rem;
   font-weight: 600;
   color: rgba(245,245,244,0.4);
-  margin: 24px 0 10px;
+  margin: 16px 0 10px;
 }
 .create-entry .create-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .create-entry .create-chip {
@@ -4529,6 +4534,7 @@ textarea { resize: vertical; line-height: 1.6; }
 .create-recap-sub { color: rgba(245,245,244,0.55); font-size: 0.86rem; }
 .create-recap-list {
   flex: 1;
+  min-height: 0; /* pin le footer CTA en bas : la liste scrolle au lieu de déborder */
   overflow-y: auto;
   padding: 14px 22px 8px;
 }
