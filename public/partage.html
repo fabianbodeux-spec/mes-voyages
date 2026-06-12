@@ -1791,33 +1791,52 @@ _initPartage();
 // ══════════════════════════════════════════════════════
 
 async function _checkOrganizerMode() {
-  // Prérequis : JWT présent et non expiré
-  if (!_adminJWTValide()) return;
-  const jwtToken = localStorage.getItem('crewigo_token');
-  if (!jwtToken) return;
+  // Deux signaux INDÉPENDANTS prouvent que l'utilisateur est l'organisateur.
+  // On affiche le FAB de retour si L'UN OU L'AUTRE est vrai → robustesse mobile.
+  //  (a) Rôle 'owner' déjà mémorisé localement (posé par le serveur lors du
+  //      « rejoindre comme organisateur »). Survit à l'expiration du JWT et à
+  //      une coupure réseau → indispensable sur iOS où le JWT PWA expire vite.
+  //  (b) JWT valide confirmé côté serveur via /is-owner (couvre l'organisateur
+  //      qui n'a pas encore de rôle stocké sur cet appareil).
+  let ownerSignal = false;
 
   try {
-    const r = await fetch(`/api/voyages/by-token/${_partageToken}/is-owner`, {
-      headers: { 'Authorization': `Bearer ${jwtToken}` }
-    });
-    if (!r.ok) return;
-    const { isOwner } = await r.json();
-    if (!isOwner) return;
-    // Ne RIEN afficher tant qu'on n'est pas réellement dans la vue participant :
-    // sinon le cadre + le FAB se superposeraient à l'écran d'identification
-    // (« T'es qui dans le crew ? »), ce qui crée une interface contradictoire.
-    if (!document.getElementById('screen-voyage')?.classList.contains('active')) return;
-    // Repère de retour UNIQUE et PERMANENT : le FAB « Mode organisateur » en haut
-    // à droite. (Plus de bannière concurrente qui le recouvrait et brouillait l'UX.)
-    const _fab    = document.getElementById('fab-admin-mode');
-    const _fabBtn = document.getElementById('fab-admin-btn');
-    if (_fab) _fab.style.display = 'block'; // valeur explicite : '' retomberait sur la règle CSS display:none
-    if (_fabBtn) _fabBtn.onclick = () => {
-      window.location.href = _partageToken ? `/app?v=${_partageToken}` : '/app';
-    };
-    // Cadre orange discret : signale visuellement le mode « vue participant ».
-    document.getElementById('org-switch-frame')?.classList.add('show');
-  } catch { /* silencieux — participant normal si erreur réseau */ }
+    const stored = _safeGetIdentite();
+    if (stored?.role === 'owner') ownerSignal = true;
+  } catch { /* pas de rôle stocké */ }
+
+  if (!ownerSignal && _adminJWTValide()) {
+    const jwtToken = localStorage.getItem('crewigo_token');
+    if (jwtToken) {
+      try {
+        const r = await fetch(`/api/voyages/by-token/${_partageToken}/is-owner`, {
+          headers: { 'Authorization': `Bearer ${jwtToken}` }
+        });
+        if (r.ok) {
+          const { isOwner } = await r.json();
+          if (isOwner) ownerSignal = true;
+        }
+      } catch { /* réseau indisponible — on retombe sur le rôle stocké */ }
+    }
+  }
+
+  if (!ownerSignal) return;
+
+  // Ne RIEN afficher tant qu'on n'est pas réellement dans la vue participant :
+  // sinon le cadre + le FAB se superposeraient à l'écran d'identification
+  // (« T'es qui dans le crew ? »), ce qui crée une interface contradictoire.
+  if (!document.getElementById('screen-voyage')?.classList.contains('active')) return;
+
+  // Repère de retour UNIQUE et PERMANENT : le FAB « Mode organisateur » en haut
+  // à droite. (Plus de bannière concurrente qui le recouvrait et brouillait l'UX.)
+  const _fab    = document.getElementById('fab-admin-mode');
+  const _fabBtn = document.getElementById('fab-admin-btn');
+  if (_fab) _fab.style.display = 'block'; // valeur explicite : '' retomberait sur la règle CSS display:none
+  if (_fabBtn) _fabBtn.onclick = () => {
+    window.location.href = _partageToken ? `/app?v=${_partageToken}` : '/app';
+  };
+  // Cadre orange discret : signale visuellement le mode « vue participant ».
+  document.getElementById('org-switch-frame')?.classList.add('show');
 }
 
 // Lancer la détection 1,2s après le boot (laisse le temps au voyage de se charger)
