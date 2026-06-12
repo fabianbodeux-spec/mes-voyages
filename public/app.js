@@ -1209,9 +1209,6 @@ let _createParticipants = [];
 let _createPColorIdx = 0;
 let _createTripType = null;
 
-// Timers splash — conservés pour pouvoir les annuler à tout moment
-let _splashT1 = null, _splashT2 = null, _splashT3 = null;
-
 // ─── Flux « Créer un trip » IA-first : entrée langage naturel → récap éditable ───
 const _TYPE_META = {
   ski:{e:'🎿',l:'Ski'}, city:{e:'🏙️',l:'City Trip'}, plage:{e:'🏖️',l:'Plage'},

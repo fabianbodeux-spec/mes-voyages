@@ -3753,67 +3753,7 @@ textarea { resize: vertical; line-height: 1.6; }
   overflow: hidden;
 }
 
-/* ── PHASE 1 : Splash ─────────────────────────────────────────── */
-.create-splash {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  z-index: 10;
-  background: #1C1917;
-  transition: opacity 0.48s ease, transform 0.48s ease;
-}
-.create-splash.splash-out {
-  opacity: 0;
-  transform: scale(0.96);
-  pointer-events: none;
-}
-.create-splash-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  animation: splashEnter 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-@keyframes splashEnter {
-  from { opacity: 0; transform: scale(0.7) translateY(20px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
-}
-.create-splash-logo {
-  position: relative;
-}
-.create-splash-img {
-  width: 80px;
-  height: 80px;
-  border-radius: 20px;
-  box-shadow: 0 0 40px rgba(249,115,22,0.45), 0 0 80px rgba(249,115,22,0.20);
-  animation: splashPulse 1.8s ease-in-out infinite;
-}
-@keyframes splashPulse {
-  0%, 100% { box-shadow: 0 0 40px rgba(249,115,22,0.45), 0 0 80px rgba(249,115,22,0.20); }
-  50%       { box-shadow: 0 0 60px rgba(249,115,22,0.65), 0 0 120px rgba(249,115,22,0.30); }
-}
-.create-splash-wordmark {
-  font-family: var(--font-display);
-  font-size: 2.2rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  animation: splashEnter 0.7s 0.15s cubic-bezier(0.34,1.56,0.64,1) both;
-}
-.cs-crew { color: #FFFFFF; }
-.cs-go   { color: #F97316; font-style: italic; }
-.create-splash-tagline {
-  font-size: 0.88rem;
-  font-weight: 500;
-  color: rgba(255,255,255,0.45);
-  letter-spacing: 0.02em;
-  animation: splashEnter 0.7s 0.28s cubic-bezier(0.34,1.56,0.64,1) both;
-}
-
-/* ── PHASE 2 : Wizard ──────────────────────────────────────────── */
+/* ── Wizard (conteneur historique réutilisé par le flux IA) ────── */
 .create-wizard {
   position: absolute;
   inset: 0;
@@ -4686,19 +4626,6 @@ textarea { resize: vertical; line-height: 1.6; }
   .create-orga-block { background: rgba(249,115,22,0.10); }
   .create-orga-info input { color: #F5F5F4; }
 }
-
-/* ═══ APP STARTUP SPLASH ════════════════════════════════════════
-   Séquence cinématique — 6 secondes :
-   0.00s  Noir absolu
-   0.10s  Logo surgit du noir, éclairé par l'arrière (halo orange)
-   1.50s  Allumage : spark → montée → flash d'ignition → settle
-   2.30s  Logo pleinement orange, stable
-   2.55s  « Crew » monte
-   2.78s  « Go » suit (cascade)
-   3.15s  Tagline se dissout
-   3.50s  Respiration légère (halo + logo)
-   5.30s  Fondu sortie → dissolve linéaire
-   ═══════════════════════════════════════════════════════════════ */
 
 /* ════════════════════════════════════════════════
    PRE-TRIP HUB — Onglet Préparation
