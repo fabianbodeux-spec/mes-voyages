@@ -6314,7 +6314,6 @@ function _bindStaticHandlers() {
   // ── Inline onclick refactor (CSP scriptSrcAttr hardening) ────────────────
   // Tous les onclick= ont été supprimés du HTML et migrés ici.
   _on('lang-toggle-btn',         'click', () => window.i18n?.toggleLang());
-  _on('btn-rejoindre-shortcut',  'click', rejoindreVoyage);
   _on('btn-open-prepa',          'click', ouvrirPrepa);
   _on('btn-import-email',        'click', ouvrirImportEmail);
   _on('btn-crewipics-join',      'click', rejoindreVoyage);
