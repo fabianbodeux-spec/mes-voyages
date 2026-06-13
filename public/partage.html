@@ -1833,7 +1833,12 @@ async function _checkOrganizerMode() {
   const _fabBtn = document.getElementById('fab-admin-btn');
   if (_fab) _fab.style.display = 'block'; // valeur explicite : '' retomberait sur la règle CSS display:none
   if (_fabBtn) _fabBtn.onclick = () => {
-    window.location.href = _partageToken ? `/app?v=${_partageToken}` : '/app';
+    // Retour vers le TABLEAU DE BORD organisateur (écran le plus fiable).
+    // On NE passe PLUS ?v=token : le deep-link auto-ouvrait le voyage via un
+    // fetch sans garde-fou qui, sur mobile (réseau lent / SW), pouvait laisser
+    // un en-tête suivi d'un écran blanc. L'organisateur atterrit sur sa liste
+    // de voyages (parcours éprouvé) et ouvre le voyage d'un tap.
+    window.location.href = '/app';
   };
   // Cadre orange discret : signale visuellement le mode « vue participant ».
   document.getElementById('org-switch-frame')?.classList.add('show');
@@ -2004,7 +2009,10 @@ function _lancerPartage(identite) {
     const fab      = document.getElementById('fab-admin-mode');
     const fabBtn   = document.getElementById('fab-admin-btn');
     const sheetBtn = document.getElementById('sheet-btn-admin-mode');
-    const dest     = () => window.location.href = _partageToken ? `/app?v=${_partageToken}` : '/app';
+    // Retour vers le TABLEAU DE BORD organisateur (sans ?v= : le deep-link
+    // auto-ouvrait le voyage via un fetch sans garde-fou → en-tête + écran blanc
+    // possible sur mobile). L'organisateur ouvre ensuite le voyage d'un tap.
+    const dest     = () => window.location.href = '/app';
     if (fab) fab.style.display = 'block'; // valeur explicite : '' retomberait sur la règle CSS display:none
     if (fabBtn) fabBtn.onclick = dest;
     // Le bouton "Mode organisateur" du menu reste masqué : un seul repère de

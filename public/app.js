@@ -615,37 +615,48 @@ function afficherAccueil() {
   chargerVoyages();
 }
 
-function afficherVoyage(id) {
+async function afficherVoyage(id) {
   voyageActuel = id;
-  fetch(`${API}/api/voyages/${id}`)
-    .then(r => r.json())
-    .then(voyage => {
-      _shareTokenCourant = voyage.share_token || null;
-      // Mettre en cache les métadonnées pour la page offline
-      try { localStorage.setItem(`voyage_cache_${id}`, JSON.stringify({ id: voyage.id, nom: voyage.nom, destination: voyage.destination || '' })); } catch {}
-      document.getElementById('screen-home').classList.remove('active');
-      document.getElementById('screen-voyage').classList.add('active');
-      document.getElementById('voyage-nom').textContent = voyage.nom;
-      document.getElementById('voyage-dates').textContent = formatDates(voyage.date_debut, voyage.date_fin);
+  try {
+    const r = await fetch(`${API}/api/voyages/${id}`);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const voyage = await r.json();
+    // Réponse invalide (erreur API, payload vide) → ne PAS basculer d'écran :
+    // on évite un en-tête sans contenu (« bandeau + écran blanc »).
+    if (!voyage || !voyage.id) throw new Error('voyage invalide');
 
-      const header = document.getElementById('voyage-header');
-      header.style.borderBottom = `3px solid ${voyage.couleur}`;
+    _shareTokenCourant = voyage.share_token || null;
+    // Mettre en cache les métadonnées pour la page offline
+    try { localStorage.setItem(`voyage_cache_${id}`, JSON.stringify({ id: voyage.id, nom: voyage.nom, destination: voyage.destination || '' })); } catch {}
+    document.getElementById('screen-home').classList.remove('active');
+    document.getElementById('screen-voyage').classList.add('active');
+    document.getElementById('voyage-nom').textContent = voyage.nom;
+    document.getElementById('voyage-dates').textContent = formatDates(voyage.date_debut, voyage.date_fin);
 
-      // Le retour vers la vue participant n'encombre plus le header : il reste
-      // accessible via l'onglet Hub et le menu « ⋯ » (Rejoindre le voyage).
-      // Nettoyage défensif d'un éventuel chip laissé par une version cache.
-      const _existingChip = document.getElementById('role-switch-chip');
-      if (_existingChip) _existingChip.remove();
+    const header = document.getElementById('voyage-header');
+    header.style.borderBottom = `3px solid ${voyage.couleur}`;
 
-      // Mettre à jour la barre de mode participant (session admin active ?)
-      _updateParticipantModeBar();
+    // Le retour vers la vue participant n'encombre plus le header : il reste
+    // accessible via l'onglet Hub et le menu « ⋯ » (Rejoindre le voyage).
+    // Nettoyage défensif d'un éventuel chip laissé par une version cache.
+    const _existingChip = document.getElementById('role-switch-chip');
+    if (_existingChip) _existingChip.remove();
 
-      // Reset onglet actif
-      changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
+    // Mettre à jour la barre de mode participant (session admin active ?)
+    _updateParticipantModeBar();
 
-      // Activer les notifications push pour l'admin
-      _initPushAdmin(id);
-    });
+    // Reset onglet actif
+    changerOnglet('accueil', document.querySelector('[data-tab="accueil"]'));
+
+    // Activer les notifications push pour l'admin
+    _initPushAdmin(id);
+  } catch (e) {
+    // Échec (réseau, 401/500, payload invalide) → ne JAMAIS laisser un écran
+    // blanc : on reste / revient sur l'accueil organisateur, qui est fonctionnel.
+    console.warn('afficherVoyage : échec, retour à l\'accueil', id, e);
+    document.getElementById('screen-voyage')?.classList.remove('active');
+    document.getElementById('screen-home')?.classList.add('active');
+  }
 }
 
 function urlBase64ToUint8Array(b64) {
