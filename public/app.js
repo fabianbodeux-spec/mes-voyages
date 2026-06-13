@@ -890,14 +890,23 @@ function _maybeShowOnboarding() {
   if (!overlay) return;
 
   let _obSlide = 0;
-  const TOTAL  = 3;
   const slides = overlay.querySelectorAll('.onboarding-slide');
   const dots   = overlay.querySelectorAll('.onboarding-dot');
   const cta    = document.getElementById('onboarding-cta');
   const skip   = document.getElementById('onboarding-skip');
+  const TOTAL  = slides.length || 3;
+
+  // Garde-fou anti-écran-blanc : si le markup d'onboarding est absent/cassé
+  // (aucun slide), on NE montre PAS l'overlay opaque plein écran (sinon =
+  // écran blanc bloquant). On marque l'onboarding comme vu et on laisse
+  // l'empty-state « Créer un trip » visible dessous.
+  if (slides.length === 0) {
+    try { localStorage.setItem(_OB_KEY, '1'); } catch {}
+    return;
+  }
 
   // Activer le premier slide
-  slides[0]?.classList.add('active');
+  slides[0].classList.add('active');
 
   function _goTo(n, dir = 1) {
     // Sortie du slide courant
@@ -977,7 +986,11 @@ function _maybeShowOnboarding() {
     if (cta) cta.textContent = _obSlide === TOTAL - 1 ? _tFn('ob.start') : _tFn('ob.next');
   }, { once: false });
 
-  // Afficher l'overlay
+  // Afficher l'overlay — UNIQUEMENT si un slide est bien actif (anti-écran-blanc)
+  if (!overlay.querySelector('.onboarding-slide.active')) {
+    try { localStorage.setItem(_OB_KEY, '1'); } catch {}
+    return;
+  }
   overlay.classList.remove('hidden');
   overlay.setAttribute('tabindex', '-1');
   overlay.focus();

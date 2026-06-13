@@ -16,7 +16,7 @@ const IS_CLOUD = db.usePostgres;
 
 // Version de l'app — doit correspondre à CACHE_VERSION dans sw.js
 // Changer ici ET dans sw.js à chaque déploiement pour forcer le rechargement
-const APP_VERSION = 'v73';
+const APP_VERSION = 'v74';
 const fs = require('fs');
 if (!process.env.JWT_SECRET && IS_CLOUD) {
   console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
@@ -2323,9 +2323,24 @@ app.get('/api/voyages/by-token/:token/is-owner', authMiddleware, async (req, res
   try {
     const voyage = await run(() => db.voyages.getByToken(req.params.token));
     if (!voyage) return res.json({ isOwner: false });
-    const isOwner = IS_CLOUD
-      ? voyage.owner_id === req.user.id
-      : true; // local JSON = mono-utilisateur, toujours propriétaire
+    if (!IS_CLOUD) return res.json({ isOwner: true, voyageId: voyage.id }); // local = mono-utilisateur
+
+    let isOwner = voyage.owner_id === req.user.id;
+    // Défense en profondeur : un organisateur dont l'owner_id a dérivé (claim
+    // orphelin) OU qui a rejoint son propre voyage en tant que participant reste
+    // reconnu via le lien user↔participant marqué role='owner'. Évite que le
+    // retour « MODE ORGANISATEUR » retombe sur un accueil vide (écran blanc).
+    if (!isOwner) {
+      try {
+        const links = await run(() => db.user_participant_links.getByUser(req.user.id)) || [];
+        const link = links.find(l => +l.voyage_id === voyage.id);
+        if (link) {
+          const parts = await run(() => db.participants.getByVoyage(voyage.id)) || [];
+          const p = parts.find(pp => +pp.id === +link.participant_id);
+          if (p && p.role === 'owner') isOwner = true;
+        }
+      } catch {}
+    }
     res.json({ isOwner, voyageId: voyage.id });
   } catch(e) {
     res.json({ isOwner: false });

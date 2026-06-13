@@ -4786,6 +4786,9 @@ textarea { resize: vertical; line-height: 1.6; }
 }
 .onboarding-overlay.hidden { display: none; }
 .onboarding-overlay.fading { opacity: 0; pointer-events: none; }
+/* Garde-fou anti-écran-blanc : tant qu'aucun slide n'est actif, l'overlay
+   plein écran opaque ne doit JAMAIS s'afficher (sinon = écran blanc bloquant). */
+.onboarding-overlay:not(.fading):not(:has(.onboarding-slide.active)) { display: none; }
 
 .onboarding-inner {
   width: 100%; max-width: 420px;
