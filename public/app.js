@@ -455,7 +455,14 @@ let voyageInfoActuel = null;
 // ─── INIT ────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  initAuth().then(() => {
+  // ── GARDE PAGE : app.js est aussi chargé par partage.html (page participant)
+  // pour ses fonctions utilitaires partagées. Mais le BOOT organisateur ci-dessous
+  // (initAuth → afficherVoyage/chargerVoyages) manipule #screen-home / #screen-voyage
+  // qui N'EXISTENT PAS sur partage.html → crash null `classList` → page cassée/blanche.
+  // On ne lance le boot organisateur QUE sur le shell organisateur (présence de
+  // #screen-home). L'enregistrement du Service Worker, lui, reste actif partout.
+  const _isOrgShell = !!document.getElementById('screen-home');
+  if (_isOrgShell) initAuth().then(() => {
     if (!currentUser) return; // non connecté → écran de login déjà géré par initAuth
     // RETOUR VUE ORGANISATEUR (?v=token) : on ouvre le voyage de façon INDÉPENDANTE
     // du rendu de l'accueil. Auparavant le deep-link était traité À LA FIN de
@@ -653,8 +660,11 @@ function afficherAccueil() {
   // un rechargement ultérieur rouvrirait le dernier voyage au lieu de l'accueil.
   try { sessionStorage.removeItem('crewigo_return_token'); } catch {}
   window._suppressSwReload = false;
-  document.getElementById('screen-voyage').classList.remove('active');
-  document.getElementById('screen-home').classList.add('active');
+  const _sv = document.getElementById('screen-voyage');
+  const _sh = document.getElementById('screen-home');
+  if (!_sh) return; // pas le shell organisateur (ex: partage.html) → ne rien faire
+  _sv?.classList.remove('active');
+  _sh.classList.add('active');
   voyageActuel = null;
   chargerVoyages();
 }
@@ -668,6 +678,10 @@ async function afficherVoyage(id) {
     // Réponse invalide (erreur API, payload vide) → ne PAS basculer d'écran :
     // on évite un en-tête sans contenu (« bandeau + écran blanc »).
     if (!voyage || !voyage.id) throw new Error('voyage invalide');
+    // Garde : si on n'est pas sur le shell organisateur (partage.html n'a pas ces
+    // écrans), ne pas tenter de basculer de vue → éviterait un crash null classList.
+    if (!document.getElementById('screen-home') || !document.getElementById('screen-voyage'))
+      throw new Error('shell organisateur absent');
 
     _shareTokenCourant = voyage.share_token || null;
     // Mettre en cache les métadonnées pour la page offline
