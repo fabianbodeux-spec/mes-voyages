@@ -143,8 +143,10 @@ async function initAuth() {
   }
 
   // Fix C : si localStorage est vide (purge iOS), tenter la récupération depuis IndexedDB
+  let _idbHad = false;
   if (!_authToken) {
     const idbToken = await _readTokenIDB();
+    _idbHad = !!idbToken;
     if (idbToken) {
       _authToken = idbToken;
       try { localStorage.setItem('crewigo_token', _authToken); } catch {}
@@ -153,6 +155,14 @@ async function initAuth() {
 
   // Aucun token → écran de connexion
   if (!_authToken) {
+    // DIAGNOSTIC TEMPORAIRE : si on tombe sur le login PENDANT un retour
+    // « MODE ORGANISATEUR » (_returnToken présent), capturer l'état du stockage
+    // pour savoir POURQUOI le token a disparu (purge iOS totale vs récupération ratée).
+    if (_returnToken) {
+      let _lsTok = false; try { _lsTok = !!localStorage.getItem('crewigo_token'); } catch {}
+      const _sa = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      _bootDiag('login au retour', { ls: _lsTok, idb: _idbHad, sa: _sa });
+    }
     // ── AP-2 : Redirect standalone participant PWA ──────────────────────────
     // Un participant (sans compte organisateur) qui a installé la PWA depuis /
     // ou depuis /app se retrouve sur l'écran de login alors qu'il a déjà rejoint
@@ -478,6 +488,12 @@ let voyageInfoActuel = null;
 // ─── INIT ────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Belt-and-suspenders : si le token est présent en localStorage, le RE-SAUVEGARDER
+  // dans IndexedDB à CHAQUE chargement (y compris sur la page participant). Ainsi, si
+  // iOS purge localStorage lors d'une navigation PWA (/share → /app), la copie IDB
+  // permet à initAuth() de restaurer la session SANS repasser par l'écran de connexion.
+  try { if (_authToken) _saveTokenIDB(_authToken); } catch {}
+
   // ── GARDE PAGE : app.js est aussi chargé par partage.html (page participant)
   // pour ses fonctions utilitaires partagées. Mais le BOOT organisateur ci-dessous
   // (initAuth → afficherVoyage/chargerVoyages) manipule #screen-home / #screen-voyage
