@@ -119,7 +119,23 @@ async function initAuth() {
   const emailParam = params.get('email');
   // ?v=TOKEN : deep-link depuis /voyage/:token → ouvrir automatiquement ce voyage
   const voyageToken = params.get('v');
-  if (voyageToken) window._pendingVoyageToken = voyageToken;
+  // Persistance du token de retour : si un rechargement survient PENDANT le boot
+  // (typiquement l'activation d'un nouveau Service Worker → controllerchange →
+  // reload), l'URL ?v= est déjà nettoyée et le retour atterrirait sur l'accueil
+  // (« le retour ne fonctionne pas »), voire sur un écran blanc mi-rechargement
+  // en PWA standalone iOS. La copie sessionStorage survit au reload, est
+  // reconsommée ci-dessous, puis effacée seulement une fois la vue voyage
+  // réellement affichée (afficherVoyage / _openVoyageByToken).
+  let _returnToken = voyageToken;
+  if (_returnToken) {
+    try { sessionStorage.setItem('crewigo_return_token', _returnToken); } catch {}
+    // Empêcher le rechargement auto déclenché par une MAJ de SW PENDANT ce retour :
+    // un reload mi-boot effacerait la cible et afficherait un écran blanc bloquant.
+    window._suppressSwReload = true;
+  } else {
+    try { _returnToken = sessionStorage.getItem('crewigo_return_token') || null; } catch {}
+  }
+  if (_returnToken) window._pendingVoyageToken = _returnToken;
 
   if (authParam || emailParam) {
     const cleanUrl = window.location.pathname + window.location.hash;
@@ -486,6 +502,14 @@ document.addEventListener('DOMContentLoaded', () => {
       // (controller était null avant register → ce n'est pas une mise à jour)
       if (!_swWasAlreadyControlled) { _swWasAlreadyControlled = true; return; }
       if (_swReloading) return;
+      // Retour deep-link en cours (?v=token → vue organisateur) : NE PAS recharger.
+      // Un reload mi-boot efface la cible (?v= déjà nettoyé de l'URL) et provoque un
+      // écran blanc bloquant en PWA standalone iOS. Le nouveau SW contrôle déjà la
+      // page et tous les assets sont servis network-first → aucune perte de fraîcheur.
+      // La MAJ du shell pré-caché s'appliquera proprement au prochain lancement.
+      let _returnInProgress = false;
+      try { _returnInProgress = !!sessionStorage.getItem('crewigo_return_token'); } catch {}
+      if (window._suppressSwReload || _returnInProgress || window._pendingVoyageToken) return;
       _swReloading = true;
       try { sessionStorage.setItem('sw_reloading', '1'); } catch {}
 
@@ -507,14 +531,15 @@ document.addEventListener('DOMContentLoaded', () => {
           Recharger
         </button>`;
       document.body.appendChild(banner);
-      // window.location.reload() est plus fiable que href sur Safari PWA standalone
+      // Rechargement UNIQUEMENT à l'initiative de l'utilisateur. On ne recharge
+      // JAMAIS automatiquement : un reload forcé mi-utilisation provoquait un écran
+      // blanc bloquant en PWA standalone iOS (et faisait perdre la vue voyage en
+      // cours). Le nouveau SW contrôle déjà la page ; les assets sont network-first.
+      // Si l'utilisateur recharge via la bannière, crewigo_return_token (conservé)
+      // rouvre le voyage en cours plutôt que l'accueil.
       document.getElementById('sw-update-btn').addEventListener('click', () => {
         window.location.reload();
       });
-
-      // Tentative de rechargement automatique après un court délai
-      // (fonctionne en Chrome/Firefox, souvent ignoré en Safari PWA standalone)
-      setTimeout(() => { window.location.reload(); }, 800);
     });
   }
 
@@ -609,6 +634,10 @@ function _updateParticipantModeBar() {
 }
 
 function afficherAccueil() {
+  // Retour volontaire à l'accueil → on oublie la cible de retour persistée, sinon
+  // un rechargement ultérieur rouvrirait le dernier voyage au lieu de l'accueil.
+  try { sessionStorage.removeItem('crewigo_return_token'); } catch {}
+  window._suppressSwReload = false;
   document.getElementById('screen-voyage').classList.remove('active');
   document.getElementById('screen-home').classList.add('active');
   voyageActuel = null;
@@ -650,6 +679,10 @@ async function afficherVoyage(id) {
 
     // Activer les notifications push pour l'admin
     _initPushAdmin(id);
+    // NB : on NE vide PAS ici crewigo_return_token. Il est conservé pour toute la
+    // session afin qu'un éventuel rechargement (tap sur la bannière de MAJ, refresh
+    // iOS…) rouvre CE voyage plutôt que l'accueil. Il n'est effacé qu'au retour
+    // explicite vers l'accueil (afficherAccueil).
   } catch (e) {
     // Échec (réseau, 401/500, payload invalide) → ne JAMAIS laisser un écran
     // blanc : on reste / revient sur l'accueil organisateur, qui est fonctionnel.
@@ -1100,7 +1133,14 @@ async function _openVoyageByToken(token) {
     const r = await fetch(`${API}/api/voyages/by-token/${token}/is-owner`);
     if (!r.ok) return;
     const { isOwner, voyageId } = await r.json();
-    if (isOwner && voyageId) afficherVoyage(voyageId);
+    if (isOwner && voyageId) {
+      afficherVoyage(voyageId);
+    } else {
+      // Token résolu mais l'utilisateur n'est pas propriétaire → inutile de retenter
+      // ce token au prochain reload : on l'oublie et on lève la suppression SW.
+      try { sessionStorage.removeItem('crewigo_return_token'); } catch {}
+      window._suppressSwReload = false;
+    }
   } catch { /* réseau → on reste sur l'accueil, pas d'écran blanc */ }
 }
 
