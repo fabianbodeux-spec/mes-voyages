@@ -3735,6 +3735,25 @@ function _getParticipantHeaders() {
   return headers;
 }
 
+// ── Phase 2 — Injection automatique du jeton de session participant ──────────
+// Toute ÉCRITURE (non-GET) vers l'espace participant doit porter le sessionToken
+// pour que le serveur l'autorise. On l'ajoute ici pour TOUTES les requêtes
+// (présentes et futures), y compris les uploads multipart : on n'ajoute qu'un
+// en-tête, sans toucher au Content-Type que le navigateur gère pour FormData.
+(function installParticipantTokenInterceptor() {
+  const _prev = window.fetch.bind(window);
+  window.fetch = function(url, opts = {}) {
+    const u = typeof url === 'string' ? url : (url && url.url) || '';
+    const method = (opts.method || 'GET').toUpperCase();
+    if (method !== 'GET' && (u.includes('/api/partage/') || u.includes('/api/demandes/'))) {
+      let tok = null;
+      try { tok = (_safeGetIdentite() || {}).sessionToken || null; } catch {}
+      if (tok) opts = { ...opts, headers: { ...(opts.headers || {}), 'X-Participant-Token': tok } };
+    }
+    return _prev(url, opts);
+  };
+})();
+
 async function chargerPreparation() {
   const el = document.getElementById('preparation-content');
   if (!el) return;
