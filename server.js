@@ -16,7 +16,7 @@ const IS_CLOUD = db.usePostgres;
 
 // Version de l'app — doit correspondre à CACHE_VERSION dans sw.js
 // Changer ici ET dans sw.js à chaque déploiement pour forcer le rechargement
-const APP_VERSION = 'v68';
+const APP_VERSION = 'v69';
 const fs = require('fs');
 if (!process.env.JWT_SECRET && IS_CLOUD) {
   console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
@@ -314,7 +314,7 @@ app.post('/api/auth/register', async (req, res) => {
     // Premier inscrit → hérite de tous les voyages sans propriétaire
     const total = await db.users.count();
     if (total <= 1) await db.users.claimOrphanVoyages(user.id);
-    const token = jwt.sign({ id: user.id, email: user.email, nom: user.nom }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: user.id, email: user.email, nom: user.nom }, JWT_SECRET, { expiresIn: '365d' });
     res.json({ token, user: { id: user.id, email: user.email, nom: user.nom } });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur interne' }); }
 });
@@ -328,7 +328,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-    const token = jwt.sign({ id: user.id, email: user.email, nom: user.nom }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: user.id, email: user.email, nom: user.nom }, JWT_SECRET, { expiresIn: '365d' });
 
     // P3 — Réconciliation automatique : trouver les participations liées à cet email
     let newParticipations = 0;
@@ -368,7 +368,7 @@ app.get('/api/auth/refresh', authMiddleware, async (req, res) => {
   const token = jwt.sign(
     { id: req.user.id, email: req.user.email, nom: req.user.nom },
     JWT_SECRET,
-    { expiresIn: '30d' }
+    { expiresIn: '365d' }
   );
   res.json({ token });
 });
