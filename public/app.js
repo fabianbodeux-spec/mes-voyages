@@ -735,12 +735,16 @@ async function afficherVoyage(id) {
     // session afin qu'un éventuel rechargement (tap sur la bannière de MAJ, refresh
     // iOS…) rouvre CE voyage plutôt que l'accueil. Il n'est effacé qu'au retour
     // explicite vers l'accueil (afficherAccueil).
+    window.__vErr = null;
+    return true;
   } catch (e) {
     // Échec (réseau, 401/500, payload invalide) → ne JAMAIS laisser un écran
     // blanc : on revient sur l'accueil organisateur ET on le RE-RENDONS
     // (afficherAccueil → chargerVoyages) pour éviter un accueil vide sous le bandeau.
+    window.__vErr = (e && e.message) || String(e);
     console.warn('afficherVoyage : échec, retour à l\'accueil', id, e);
     afficherAccueil();
+    return false;
   }
 }
 
@@ -1231,19 +1235,43 @@ async function _openVoyageByToken(token) {
   }
 
   if (res && res.isOwner && res.voyageId) {
-    afficherVoyage(res.voyageId);
+    const ok = await afficherVoyage(res.voyageId);
+    // Diagnostic AFFICHÉ UNIQUEMENT si l'ouverture du voyage a échoué (bug =
+    // retour sur l'accueil). Silencieux quand le voyage s'ouvre normalement.
+    if (!ok) _bootDiag('voyage KO', { vid: res.voyageId, st: lastStatus, err: window.__vErr || '?' });
     return;
   }
   if (res && res.isOwner === false) {
     // Réponse FIABLE « pas propriétaire » → oublier le token, accueil normal.
     try { sessionStorage.removeItem('crewigo_return_token'); } catch {}
     window._suppressSwReload = false;
+    _bootDiag('pas owner', { token: token.slice(0,6), st: lastStatus, auth: !!_authToken });
     chargerVoyages();
     return;
   }
   // Toutes les tentatives ont échoué (réseau/cold start) : NE PAS oublier le token
   // (un prochain lancement rouvrira le voyage). Accueil rendu sans onboarding.
+  _bootDiag('is-owner injoignable', { token: token.slice(0,6), tries: attempts-1, st: lastStatus, auth: !!_authToken });
   chargerVoyages();
+}
+
+// Badge de diagnostic TEMPORAIRE — n'apparaît QUE dans le cas de bug (le retour
+// « MODE ORGANISATEUR » n'a pas pu ouvrir le voyage). Invisible pour un retour
+// réussi. Permet de capturer la cause exacte en une copie d'écran.
+function _bootDiag(reason, info) {
+  try {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;'
+      + 'background:#1a1a2e;color:#fff;font:12px/1.4 monospace;padding:10px 12px;'
+      + 'border:1px solid #F97316;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.4)';
+    el.textContent = `⚠️ retour: ${reason} · ${Object.entries(info).map(([k,v])=>`${k}=${v}`).join(' · ')}`;
+    const x = document.createElement('button');
+    x.textContent = '✕';
+    x.style.cssText = 'float:right;background:none;border:none;color:#F97316;font-weight:700;cursor:pointer;margin-left:8px';
+    x.onclick = () => el.remove();
+    el.prepend(x);
+    document.body.appendChild(el);
+  } catch {}
 }
 
 /** Construit le HTML d'une carte voyage selon sa section
