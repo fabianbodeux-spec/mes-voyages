@@ -1028,10 +1028,11 @@ function _safeRenderVoyageCard(v, section) {
   }
 }
 
+let _lastHomeStatus = 0;
 async function chargerVoyages() {
   // Charger admin voyages + participations en parallèle
   const [data, participations] = await Promise.all([
-    fetch(`${API}/api/voyages/home-summary`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(`${API}/api/voyages/home-summary`).then(r => { _lastHomeStatus = r.status; return r.ok ? r.json() : []; }).catch(() => { _lastHomeStatus = -1; return []; }),
     fetch(`${API}/api/auth/my-participations`).then(r => r.ok ? r.json() : []).catch(() => [])
   ]);
   const voyages = Array.isArray(data) ? data : [];
@@ -1064,8 +1065,16 @@ async function chargerVoyages() {
     container.innerHTML = '';
     empty.classList.remove('hidden');
     if (joinBar) joinBar.classList.add('hidden');
-    // Premier lancement : afficher l'onboarding si pas encore vu
-    _maybeShowOnboarding();
+    // Onboarding « Lance ton trip en 30 s » : réservé à un VRAI premier lancement.
+    // Un organisateur qui REVIENT d'une vue participant (deep-link ?v= → token de
+    // retour persisté) n'est pas un nouvel utilisateur : ne pas lui superposer
+    // l'intro sur un accueil (momentanément) vide. Idem si l'accueil est vide à
+    // cause d'une réponse réseau ratée (is-owner / home-summary) plutôt qu'un
+    // compte réellement neuf.
+    let _isReturnFlow = false;
+    try { _isReturnFlow = !!sessionStorage.getItem('crewigo_return_token'); } catch {}
+    if (!_isReturnFlow && !window._pendingVoyageToken) _maybeShowOnboarding();
+    else _bootDiag('accueil vide', { home: _lastHomeStatus, auth: !!_authToken, user: currentUser?.id ?? '∅' });
     return;
   }
   empty.classList.add('hidden');
@@ -1170,29 +1179,63 @@ async function chargerVoyages() {
 // propriétaire ou en cas d'erreur (on reste sur l'accueil).
 async function _openVoyageByToken(token) {
   if (!token) { chargerVoyages(); return; }
+
+  // iOS PWA — au retour depuis la page participant, la 1ʳᵉ salve d'appels peut
+  // partir AVANT que le token JWT ne soit pleinement disponible (localStorage
+  // momentanément vide / cold-start) → is-owner ET home-summary répondent vides
+  // et l'accueil paraît « sans voyages » (onboarding superposé). On RE-SYNCHRONISE
+  // donc le token depuis le stockage avant de résoudre.
   try {
-    const r = await fetch(`${API}/api/voyages/by-token/${token}/is-owner`);
-    if (!r.ok) {
-      // Résolution serveur impossible (réseau, 5xx…) : on n'oublie PAS le token
-      // (un rechargement réessaiera) mais on rend tout de même l'accueil pour ne
-      // jamais laisser d'écran blanc.
-      chargerVoyages();
-      return;
+    if (!_authToken) {
+      _authToken = localStorage.getItem('crewigo_token') || (await _readTokenIDB()) || _authToken;
     }
-    const { isOwner, voyageId } = await r.json();
-    if (isOwner && voyageId) {
-      afficherVoyage(voyageId);
-    } else {
-      // Token résolu mais l'utilisateur n'est pas propriétaire → on l'oublie
-      // (inutile de retenter) et on affiche l'accueil organisateur.
-      try { sessionStorage.removeItem('crewigo_return_token'); } catch {}
-      window._suppressSwReload = false;
-      chargerVoyages();
-    }
-  } catch {
-    // Erreur inattendue → accueil rendu malgré tout (jamais d'écran blanc).
-    chargerVoyages();
+  } catch {}
+
+  let lastStatus = 0, attempts = 0, res = null;
+  for (attempts = 1; attempts <= 3 && !res; attempts++) {
+    try {
+      const r = await fetch(`${API}/api/voyages/by-token/${token}/is-owner`);
+      lastStatus = r.status;
+      if (r.ok) { res = await r.json(); break; }
+    } catch { lastStatus = -1; }
+    if (attempts < 3) await new Promise(r => setTimeout(r, 500 * attempts)); // backoff
   }
+
+  if (res && res.isOwner && res.voyageId) {
+    afficherVoyage(res.voyageId);
+    return;
+  }
+  if (res && res.isOwner === false) {
+    // Réponse FIABLE « pas propriétaire » → oublier le token, accueil normal.
+    try { sessionStorage.removeItem('crewigo_return_token'); } catch {}
+    window._suppressSwReload = false;
+    _bootDiag('is-owner=false', { token: token.slice(0,6), attempts, lastStatus, auth: !!_authToken });
+    chargerVoyages();
+    return;
+  }
+  // Toutes les tentatives ont échoué (réseau/cold start) : NE PAS oublier le token
+  // (un prochain lancement rouvrira le voyage). Accueil rendu sans onboarding.
+  _bootDiag('is-owner ÉCHEC', { token: token.slice(0,6), attempts: attempts-1, lastStatus, auth: !!_authToken });
+  chargerVoyages();
+}
+
+// Badge de diagnostic TEMPORAIRE — n'apparaît QUE dans le cas de bug (le retour
+// organisateur n'a pas pu ouvrir le voyage). Invisible pour un retour réussi.
+// Permet à l'utilisateur de capturer la cause exacte en une copie d'écran.
+function _bootDiag(reason, info) {
+  try {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;'
+      + 'background:#1a1a2e;color:#fff;font:12px/1.4 monospace;padding:10px 12px;'
+      + 'border:1px solid #F97316;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.4)';
+    el.textContent = `⚠️ retour: ${reason} · ${Object.entries(info).map(([k,v])=>`${k}=${v}`).join(' · ')}`;
+    const x = document.createElement('button');
+    x.textContent = '✕';
+    x.style.cssText = 'float:right;background:none;border:none;color:#F97316;font-weight:700;cursor:pointer;margin-left:8px';
+    x.onclick = () => el.remove();
+    el.prepend(x);
+    document.body.appendChild(el);
+  } catch {}
 }
 
 /** Construit le HTML d'une carte voyage selon sa section
