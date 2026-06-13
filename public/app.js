@@ -455,7 +455,22 @@ let voyageInfoActuel = null;
 // ─── INIT ────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  initAuth().then(() => { if (currentUser) chargerVoyages(); });
+  initAuth().then(() => {
+    if (!currentUser) return; // non connecté → écran de login déjà géré par initAuth
+    // RETOUR VUE ORGANISATEUR (?v=token) : on ouvre le voyage de façon INDÉPENDANTE
+    // du rendu de l'accueil. Auparavant le deep-link était traité À LA FIN de
+    // chargerVoyages() : si le rendu de l'accueil échouait (une carte voyage qui
+    // plante), le retour ne se faisait jamais et on restait sur un accueil blanc.
+    // Désormais la résolution token→id se fait côté serveur, puis afficherVoyage().
+    if (window._pendingVoyageToken) {
+      const dvt = window._pendingVoyageToken;
+      window._pendingVoyageToken = null;
+      try { history.replaceState(null, '', '/app'); } catch {}
+      _openVoyageByToken(dvt);
+    } else {
+      chargerVoyages();
+    }
+  });
   if ('serviceWorker' in navigator) {
     const _swActivateWaiting = (sw) => sw.postMessage({ type: 'SKIP_WAITING' });
 
@@ -685,10 +700,10 @@ async function afficherVoyage(id) {
     // explicite vers l'accueil (afficherAccueil).
   } catch (e) {
     // Échec (réseau, 401/500, payload invalide) → ne JAMAIS laisser un écran
-    // blanc : on reste / revient sur l'accueil organisateur, qui est fonctionnel.
+    // blanc : on revient sur l'accueil organisateur ET on le RE-RENDONS
+    // (afficherAccueil → chargerVoyages) pour éviter un accueil vide sous le bandeau.
     console.warn('afficherVoyage : échec, retour à l\'accueil', id, e);
-    document.getElementById('screen-voyage')?.classList.remove('active');
-    document.getElementById('screen-home')?.classList.add('active');
+    afficherAccueil();
   }
 }
 
@@ -974,6 +989,18 @@ let _myParticipations = [];
 // alors le chip de rôle « Organisateur » pour lever l'ambiguïté (F2)
 let _dashboardMixed = false;
 
+// Rendu d'une carte voyage TOLÉRANT aux pannes : si une carte plante (champ
+// manquant, date corrompue…), on l'ignore au lieu de faire échouer le .map()
+// entier — ce qui laissait auparavant l'accueil blanc sous le bandeau.
+function _safeRenderVoyageCard(v, section) {
+  try {
+    return _renderVoyageCard(v, section, v._partOpts);
+  } catch (e) {
+    console.warn('Carte voyage ignorée (rendu impossible)', v?.id, e);
+    return '';
+  }
+}
+
 async function chargerVoyages() {
   // Charger admin voyages + participations en parallèle
   const [data, participations] = await Promise.all([
@@ -1020,14 +1047,17 @@ async function chargerVoyages() {
   // ── Grouper admin voyages par statut ───────────────────────────
   const MEMORY_STATUTS = new Set(['terminé', 'completed', 'archived']);
   const ongoing = [], upcoming = [], memories = [];
+  // Classement défensif : une date corrompue ne doit jamais faire planter le rendu
+  // complet de l'accueil (→ accueil blanc). En cas d'erreur, on range en souvenirs.
+  const _classe = (debut, fin) => { try { return getStatut(debut, fin).classe; } catch { return 'memories'; } };
   for (const v of voyages) {
     if (MEMORY_STATUTS.has(v.statut)) {
       memories.push({ ...v, _role: 'admin' });
     } else {
-      const s = getStatut(v.date_debut, v.date_fin);
-      if (s.classe === 'ongoing')       ongoing.push({ ...v, _role: 'admin' });
-      else if (s.classe === 'upcoming') upcoming.push({ ...v, _role: 'admin' });
-      else                              memories.push({ ...v, _role: 'admin' });
+      const c = _classe(v.date_debut, v.date_fin);
+      if (c === 'ongoing')       ongoing.push({ ...v, _role: 'admin' });
+      else if (c === 'upcoming') upcoming.push({ ...v, _role: 'admin' });
+      else                       memories.push({ ...v, _role: 'admin' });
     }
   }
 
@@ -1037,10 +1067,10 @@ async function chargerVoyages() {
     if (MEMORY_STATUTS.has(p.statut)) {
       memories.push({ ...p, _role: 'participant', _partOpts: opts });
     } else {
-      const s = getStatut(p.date_debut, p.date_fin);
-      if (s.classe === 'ongoing')       ongoing.push({ ...p, _role: 'participant', _partOpts: opts });
-      else if (s.classe === 'upcoming') upcoming.push({ ...p, _role: 'participant', _partOpts: opts });
-      else                              memories.push({ ...p, _role: 'participant', _partOpts: opts });
+      const c = _classe(p.date_debut, p.date_fin);
+      if (c === 'ongoing')       ongoing.push({ ...p, _role: 'participant', _partOpts: opts });
+      else if (c === 'upcoming') upcoming.push({ ...p, _role: 'participant', _partOpts: opts });
+      else                       memories.push({ ...p, _role: 'participant', _partOpts: opts });
     }
   }
 
@@ -1065,7 +1095,7 @@ async function chargerVoyages() {
         <span class="home-section-count">${ongoing.length}</span>
       </div>
       <div class="voyage-grid voyage-grid--ongoing">
-        ${ongoing.map(v => _renderVoyageCard(v, 'ongoing', v._partOpts)).join('')}
+        ${ongoing.map(v => _safeRenderVoyageCard(v, 'ongoing')).join('')}
       </div>
     </section>`;
   }
@@ -1078,7 +1108,7 @@ async function chargerVoyages() {
         <span class="home-section-count">${upcoming.length}</span>
       </div>
       <div class="voyage-grid voyage-grid--upcoming">
-        ${upcoming.map(v => _renderVoyageCard(v, 'upcoming', v._partOpts)).join('')}
+        ${upcoming.map(v => _safeRenderVoyageCard(v, 'upcoming')).join('')}
       </div>
     </section>`;
   }
@@ -1091,7 +1121,7 @@ async function chargerVoyages() {
         <span class="home-section-count">${memories.length}</span>
       </div>
       <div class="voyage-grid voyage-grid--memories">
-        ${memories.map(v => _renderVoyageCard(v, 'memories', v._partOpts)).join('')}
+        ${memories.map(v => _safeRenderVoyageCard(v, 'memories')).join('')}
       </div>
     </section>`;
   }
@@ -1102,25 +1132,9 @@ async function chargerVoyages() {
   enrichirPhotos([...ongoing, ...upcoming].filter(v => v._role !== 'participant'));
   // ── Top photos internes pour les souvenirs ─────────────────────
   _enrichirPhotosSouvenirs(memories.filter(v => v._role !== 'participant'));
-
-  // ── Interface unique : deep-link ?v=TOKEN ──────────────────────
-  // Quand l'organisateur revient via « Mode organisateur » (depuis la vue
-  // participant) ou « Gérer le voyage → » (/voyage/:token), l'app ouvre
-  // directement la VUE ORGANISATEUR du voyage correspondant au share_token.
-  if (window._pendingVoyageToken) {
-    const dvt = window._pendingVoyageToken;
-    window._pendingVoyageToken = null;
-    history.replaceState(null, '', '/app'); // nettoyer ?v= de l'URL
-    const match = voyages.find(v => v.share_token === dvt);
-    if (match) {
-      afficherVoyage(match.id); // afficherVoyage est durci (try/catch → accueil si échec)
-    } else {
-      // Voyage absent du résumé d'accueil (archivé, cache partiel, course de
-      // rendu…) → résolution DÉTERMINISTE token→id côté serveur, sans dépendre
-      // du match dans la liste.
-      _openVoyageByToken(dvt);
-    }
-  }
+  // NB : le deep-link de retour (?v=token) est désormais traité dans le
+  // DOMContentLoaded, INDÉPENDAMMENT de ce rendu, pour qu'une erreur d'affichage
+  // de l'accueil ne puisse jamais bloquer le retour en vue organisateur.
 }
 
 // Résout un share_token en id de voyage côté serveur puis ouvre la vue
@@ -1128,20 +1142,30 @@ async function chargerVoyages() {
 // ne contient pas (encore) le voyage. Silencieux si l'utilisateur n'est pas
 // propriétaire ou en cas d'erreur (on reste sur l'accueil).
 async function _openVoyageByToken(token) {
-  if (!token) return;
+  if (!token) { chargerVoyages(); return; }
   try {
     const r = await fetch(`${API}/api/voyages/by-token/${token}/is-owner`);
-    if (!r.ok) return;
+    if (!r.ok) {
+      // Résolution serveur impossible (réseau, 5xx…) : on n'oublie PAS le token
+      // (un rechargement réessaiera) mais on rend tout de même l'accueil pour ne
+      // jamais laisser d'écran blanc.
+      chargerVoyages();
+      return;
+    }
     const { isOwner, voyageId } = await r.json();
     if (isOwner && voyageId) {
       afficherVoyage(voyageId);
     } else {
-      // Token résolu mais l'utilisateur n'est pas propriétaire → inutile de retenter
-      // ce token au prochain reload : on l'oublie et on lève la suppression SW.
+      // Token résolu mais l'utilisateur n'est pas propriétaire → on l'oublie
+      // (inutile de retenter) et on affiche l'accueil organisateur.
       try { sessionStorage.removeItem('crewigo_return_token'); } catch {}
       window._suppressSwReload = false;
+      chargerVoyages();
     }
-  } catch { /* réseau → on reste sur l'accueil, pas d'écran blanc */ }
+  } catch {
+    // Erreur inattendue → accueil rendu malgré tout (jamais d'écran blanc).
+    chargerVoyages();
+  }
 }
 
 /** Construit le HTML d'une carte voyage selon sa section
