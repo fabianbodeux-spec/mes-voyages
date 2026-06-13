@@ -1071,17 +1071,37 @@ async function chargerVoyages() {
   _enrichirPhotosSouvenirs(memories.filter(v => v._role !== 'participant'));
 
   // ── Interface unique : deep-link ?v=TOKEN ──────────────────────
-  // Quand l'organisateur clique "Gérer le voyage →" depuis /voyage/:token,
-  // l'app ouvre directement le voyage correspondant au share_token.
+  // Quand l'organisateur revient via « Mode organisateur » (depuis la vue
+  // participant) ou « Gérer le voyage → » (/voyage/:token), l'app ouvre
+  // directement la VUE ORGANISATEUR du voyage correspondant au share_token.
   if (window._pendingVoyageToken) {
     const dvt = window._pendingVoyageToken;
     window._pendingVoyageToken = null;
+    history.replaceState(null, '', '/app'); // nettoyer ?v= de l'URL
     const match = voyages.find(v => v.share_token === dvt);
     if (match) {
-      history.replaceState(null, '', '/app'); // nettoyer ?v= de l'URL
-      setTimeout(() => afficherVoyage(match.id), 80);
+      afficherVoyage(match.id); // afficherVoyage est durci (try/catch → accueil si échec)
+    } else {
+      // Voyage absent du résumé d'accueil (archivé, cache partiel, course de
+      // rendu…) → résolution DÉTERMINISTE token→id côté serveur, sans dépendre
+      // du match dans la liste.
+      _openVoyageByToken(dvt);
     }
   }
+}
+
+// Résout un share_token en id de voyage côté serveur puis ouvre la vue
+// organisateur. Indépendant de la liste d'accueil → fiable même si le résumé
+// ne contient pas (encore) le voyage. Silencieux si l'utilisateur n'est pas
+// propriétaire ou en cas d'erreur (on reste sur l'accueil).
+async function _openVoyageByToken(token) {
+  if (!token) return;
+  try {
+    const r = await fetch(`${API}/api/voyages/by-token/${token}/is-owner`);
+    if (!r.ok) return;
+    const { isOwner, voyageId } = await r.json();
+    if (isOwner && voyageId) afficherVoyage(voyageId);
+  } catch { /* réseau → on reste sur l'accueil, pas d'écran blanc */ }
 }
 
 /** Construit le HTML d'une carte voyage selon sa section
