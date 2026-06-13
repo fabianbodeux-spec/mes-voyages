@@ -16,7 +16,7 @@ const IS_CLOUD = db.usePostgres;
 
 // Version de l'app — doit correspondre à CACHE_VERSION dans sw.js
 // Changer ici ET dans sw.js à chaque déploiement pour forcer le rechargement
-const APP_VERSION = 'v83';
+const APP_VERSION = 'v84';
 const fs = require('fs');
 if (!process.env.JWT_SECRET && IS_CLOUD) {
   console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
@@ -1286,28 +1286,62 @@ app.get('/auth/magic/:magicToken', async (req, res) => {
     const couleur       = participant?.couleur || '#F97316';
     const participantId = participant?.id || null;
 
-    // Créer le lien user ↔ participant si compte existant
-    if (existingUser) {
-      await run(() => db.user_participant_links.upsert(
-        existingUser.id, participantId, record.voyage_id, record.participant_nom
-      )).catch(e => console.warn('[MagicLink] user_participant_links upsert:', e.message));
-      console.log(`[MagicLink] Compte lié : user ${existingUser.id} ↔ participant "${record.participant_nom}" voyage ${record.voyage_id}`);
+    // ── Pont invité → compte CrewiGo ────────────────────────────────────────
+    // L'email a été encodé puis vérifié par le clic sur le lien magique (preuve de
+    // possession de l'adresse). On crée/récupère un compte SANS mot de passe et on
+    // émet un JWT : l'invité accède au hub /app et y voit TOUS ses voyages invités,
+    // avec la possibilité d'en créer un nouveau — exactement comme un organisateur.
+    let account = existingUser;
+    if (!account) {
+      // Compte passwordless : hash aléatoire → le login email/mot de passe est
+      // impossible sans réinitialisation, mais le lien magique suffit à se reconnecter.
+      const randomHash = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 12);
+      const accountNom = (record.participant_nom || record.email.split('@')[0]).trim();
+      account = await run(() => db.users.create(record.email, randomHash, accountNom));
+      console.log(`[MagicLink] Compte passwordless créé : user ${account.id} (${record.email})`);
     }
 
-    // Construire l'identité et la stocker sous un jeton opaque (60s, single-use)
-    // → ni l'email ni les données personnelles ne transitent dans l'URL / les logs
-    const identity = {
-      nom:            record.participant_nom,
-      couleur,
-      email:          record.email,
-      participant_id: participantId,
-      from_magic:     true,
-      has_account:    !!existingUser
-    };
-    const midToken = crypto.randomBytes(16).toString('base64url');
-    _pendingMidTokens.set(midToken, { identity, expires: Date.now() + 60_000 });
+    // Lier le participant du voyage cliqué
+    await run(() => db.user_participant_links.upsert(
+      account.id, participantId, record.voyage_id, record.participant_nom
+    )).catch(e => console.warn('[MagicLink] upsert (voyage courant):', e.message));
 
-    res.redirect(302, `/share/${shareToken}?_mid=${midToken}`);
+    // Réconcilier TOUTES les participations connues pour cet email (multi-voyages)
+    try {
+      const emailLinks    = await run(() => db.participant_emails.getAllByEmail(record.email));
+      const existingLinks = await run(() => db.user_participant_links.getByUser(account.id));
+      const existingKeys  = new Set(existingLinks.map(l => l.voyage_id));
+      for (const ep of emailLinks) {
+        if (existingKeys.has(ep.voyage_id)) continue; // déjà lié
+        const ps = await run(() => db.participants.getByVoyage(ep.voyage_id));
+        const pp = ps.find(p => p.nom === ep.participant_nom);
+        if (pp) {
+          await run(() => db.user_participant_links.upsert(
+            account.id, pp.id, ep.voyage_id, ep.participant_nom
+          )).catch(() => {});
+        }
+      }
+    } catch (e) { console.warn('[MagicLink] réconciliation multi-voyages:', e.message); }
+
+    // Émettre le JWT (365j) et le transmettre via un jeton opaque single-use (60s)
+    // → le JWT ne transite jamais en clair dans l'URL ni dans les logs serveur.
+    const jwtToken = jwt.sign(
+      { id: account.id, email: account.email, nom: account.nom },
+      JWT_SECRET,
+      { expiresIn: '365d' }
+    );
+    const midToken = crypto.randomBytes(16).toString('base64url');
+    _pendingMidTokens.set(midToken, {
+      identity: {
+        token:      jwtToken,
+        user:       { id: account.id, email: account.email, nom: account.nom },
+        from_magic: true
+      },
+      expires: Date.now() + 60_000
+    });
+
+    // Atterrissage sur le hub /app : tous ses voyages invités + bouton « créer »
+    res.redirect(302, `/app?_mauth=${midToken}`);
   } catch (e) {
     console.error('[magic-link]', e.message);
     res.send(_magicErrorPage('Une erreur est survenue. Réessaie depuis la page du voyage.'));

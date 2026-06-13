@@ -115,6 +115,29 @@ async function _handle401Gracieux() {
 async function initAuth() {
   // Lire les paramètres ?auth=, ?email=, ?v= (deep-link interface unique)
   const params    = new URLSearchParams(window.location.search);
+
+  // ── Pont magic-link → hub ────────────────────────────────────────────────
+  // Un invité arrive sur /app?_mauth=TOKEN après avoir cliqué son lien magique.
+  // On échange le jeton opaque (single-use, 60s) contre son JWT, on le stocke,
+  // puis le flux normal ci-dessous charge le hub avec TOUS ses voyages.
+  const mauthParam = params.get('_mauth');
+  if (mauthParam) {
+    try {
+      const r = await fetch(`${API}/api/magic/decode/${encodeURIComponent(mauthParam)}`);
+      if (r.ok) {
+        const data = await r.json();
+        if (data && data.token) {
+          _authToken = data.token;
+          try { localStorage.setItem('crewigo_token', _authToken); } catch {}
+          try { _saveTokenIDB(_authToken); } catch {}
+          if (data.user) _cacheUser(data.user);
+        }
+      }
+    } catch {}
+    // Retirer _mauth de l'URL (le jeton est de toute façon à usage unique)
+    try { history.replaceState(null, '', window.location.pathname + window.location.hash); } catch {}
+  }
+
   const authParam = params.get('auth');
   const emailParam = params.get('email');
   // ?v=TOKEN : deep-link depuis /voyage/:token → ouvrir automatiquement ce voyage
