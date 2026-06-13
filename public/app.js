@@ -243,7 +243,9 @@ async function initAuth() {
 
   // 2. Premier lancement avec token mais sans cache : vérifier le serveur
   try {
-    const r = await fetch('/api/auth/me');
+    // NB : l'intercepteur fetch n'injecte PAS le Bearer sur /api/auth/* → on l'ajoute
+    // explicitement ici, sinon /api/auth/me renvoie 401 en prod (= faux logout).
+    const r = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${_authToken}` } });
     if (r.status === 401) { _doLogout(); return; }   // token explicitement invalide
     if (!r.ok) {
       // Erreur serveur (503, cold start…) — utiliser le payload JWT comme fallback
@@ -282,7 +284,8 @@ async function initAuth() {
 // Fix A : renouvelle également le token (sliding window 365j)
 async function _validateTokenSilently() {
   try {
-    const r = await fetch('/api/auth/me');
+    // Bearer explicite (l'intercepteur saute /api/auth/*) → évite un faux 401/logout
+    const r = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${_authToken}` } });
     if (r.status === 401) { _doLogout(); return; }   // token expiré ou révoqué
     if (!r.ok) return;                                // erreur serveur → ignorer
     const fresh = await r.json();
@@ -299,7 +302,8 @@ async function _validateTokenSilently() {
 // Fix A — émet un nouveau token (365j) sans déconnecter l'utilisateur
 async function _renewTokenSilently() {
   try {
-    const r = await fetch('/api/auth/refresh');
+    // Bearer explicite (l'intercepteur saute /api/auth/*) — sinon le refresh 401 en prod
+    const r = await fetch('/api/auth/refresh', { headers: { Authorization: `Bearer ${_authToken}` } });
     if (!r.ok) return;
     const { token } = await r.json();
     if (!token) return;
@@ -1083,7 +1087,7 @@ async function chargerVoyages() {
   // Charger admin voyages + participations en parallèle
   const [data, participations] = await Promise.all([
     fetch(`${API}/api/voyages/home-summary`).then(r => { _lastHomeStatus = r.status; return r.ok ? r.json() : []; }).catch(() => { _lastHomeStatus = -1; return []; }),
-    fetch(`${API}/api/auth/my-participations`).then(r => r.ok ? r.json() : []).catch(() => [])
+    fetch(`${API}/api/auth/my-participations`, { headers: { Authorization: `Bearer ${_authToken}` } }).then(r => r.ok ? r.json() : []).catch(() => [])
   ]);
   const voyages = Array.isArray(data) ? data : [];
   _myParticipations = Array.isArray(participations) ? participations : [];
