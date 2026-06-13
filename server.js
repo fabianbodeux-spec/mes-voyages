@@ -16,7 +16,7 @@ const IS_CLOUD = db.usePostgres;
 
 // Version de l'app — doit correspondre à CACHE_VERSION dans sw.js
 // Changer ici ET dans sw.js à chaque déploiement pour forcer le rechargement
-const APP_VERSION = 'v81';
+const APP_VERSION = 'v82';
 const fs = require('fs');
 if (!process.env.JWT_SECRET && IS_CLOUD) {
   console.error('FATAL: JWT_SECRET non défini. Arrêt du serveur.');
@@ -876,13 +876,14 @@ app.post('/api/voyages/:id/join-as-participant', authMiddleware, async (req, res
       }
     }
 
-    // 3. Générer un session token
-    const sessionToken = createSession({
+    // 3. Générer un session token (expire à date_fin + 5j)
+    const sessionToken = await createSession({
       participantId: ownerPart.id,
       voyageId,
       nom:     ownerPart.nom,
       couleur: ownerPart.couleur,
       role:    'owner',
+      dateFin: voyage.date_fin,
     });
 
     // P3 — Créer le lien user ↔ participant pour ce voyage (organisateur qui rejoint en tant que participant)
@@ -926,17 +927,75 @@ app.post('/api/partage/:token/verify-pin', async (req, res) => {
     const same = await verifyPin(pin, p.pin);
     if (!same) return res.json({ ok: false });
 
-    // Générer la session
-    const sessionToken = createSession({
+    // Générer la session (expire à date_fin + 5j)
+    const sessionToken = await createSession({
       participantId: p.id,
       voyageId:      voyage.id,
       nom:           p.nom,
       couleur:       p.couleur,
       role:          p.role || 'participant',
+      dateFin:       voyage.date_fin,
     });
 
     res.json({ ok: true, sessionToken });
   } catch(e) { console.error('[API ERROR]', e); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ── Identification invité → émission d'une session (sans PIN) ─────────────────
+// Body : { participant_id } pour un participant existant sans PIN,
+//   OU   { nom, couleur? } pour rejoindre avec un nouveau prénom.
+// Renvoie { ok, sessionToken, participant } ou { needsPin, participant_id } si
+// le participant ciblé est protégé par un PIN (→ passer par /verify-pin).
+app.post('/api/partage/:token/identify', async (req, res) => {
+  try {
+    const voyage = await run(() => db.voyages.getByToken(req.params.token));
+    if (!voyage) return res.status(404).json({ error: 'Lien invalide' });
+
+    const parts = await run(() => db.participants.getByVoyage(voyage.id));
+    let target = null;
+
+    // (a) Participant existant désigné par id
+    if (req.body.participant_id != null) {
+      target = parts.find(p => p.id === +req.body.participant_id);
+      if (!target) return res.status(404).json({ error: 'Participant introuvable' });
+      if (target.pin) return res.json({ needsPin: true, participant_id: target.id });
+    } else {
+      // (b) Nouveau prénom (ou ré-utilisation d'un participant homonyme sans PIN)
+      const nom = String(req.body.nom || '').trim().slice(0, 50);
+      if (!nom) return res.status(400).json({ error: 'Prénom requis' });
+
+      const match = parts.find(p => (p.nom || '').trim().toLowerCase() === nom.toLowerCase());
+      if (match) {
+        // Un homonyme protégé par PIN → ne pas usurper : exiger le PIN
+        if (match.pin) return res.json({ needsPin: true, participant_id: match.id });
+        target = match;
+      } else {
+        const couleur = (req.body.couleur && /^#[0-9a-fA-F]{3,8}$/.test(req.body.couleur))
+          ? req.body.couleur : '#F97316';
+        target = await run(() => db.participants.create(voyage.id, {
+          nom, couleur, pin: null, role: 'participant',
+        }));
+      }
+    }
+
+    const sessionToken = await createSession({
+      participantId: target.id,
+      voyageId:      voyage.id,
+      nom:           target.nom,
+      couleur:       target.couleur,
+      role:          target.role || 'participant',
+      dateFin:       voyage.date_fin,
+    });
+
+    res.json({
+      ok: true,
+      sessionToken,
+      participant: { id: target.id, nom: target.nom, couleur: target.couleur || '#F97316' },
+    });
+  } catch (e) {
+    console.error('[IDENTIFY]', e);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 });
 
 // ─── DÉPENSES ──────────────────────────────────────────────────────────────

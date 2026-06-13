@@ -37,6 +37,7 @@ const FICHIERS = {
   magic_links:             path.join(DATA_DIR, 'magic_links.json'),
   user_participant_links:  path.join(DATA_DIR, 'user_participant_links.json'),
   attribution_links:       path.join(DATA_DIR, 'attribution_links.json'),
+  participant_sessions:    path.join(DATA_DIR, 'participant_sessions.json'),
 };
 
 function charger(cle) {
@@ -466,6 +467,40 @@ const localDB = {
       e.email && e.email.toLowerCase() === String(email).toLowerCase()
     ),
   },
+  // Sessions participant (invités/owner en vue participant). Persistées en DB
+  // pour survivre aux redéploiements. expires_at = date_fin du voyage + 5 jours.
+  participant_sessions: {
+    create: ({ token, participantId, voyageId, nom, couleur, role, expiresAt }) => {
+      const list = charger('participant_sessions');
+      const item = {
+        token,
+        participant_id: participantId != null ? +participantId : null,
+        voyage_id: +voyageId,
+        nom: nom || null,
+        couleur: couleur || null,
+        role: role || 'participant',
+        expires_at: expiresAt,
+        created_at: new Date().toISOString(),
+      };
+      list.push(item);
+      sauvegarder('participant_sessions', list);
+      return item;
+    },
+    getByToken: (token) => charger('participant_sessions').find(s => s.token === token) || null,
+    deleteByToken: (token) => {
+      const list = charger('participant_sessions');
+      const next = list.filter(s => s.token !== token);
+      if (next.length !== list.length) sauvegarder('participant_sessions', next);
+      return true;
+    },
+    purgeExpired: () => {
+      const now = Date.now();
+      const list = charger('participant_sessions');
+      const next = list.filter(s => new Date(s.expires_at).getTime() > now);
+      if (next.length !== list.length) sauvegarder('participant_sessions', next);
+      return list.length - next.length;
+    },
+  },
 };
 
 // ─── MODE CLOUD : PostgreSQL ───────────────────────────────────────────────
@@ -694,6 +729,17 @@ if (USE_POSTGRES) {
       saved_at TIMESTAMPTZ DEFAULT now(),
       UNIQUE(voyage_id, participant_nom)
     )`);
+    await m(`CREATE TABLE IF NOT EXISTS participant_sessions (
+      token TEXT PRIMARY KEY,
+      participant_id INTEGER,
+      voyage_id INTEGER NOT NULL,
+      nom TEXT,
+      couleur TEXT,
+      role TEXT DEFAULT 'participant',
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )`);
+    await m(`CREATE INDEX IF NOT EXISTS idx_psessions_expires ON participant_sessions(expires_at)`);
     console.log('[DB] Migrations PostgreSQL OK');
   })();
 }
@@ -1107,6 +1153,22 @@ const pgDB = pgPool ? {
       'SELECT * FROM participant_emails WHERE LOWER(email)=LOWER($1)',
       [email]
     )).rows,
+  },
+  participant_sessions: {
+    create: async ({ token, participantId, voyageId, nom, couleur, role, expiresAt }) => (await pgPool.query(
+      `INSERT INTO participant_sessions(token, participant_id, voyage_id, nom, couleur, role, expires_at)
+       VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [token, participantId != null ? +participantId : null, +voyageId, nom || null, couleur || null, role || 'participant', expiresAt]
+    )).rows[0],
+    getByToken: async (token) => (await pgPool.query(
+      'SELECT * FROM participant_sessions WHERE token=$1', [token]
+    )).rows[0] || null,
+    deleteByToken: async (token) => pgPool.query(
+      'DELETE FROM participant_sessions WHERE token=$1', [token]
+    ),
+    purgeExpired: async () => (await pgPool.query(
+      'DELETE FROM participant_sessions WHERE expires_at < now()'
+    )).rowCount,
   },
 } : null;
 

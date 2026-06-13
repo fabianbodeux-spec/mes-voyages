@@ -1449,17 +1449,38 @@ function _afficherFormulairePrenom() {
   if (input) setTimeout(() => input.focus(), 80);
 }
 
-function _idParticipant(p) {
-  if (p.has_pin) {
-    _pinPendingParticipant = p;
-    document.getElementById('id-pin-nom').textContent = p.nom;
-    document.getElementById('id-pin-erreur').style.display = 'none';
-    document.getElementById('id-pin-input').value = '';
-    _idMainShow(false);
-    setTimeout(() => document.getElementById('id-pin-input').focus(), 100);
-    return;
-  }
-  const id = { nom: p.nom, participant_id: p.id, couleur: p.couleur || '#F97316' };
+// Demande au serveur une session participant (sessionToken signé) pour pouvoir
+// écrire. Renvoie l'objet réponse ({ ok, sessionToken, participant } ou { needsPin }).
+async function _identifySession(body) {
+  try {
+    const r = await fetch(`/api/partage/${_partageToken}/identify`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    return await r.json().catch(() => ({}));
+  } catch { return {}; }
+}
+
+// Bascule l'UI vers l'écran PIN pour un participant protégé.
+function _basculerVersPin(p) {
+  _pinPendingParticipant = p;
+  document.getElementById('id-pin-nom').textContent = p.nom || '';
+  document.getElementById('id-pin-erreur').style.display = 'none';
+  document.getElementById('id-pin-input').value = '';
+  _idMainShow(false);
+  setTimeout(() => document.getElementById('id-pin-input').focus(), 100);
+}
+
+async function _idParticipant(p) {
+  if (p.has_pin) { _basculerVersPin(p); return; }
+  const res = await _identifySession({ participant_id: p.id });
+  if (res.needsPin) { _basculerVersPin({ ...p, has_pin: true }); return; }
+  const id = {
+    nom:            res.participant?.nom     ?? p.nom,
+    participant_id: res.participant?.id      ?? p.id,
+    couleur:        res.participant?.couleur || p.couleur || '#F97316',
+    sessionToken:   res.sessionToken || null,
+  };
   _safeStoreIdentite(id);
   _lancerPartage(id);
 }
@@ -1490,14 +1511,27 @@ function _annulerPin() {
   _idMainShow(true);
 }
 
-function _idParNom() {
+async function _idParNom() {
   const nom = (document.getElementById('id-nom-input').value || '').trim();
   if (!nom) return;
   const _pal = ['#F97316','#3B82F6','#10B981','#8B5CF6','#EC4899','#F59E0B','#6366F1','#14B8A6'];
   let _h = 0;
   for (const c of nom) _h = (_h * 31 + c.charCodeAt(0)) & 0xFFFFFF;
   const couleur = _pal[Math.abs(_h) % _pal.length];
-  const identite = { nom, participant_id: null, couleur };
+
+  const res = await _identifySession({ nom, couleur });
+  // Homonyme protégé par PIN → on exige le PIN plutôt que d'usurper l'identité
+  if (res.needsPin) {
+    const p = (window._partagePartsMap && window._partagePartsMap[res.participant_id]) || { id: res.participant_id, nom };
+    _basculerVersPin({ ...p, has_pin: true });
+    return;
+  }
+  const identite = {
+    nom:            res.participant?.nom     ?? nom,
+    participant_id: res.participant?.id      ?? null,
+    couleur:        res.participant?.couleur || couleur,
+    sessionToken:   res.sessionToken || null,
+  };
   _safeStoreIdentite(identite);
   _lancerPartage(identite);
 }
