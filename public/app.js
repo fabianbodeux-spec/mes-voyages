@@ -161,7 +161,12 @@ async function initAuth() {
     // redirige directement vers sa page participant plutôt que d'afficher le login.
     const _isStandalonePWA = window.matchMedia('(display-mode: standalone)').matches
                           || window.navigator.standalone === true;
-    if (_isStandalonePWA) {
+    // IMPORTANT : ne PAS rediriger vers /share si un retour « MODE ORGANISATEUR »
+    // est en cours (_returnToken / ?v=). Sinon, un organisateur dont le token a été
+    // purgé par iOS rebondirait sans fin entre la page participant et /app sans
+    // jamais pouvoir se reconnecter. Dans ce cas on affiche l'écran de connexion :
+    // après reconnexion, _postAuthBoot() le ramène droit sur le voyage visé.
+    if (_isStandalonePWA && !_returnToken) {
       try {
         // Prendre le token le plus récent (dernier accès)
         // partage_id_TOKEN → storé dans partage.html quand le participant rejoint
@@ -321,6 +326,24 @@ function switchAuthForm(form) {
   document.getElementById('register-error').textContent = '';
 }
 
+// Après une authentification réussie (login OU register), décider où atterrir.
+// Si un retour « MODE ORGANISATEUR » est en attente (deep-link ?v= ou session de
+// retour conservée), l'organisateur vient de re-saisir son mot de passe PENDANT
+// ce retour (typiquement parce que iOS a purgé le token de la PWA). On le ramène
+// alors DIRECTEMENT sur le voyage visé plutôt que sur l'accueil — sinon le retour
+// « échouait » silencieusement sur l'écran d'accueil après reconnexion.
+function _postAuthBoot() {
+  let pending = window._pendingVoyageToken;
+  if (!pending) { try { pending = sessionStorage.getItem('crewigo_return_token') || null; } catch {} }
+  if (pending) {
+    window._pendingVoyageToken = null;
+    try { history.replaceState(null, '', '/app'); } catch {}
+    _openVoyageByToken(pending);
+    return;
+  }
+  chargerVoyages();
+}
+
 async function submitLogin() {
   const email    = document.getElementById('login-email')?.value?.trim();
   const password = document.getElementById('login-password')?.value;
@@ -344,7 +367,7 @@ async function submitLogin() {
     _cacheUser(currentUser);
     _hideAuthScreen();
     _updateHeaderUser();
-    chargerVoyages();
+    _postAuthBoot();
     if (data.newParticipations > 0) {
       const n = data.newParticipations;
       toast(`🎭 ${n} voyage${n > 1 ? 's' : ''} participé${n > 1 ? 's' : ''} retrouvé${n > 1 ? 's' : ''} !`, 4000);
@@ -378,7 +401,7 @@ async function submitRegister() {
     _cacheUser(currentUser);
     _hideAuthScreen();
     _updateHeaderUser();
-    chargerVoyages();
+    _postAuthBoot();
   } catch { errEl.textContent = 'Erreur réseau'; }
   finally { btn.disabled = false; btn.textContent = 'Créer mon compte'; }
 }
@@ -900,6 +923,13 @@ const _OB_KEY = 'crewigo_onboarding_done';
 /** Affiche l'onboarding si l'utilisateur ne l'a pas encore vu. */
 function _maybeShowOnboarding() {
   try { if (localStorage.getItem(_OB_KEY)) return; } catch {}
+  // Ne JAMAIS afficher l'onboarding par-dessus l'écran de connexion (z-index
+  // supérieur → superposition « connexion + Lance ton trip ») ni pendant un
+  // retour « MODE ORGANISATEUR » : l'utilisateur revient sur un voyage existant,
+  // pas sur un premier lancement.
+  if (document.getElementById('auth-screen')?.classList.contains('active')) return;
+  if (window._pendingVoyageToken) return;
+  try { if (sessionStorage.getItem('crewigo_return_token')) return; } catch {}
   const overlay = document.getElementById('onboarding-overlay');
   if (!overlay) return;
 
@@ -1074,7 +1104,6 @@ async function chargerVoyages() {
     let _isReturnFlow = false;
     try { _isReturnFlow = !!sessionStorage.getItem('crewigo_return_token'); } catch {}
     if (!_isReturnFlow && !window._pendingVoyageToken) _maybeShowOnboarding();
-    else _bootDiag('accueil vide', { home: _lastHomeStatus, auth: !!_authToken, user: currentUser?.id ?? '∅' });
     return;
   }
   empty.classList.add('hidden');
@@ -1209,33 +1238,12 @@ async function _openVoyageByToken(token) {
     // Réponse FIABLE « pas propriétaire » → oublier le token, accueil normal.
     try { sessionStorage.removeItem('crewigo_return_token'); } catch {}
     window._suppressSwReload = false;
-    _bootDiag('is-owner=false', { token: token.slice(0,6), attempts, lastStatus, auth: !!_authToken });
     chargerVoyages();
     return;
   }
   // Toutes les tentatives ont échoué (réseau/cold start) : NE PAS oublier le token
   // (un prochain lancement rouvrira le voyage). Accueil rendu sans onboarding.
-  _bootDiag('is-owner ÉCHEC', { token: token.slice(0,6), attempts: attempts-1, lastStatus, auth: !!_authToken });
   chargerVoyages();
-}
-
-// Badge de diagnostic TEMPORAIRE — n'apparaît QUE dans le cas de bug (le retour
-// organisateur n'a pas pu ouvrir le voyage). Invisible pour un retour réussi.
-// Permet à l'utilisateur de capturer la cause exacte en une copie d'écran.
-function _bootDiag(reason, info) {
-  try {
-    const el = document.createElement('div');
-    el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;'
-      + 'background:#1a1a2e;color:#fff;font:12px/1.4 monospace;padding:10px 12px;'
-      + 'border:1px solid #F97316;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.4)';
-    el.textContent = `⚠️ retour: ${reason} · ${Object.entries(info).map(([k,v])=>`${k}=${v}`).join(' · ')}`;
-    const x = document.createElement('button');
-    x.textContent = '✕';
-    x.style.cssText = 'float:right;background:none;border:none;color:#F97316;font-weight:700;cursor:pointer;margin-left:8px';
-    x.onclick = () => el.remove();
-    el.prepend(x);
-    document.body.appendChild(el);
-  } catch {}
 }
 
 /** Construit le HTML d'une carte voyage selon sa section
