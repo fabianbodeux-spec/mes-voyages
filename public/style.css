@@ -4780,7 +4780,11 @@ textarea { resize: vertical; line-height: 1.6; }
 /* ── Onboarding overlay ─────────────────────────────────────────────────────── */
 .onboarding-overlay {
   position: fixed; inset: 0; z-index: 99990;
-  background: var(--bg-primary);
+  /* --bg-primary n'existe pas → résolvait en transparent → l'empty-state
+     « Lancer mon premier trip » transparaissait derrière l'onboarding
+     (superposition visible après inscription). On utilise la vraie variable
+     de fond opaque (--bg) avec fallback blanc dur. */
+  background: var(--bg, #fff);
   display: flex; align-items: center; justify-content: center;
   opacity: 1; transition: opacity .35s ease;
 }
