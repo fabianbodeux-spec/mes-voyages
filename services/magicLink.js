@@ -77,9 +77,12 @@ async function _sendEmail({ email, token, shareToken, participantNom, voyageNom 
 
   } else if (process.env.SMTP_HOST) {
     const nodemailer  = require('nodemailer');
+    const port        = +(process.env.SMTP_PORT || 587);
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST, port: +(process.env.SMTP_PORT || 587),
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+      host:   process.env.SMTP_HOST,
+      port,
+      secure: port === 465, // OVH : 465 = SSL direct (secure), 587 = STARTTLS (secure:false)
+      auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
     });
     await transporter.sendMail({ from: FROM, to: email, subject, html });
     return { emailSent: true, magicUrl: null };
