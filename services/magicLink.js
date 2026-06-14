@@ -60,13 +60,31 @@ function _buildHtml({ magicUrl, participantNom, voyageNom }) {
 </table></td></tr></table></body></html>`;
 }
 
-// ── Envoi (Resend → SMTP → console) ───────────────────────────────────────────
+// ── Parser un FROM "Nom <email@dom>" en { name, email } (pour API JSON) ────────
+function _parseFrom(from) {
+  const m = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(from || '');
+  if (m) return { name: (m[1] || '').trim() || 'CrewiGo', email: m[2].trim() };
+  return { name: 'CrewiGo', email: (from || '').trim() };
+}
+
+// ── Envoi (Brevo → Resend → SMTP → console) ───────────────────────────────────
 async function _sendEmail({ email, token, shareToken, participantNom, voyageNom }) {
   const magicUrl = `${APP_URL}/auth/magic/${token}?v=${shareToken}`;
   const subject  = `🔮 Ton lien magique pour "${voyageNom}"`;
   const html     = _buildHtml({ magicUrl, participantNom, voyageNom });
 
-  if (process.env.RESEND_API_KEY) {
+  if (process.env.BREVO_API_KEY) {
+    // Brevo API transactionnelle (HTTP/443 — non bloqué par Railway, contrairement au SMTP)
+    const sender = _parseFrom(FROM);
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method:  'POST',
+      headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json', 'accept': 'application/json' },
+      body:    JSON.stringify({ sender, to: [{ email }], subject, htmlContent: html })
+    });
+    if (!res.ok) throw new Error(`Brevo: ${res.status} ${await res.text()}`);
+    return { emailSent: true, magicUrl: null };
+
+  } else if (process.env.RESEND_API_KEY) {
     const res = await fetch('https://api.resend.com/emails', {
       method:  'POST',
       headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },

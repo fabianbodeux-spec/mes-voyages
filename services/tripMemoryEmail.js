@@ -68,7 +68,24 @@ async function sendMemoryEmail(voyage, participants, topPhotoIds, photos) {
     return;
   }
 
-  if (process.env.RESEND_API_KEY) {
+  if (process.env.BREVO_API_KEY) {
+    // Envoi via Brevo API transactionnelle (HTTP/443 — non bloqué par Railway)
+    const fromStr = process.env.MEMORY_EMAIL_FROM || 'CrewiGo <noreply@crewigo.app>';
+    const m = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(fromStr);
+    const sender = m ? { name: (m[1] || '').trim() || 'CrewiGo', email: m[2].trim() }
+                     : { name: 'CrewiGo', email: fromStr.trim() };
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json', 'accept': 'application/json' },
+      body: JSON.stringify({
+        sender,
+        to: emailsTo.map(e => ({ email: e })),
+        subject: `Vos souvenirs de ${voyage.destination || voyage.nom} sont prêts 🎬`,
+        htmlContent: html
+      })
+    });
+    if (!res.ok) throw new Error(`Brevo: ${res.status} ${await res.text()}`);
+  } else if (process.env.RESEND_API_KEY) {
     // Envoi via Resend API
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
